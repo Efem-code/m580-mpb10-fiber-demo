@@ -1,0 +1,560 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Machine Health Demo</title>
+<style>
+  :root {
+    --orange: #F06A2A; --orange-ink: #B84A14; --char: #3A3B39; --char2: #2E2F2D; --ink: #24262A;
+    --muted: #5F646A; --bg: #F2F3F1; --card: #FFFFFF; --rule: #DDE0E4;
+    --fiber: #1F9CAD; --good: #2E9E45; --good-bg: #E6F4E9; --warn: #D98A00; --warn-bg: #FFF3DC;
+    --bad: #C8322B; --bad-bg: #FBE6E4; --off: #8A8F94; --off-bg: #ECEEF0; --speed: #5B5BD6;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.45 "Segoe UI", Arial, sans-serif; }
+  header { background: var(--char); color: #F2F3F1; display: flex; align-items: center; gap: 18px; padding: 0 24px; height: 64px; border-top: 5px solid var(--orange); }
+  header .logo { height: 30px; background: #F7F8FA; padding: 5px 9px; border-radius: 6px; }
+  header h1 { font: 600 18px "Segoe UI Semibold", "Segoe UI", sans-serif; margin: 0; white-space: nowrap; }
+  nav { display: flex; gap: 2px; margin-left: 6px; overflow-x: auto; }
+  nav button { background: none; border: 0; color: #C9CCC8; font: 600 15px "Segoe UI Semibold", "Segoe UI", sans-serif; padding: 20px 12px 17px; cursor: pointer; border-bottom: 3px solid transparent; white-space: nowrap; }
+  nav button.on { color: #fff; border-bottom-color: var(--orange); }
+  .spacer { flex: 1; }
+  .pill { font-size: 13px; font-weight: 600; padding: 5px 12px; border-radius: 999px; background: #4A4B49; color: #F2F3F1; white-space: nowrap; }
+  .pill.live { background: var(--good); } .pill.sim { background: var(--orange); color: var(--ink); }
+  main { padding: 20px 24px 28px; max-width: 1500px; margin: 0 auto; }
+  .tab { display: none; } .tab.on { display: block; }
+  .grid { display: grid; gap: 16px; }
+  .card { background: var(--card); border: 1px solid var(--rule); border-radius: 12px; padding: 16px 18px; }
+  .card h2 { font: 600 13px "Segoe UI Semibold", "Segoe UI", sans-serif; letter-spacing: .07em; text-transform: uppercase; color: var(--muted); margin: 0 0 10px; }
+  .big { font: 600 54px/1 "Segoe UI Semibold", "Segoe UI", sans-serif; }
+  .unit { font-size: 18px; color: var(--muted); font-weight: 400; margin-left: 4px; }
+  .sub { color: var(--muted); font-size: 14px; }
+  .bar { height: 16px; background: #ECEEF0; border-radius: 8px; overflow: hidden; position: relative; }
+  .bar i { position: absolute; left: 0; top: 0; bottom: 0; background: var(--fiber); border-radius: 8px; transition: width .25s; }
+  .bar b { position: absolute; top: -2px; bottom: -2px; width: 3px; background: var(--ink); opacity: .45; }
+  canvas { width: 100%; display: block; }
+  .legend { display: flex; gap: 16px; flex-wrap: wrap; font-size: 13px; color: var(--muted); margin-top: 6px; }
+  .legend span::before { content: ""; display: inline-block; width: 18px; height: 4px; border-radius: 2px; margin-right: 6px; vertical-align: middle; background: var(--c); }
+  .btn { border: 0; border-radius: 8px; padding: 9px 16px; font: 600 14px "Segoe UI Semibold", "Segoe UI", sans-serif; cursor: pointer; background: #E6E8EA; color: var(--ink); }
+  .btn.orange { background: var(--orange); } .btn.cut { background: var(--bad); color: #fff; } .btn.go { background: var(--good); color: #fff; }
+  .btn:disabled { opacity: .4; cursor: not-allowed; }
+  .btn:active:not(:disabled) { transform: translateY(1px); }
+  .note { font-size: 13px; color: var(--muted); }
+  .msg { border-radius: 8px; padding: 9px 13px; font-size: 14px; margin: 8px 0; }
+  .msg.warn { background: var(--warn-bg); border-left: 4px solid var(--warn); }
+  .msg.bad { background: var(--bad-bg); border-left: 4px solid var(--bad); }
+  .msg.ok { background: var(--good-bg); border-left: 4px solid var(--good); }
+  .led { display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: var(--off); margin-right: 6px; vertical-align: middle; }
+  .led.g { background: var(--good); box-shadow: 0 0 6px var(--good); } .led.r { background: var(--bad); } .led.y { background: var(--warn); }
+  table.kv { width: 100%; border-collapse: collapse; }
+  table.kv td { padding: 6px 4px; border-bottom: 1px solid var(--rule); }
+  table.kv td:first-child { color: var(--muted); width: 46%; }
+  code { font-family: Consolas, monospace; background: #ECEEF1; padding: 1px 5px; border-radius: 4px; }
+
+  /* machine tab */
+  .top { grid-template-columns: 1.15fr 1fr 1fr 1fr 1fr; }
+  .health { display: flex; flex-direction: column; justify-content: center; gap: 6px; border-width: 2px; }
+  .health .state { font: 700 42px/1 "Segoe UI Semibold", "Segoe UI", sans-serif; }
+  .health.good { background: var(--good-bg); border-color: var(--good); } .health.good .state { color: var(--good); }
+  .health.warning { background: var(--warn-bg); border-color: var(--warn); } .health.warning .state { color: #9A6100; }
+  .health.alarm { background: var(--bad-bg); border-color: var(--bad); animation: pulse 1.2s ease-in-out infinite; } .health.alarm .state { color: var(--bad); }
+  .health.offline { background: var(--off-bg); border-color: var(--off); } .health.offline .state { color: var(--muted); }
+  @keyframes pulse { 50% { box-shadow: 0 0 0 8px rgba(200,50,43,.18); } }
+  .gauge svg { width: 100%; max-width: 240px; display: block; margin: 0 auto; }
+  .axes { display: grid; gap: 10px; margin-top: 4px; }
+  .axis { display: grid; grid-template-columns: 22px 1fr 84px; align-items: center; gap: 8px; font-weight: 600; font-size: 14px; }
+  .mid { grid-template-columns: 2.2fr 1fr; margin-top: 16px; }
+  .events { list-style: none; margin: 0; padding: 0; max-height: 420px; overflow: auto; }
+  .events li { display: grid; grid-template-columns: 64px 1fr; gap: 8px; padding: 7px 0; border-bottom: 1px solid var(--rule); font-size: 14px; }
+  .events time { color: var(--muted); font-variant-numeric: tabular-nums; }
+  .ev-ok span { color: var(--good); } .ev-warn span { color: #9A6100; } .ev-bad span { color: var(--bad); font-weight: 600; }
+  .simbar { margin-top: 16px; background: var(--char2); color: #EDEEEC; border-radius: 12px; padding: 14px 18px; display: flex; flex-wrap: wrap; gap: 20px; align-items: center; }
+  .simbar h2 { color: var(--orange); margin: 0; font-size: 13px; letter-spacing: .07em; }
+  .simbar label { display: flex; align-items: center; gap: 10px; font-weight: 600; }
+  .simbar input[type=range] { width: 150px; accent-color: var(--orange); }
+  .simbar .btn { background: #F2F3F1; } .simbar .btn.orange { background: var(--orange); } .simbar .btn.cut { background: var(--bad); }
+
+  /* drive tab */
+  .dtop { grid-template-columns: 1fr 1.15fr 1.2fr 1fr; }
+  .opanel { display: grid; grid-template-columns: 62px 1fr; gap: 14px; align-items: start; }
+  .tower { display: flex; flex-direction: column; gap: 7px; background: var(--char2); padding: 8px; border-radius: 10px; }
+  .tower i { width: 44px; height: 34px; border-radius: 8px; background: #55575A; transition: background .2s, box-shadow .2s; }
+  .tower i.on.r { background: #E53935; box-shadow: 0 0 16px #E53935; } .tower i.on.a { background: #F5A623; box-shadow: 0 0 16px #F5A623; }
+  .tower i.on.g { background: #2EBD4E; box-shadow: 0 0 16px #2EBD4E; }
+  .link.ring .wire { background: var(--char); box-shadow: 0 7px 0 var(--char); margin-bottom: 7px; }
+  .link.ring.half .wire { box-shadow: 0 7px 0 transparent; background: var(--warn); }
+  .link.ring.half small { color: #9A6100; font-weight: 600; }
+  .dstate { font: 700 34px/1.1 "Segoe UI Semibold", sans-serif; margin: 2px 0 10px; }
+  .chips { display: flex; gap: 8px; flex-wrap: wrap; }
+  .chip { border-radius: 999px; padding: 4px 12px; font-size: 13px; font-weight: 600; background: var(--off-bg); color: var(--muted); }
+  .chip.on.g { background: var(--good-bg); color: var(--good); } .chip.on.r { background: var(--bad-bg); color: var(--bad); } .chip.on.y { background: var(--warn-bg); color: #9A6100; }
+  .meters { display: grid; gap: 14px; }
+  .meter { display: grid; grid-template-columns: 110px 1fr 86px; align-items: center; gap: 10px; }
+  .meter span:first-child { color: var(--muted); font-size: 14px; } .meter span:last-child { font-weight: 600; text-align: right; }
+  .dmid { grid-template-columns: 1fr 2fr; margin-top: 16px; }
+  .ctl .row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin: 12px 0; }
+  .ctl input[type=range] { flex: 1; min-width: 160px; accent-color: var(--speed); }
+  .ctl .sp { font: 600 30px "Segoe UI Semibold", sans-serif; min-width: 120px; }
+  .ctl .btn { padding: 12px 20px; font-size: 16px; }
+  .ctl .btn.stopbig { flex: 1; padding: 16px; font-size: 20px; }
+  .vtop { grid-template-columns: 1fr 1.3fr 1fr; }
+  .vmid { grid-template-columns: 1fr 1.6fr; margin-top: 16px; }
+  .ready { font: 700 24px/1.2 "Segoe UI Semibold", sans-serif; margin-bottom: 8px; }
+  .perm { list-style: none; margin: 0; padding: 0; }
+  .perm li { padding: 5px 0; border-bottom: 1px solid var(--rule); font-size: 14px; }
+  .perm li.no { color: var(--bad); font-weight: 600; }
+  .dir { font: 600 18px "Segoe UI Semibold", sans-serif; color: var(--speed); margin-left: 10px; }
+  .ctlh { margin: 16px 0 0; font: 600 13px "Segoe UI Semibold", sans-serif; letter-spacing: .07em; text-transform: uppercase; color: var(--muted); }
+  .ctl .row:first-child { margin-top: 4px; }
+  .presets { display: flex; gap: 8px; flex-wrap: wrap; }
+  .presets .btn.on { background: var(--speed); color: #fff; }
+  .ctl .btn.big2 { flex: 1; }
+  .btn.jog { background: #E4E4FB; color: #2F2F9E; padding: 12px 22px; user-select: none; touch-action: none; }
+  .btn.jog.held { background: var(--speed); color: #fff; }
+  .legend span.mk::before { background: none; border-top: 2px dashed #F06A2A; height: 0; }
+  .seqt select, .seqt input { font: inherit; padding: 5px 7px; border: 1px solid var(--rule); border-radius: 6px; width: 120px; }
+  .seqt tr.cur td { background: #FCE3D6; font-weight: 600; }
+  .seqt td { vertical-align: middle; }
+  .seqbar { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-top: 10px; }
+  .words { display: grid; grid-template-columns: repeat(16, 1fr); gap: 3px; margin-top: 6px; }
+  .words div { text-align: center; font: 600 13px Consolas, monospace; padding: 4px 0; border-radius: 4px; background: #ECEEF0; color: var(--muted); }
+  .words div.on { background: var(--speed); color: #fff; }
+  .words div small { display: block; font: 400 10px "Segoe UI"; }
+
+  /* network tab */
+  .chain { display: flex; align-items: stretch; overflow-x: auto; padding: 8px 2px 4px; }
+  .node { flex: 0 0 148px; background: var(--card); border: 2px solid var(--rule); border-radius: 12px; padding: 12px; text-align: center; }
+  .node .ic { font: 700 12px "Segoe UI Semibold", sans-serif; letter-spacing: .06em; color: var(--muted); text-transform: uppercase; }
+  .node .nm { font: 600 16px "Segoe UI Semibold", sans-serif; margin: 4px 0 2px; }
+  .node .st { font-size: 13px; font-weight: 600; margin-top: 6px; color: var(--muted); }
+  .node.ok { border-color: var(--good); } .node.ok .st { color: var(--good); }
+  .node.bad { border-color: var(--bad); background: var(--bad-bg); } .node.bad .st { color: var(--bad); }
+  .link { flex: 1 0 70px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; min-width: 70px; }
+  .link .wire { height: 6px; width: 100%; border-radius: 3px; background: var(--char); }
+  .link.fiber .wire { height: 9px; background: var(--fiber); box-shadow: 0 0 10px rgba(31,156,173,.6); }
+  .link.iol .wire { background: var(--orange); }
+  .link.power .wire { background: var(--speed); height: 8px; }
+  .link.down .wire { background: repeating-linear-gradient(90deg, var(--bad) 0 10px, transparent 10px 18px); box-shadow: none; }
+  .link small { font-size: 12px; color: var(--muted); text-align: center; line-height: 1.2; }
+  .link.down small { color: var(--bad); font-weight: 600; }
+  .net2 { grid-template-columns: 1fr 1fr; margin-top: 16px; }
+  .ports { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+  .port { border: 1px solid var(--rule); border-radius: 10px; padding: 10px; min-height: 104px; }
+  .port .pn { font: 700 13px "Segoe UI Semibold", sans-serif; color: var(--muted); }
+  .port .dv { font: 600 16px "Segoe UI Semibold", sans-serif; margin-top: 4px; }
+  .port.on { border: 2px solid var(--orange); }
+  .hex { display: grid; grid-template-columns: repeat(10, 1fr); gap: 6px; font: 600 16px Consolas, monospace; }
+  .hex div { text-align: center; padding: 8px 0 6px; border-radius: 6px; background: #ECEEF0; }
+  .hex div small { display: block; font: 400 11px "Segoe UI", sans-serif; color: var(--muted); }
+  .hex .g0 { background: #FCE3D6; } .hex .g1 { background: #E1F1F3; } .hex .g2 { background: #E6F4E9; } .hex .g3 { background: #F1E7F7; }
+
+  /* IP + setup tabs */
+  table.ips { width: 100%; border-collapse: collapse; }
+  table.ips th { background: var(--char); color: #fff; text-align: left; padding: 8px 10px; font-weight: 600; font-size: 14px; }
+  table.ips td { padding: 9px 10px; border-bottom: 1px solid var(--rule); vertical-align: top; font-size: 14px; }
+  table.ips td:first-child { font-weight: 600; width: 150px; }
+  table.ips input { font: 600 15px Consolas, monospace; padding: 6px 8px; border: 1px solid var(--rule); border-radius: 6px; width: 160px; }
+  table.ips input.bad { border-color: var(--bad); background: var(--bad-bg); }
+  .setup { grid-template-columns: 1fr 1fr; }
+  .form { display: grid; grid-template-columns: 210px 1fr; gap: 10px 14px; align-items: center; }
+  .form input, .form select { font: inherit; padding: 7px 9px; border: 1px solid var(--rule); border-radius: 7px; width: 100%; }
+  .form input[type=checkbox] { width: 20px; height: 20px; }
+  .form h3 { grid-column: 1 / -1; margin: 10px 0 0; font: 600 14px "Segoe UI Semibold", sans-serif; color: var(--orange-ink); text-transform: uppercase; letter-spacing: .06em; }
+  .map { width: 100%; border-collapse: collapse; margin-bottom: 14px; }
+  .map td, .map th { padding: 5px 6px; border-bottom: 1px solid var(--rule); text-align: left; font-size: 13.5px; }
+  .map th { background: var(--char); color: #fff; }
+  @media (max-width: 1200px) { .top { grid-template-columns: 1fr 1fr 1fr; } .dtop { grid-template-columns: 1fr 1fr; } .vtop, .vmid, .dmid, .mid, .net2, .setup { grid-template-columns: 1fr; } .ports { grid-template-columns: repeat(2, 1fr); } header h1 { display: none; } }
+  @media print { header nav, .simbar, .btn, #ipSave { display: none !important; } body { background: #fff; } .tab { display: none !important; } #tab-ips { display: block !important; } }
+</style>
+</head>
+<body>
+<header>
+  <img class="logo" src="guillevin-logo.png" alt="Guillevin">
+  <h1>Machine Health · M580 + SICK</h1>
+  <nav>
+    <button data-tab="machine" class="on">Machine health</button>
+    <button data-tab="drive">Drive (ATV930)</button>
+    <button data-tab="vfd">VFD control</button>
+    <button data-tab="network">SIG200 &amp; network</button>
+    <button data-tab="ips">IP addresses</button>
+    <button data-tab="setup">Setup</button>
+  </nav>
+  <div class="spacer"></div>
+  <span id="modePill" class="pill">…</span>
+</header>
+
+<main>
+<!-- ======================= MACHINE ======================= -->
+<section class="tab on" id="tab-machine">
+  <div class="grid top">
+    <div class="card health offline" id="healthCard">
+      <h2 id="assetName">Demo motor</h2>
+      <div class="state" id="healthState">NO DATA</div>
+      <div class="sub" id="healthText">Waiting for data…</div>
+    </div>
+    <div class="card gauge">
+      <h2>Vibration (RMS)</h2>
+      <svg viewBox="0 0 260 160" aria-label="Vibration gauge">
+        <g id="gaugeBands"></g>
+        <line id="needle" x1="130" y1="135" x2="130" y2="40" stroke="#24262A" stroke-width="4" stroke-linecap="round"/>
+        <circle cx="130" cy="135" r="8" fill="#24262A"/>
+        <text x="20" y="155" font-size="12" fill="#5F646A">0</text>
+        <text x="232" y="155" font-size="12" fill="#5F646A">10</text>
+      </svg>
+      <div style="text-align:center;margin-top:-6px"><span class="big" style="font-size:46px" id="vVal">–</span><span class="unit">mm/s</span></div>
+      <div class="sub" style="text-align:center" id="zoneText">ISO 10816-3 zone –</div>
+    </div>
+    <div class="card">
+      <h2>Motor speed</h2>
+      <div><span class="big" id="mSpeed">–</span><span class="unit">rpm</span></div>
+      <div class="bar" style="margin-top:18px"><i id="mSpeedBar" style="width:0;background:var(--speed)"></i></div>
+      <div class="sub" style="margin-top:8px" id="mDrive">ATV930 –</div>
+    </div>
+    <div class="card">
+      <h2>Temperature</h2>
+      <div><span class="big" id="tVal">–</span><span class="unit">°C</span></div>
+      <div class="bar" style="margin-top:18px"><i id="tBar" style="width:0;background:var(--orange)"></i><b id="tMark"></b></div>
+      <div class="sub" style="margin-top:8px" id="tText">Warning at 70 °C</div>
+    </div>
+    <div class="card">
+      <h2>Per axis · shocks</h2>
+      <div class="axes">
+        <div class="axis">X<div class="bar"><i id="bx"></i></div><span id="vx">–</span></div>
+        <div class="axis">Y<div class="bar"><i id="by"></i></div><span id="vy">–</span></div>
+        <div class="axis">Z<div class="bar"><i id="bz"></i></div><span id="vz">–</span></div>
+      </div>
+      <div style="margin-top:14px"><span class="big" style="font-size:36px" id="shocks">–</span><span class="unit">shocks</span></div>
+    </div>
+  </div>
+
+  <div class="grid mid">
+    <div class="card">
+      <h2>Trend · last 2 minutes</h2>
+      <canvas id="trend" height="300"></canvas>
+      <div class="legend">
+        <span style="--c:#1F9CAD">Vibration mm/s</span>
+        <span style="--c:#F06A2A">Temperature °C (right axis)</span>
+        <span style="--c:#D98A00">Warning limit</span>
+        <span style="--c:#C8322B">Alarm limit</span>
+      </div>
+    </div>
+    <div class="card">
+      <h2>What the PLC saw</h2>
+      <ul class="events" id="events"></ul>
+    </div>
+  </div>
+
+  <div class="simbar" id="simbar">
+    <h2>DEMO CONTROLS</h2>
+    <label>Unbalance <input type="range" id="unb" min="0" max="100" value="0"></label>
+    <label>Heat <input type="range" id="heat" min="0" max="100" value="0"></label>
+    <button class="btn orange" id="knock">Knock (shock)</button>
+    <button class="btn cut" id="fiber">Pull the fiber</button>
+    <button class="btn" id="swap">Swap the sensor</button>
+    <button class="btn" id="ring">Open the RIO ring</button>
+    <button class="btn" id="reset">Reset sim</button>
+  </div>
+</section>
+
+<!-- ======================= DRIVE ======================= -->
+<section class="tab" id="tab-drive">
+  <div class="grid dtop">
+    <div class="card">
+      <h2>ATV930 state</h2>
+      <div class="dstate" id="dState">–</div>
+      <div class="chips">
+        <span class="chip" id="cConn">EtherNet/IP</span>
+        <span class="chip" id="cReady">Ready</span>
+        <span class="chip" id="cRun">Running</span>
+        <span class="chip" id="cFault">Fault</span>
+        <span class="chip" id="cRev">Reverse</span>
+      </div>
+      <p class="sub" id="dFault" style="margin:12px 0 0"></p>
+    </div>
+    <div class="card">
+      <h2>Speed</h2>
+      <div><span class="big" id="dSpeed">–</span><span class="unit">rpm</span> <span class="sub" id="dRef" style="margin-left:14px"></span></div>
+      <div class="bar" style="margin-top:18px;height:22px"><i id="dSpeedBar" style="width:0;background:var(--speed)"></i><b id="dRefMark" style="left:0"></b></div>
+      <div class="sub" style="margin-top:8px">Bar: actual speed · marker: speed reference sent by the PLC</div>
+    </div>
+    <div class="card">
+      <h2>Motor</h2>
+      <div class="meters">
+        <div class="meter"><span>Current</span><div class="bar"><i id="dCurBar"></i></div><span id="dCur">–</span></div>
+        <div class="meter"><span>Torque</span><div class="bar"><i id="dTorBar"></i></div><span id="dTor">–</span></div>
+        <div class="meter"><span>Thermal state</span><div class="bar"><i id="dThBar" style="background:var(--orange)"></i></div><span id="dTh">–</span></div>
+        <div class="meter"><span>Vibration</span><div class="bar"><i id="dVibBar"></i></div><span id="dVib">–</span></div>
+      </div>
+    </div>
+    <div class="card">
+      <h2>Operator panel · RIO drop</h2>
+      <div class="opanel">
+        <div class="tower" title="Stack light on the RIO drop"><i id="lRed"></i><i id="lAmb"></i><i id="lGrn"></i></div>
+        <table class="kv">
+          <tr><td>Enable key</td><td id="pKey">–</td></tr>
+          <tr><td>Buttons</td><td id="pBtns">–</td></tr>
+          <tr><td>Started from</td><td id="pSrc">–</td></tr>
+          <tr><td>RIO drop</td><td id="pDrop">–</td></tr>
+        </table>
+      </div>
+    </div>
+  </div>
+  <div class="grid" style="margin-top:16px">
+    <div class="card">
+      <h2>Speed vs vibration · last 2 minutes</h2>
+      <canvas id="dTrend" height="300"></canvas>
+      <div class="legend">
+        <span style="--c:#5B5BD6">Speed rpm (right axis)</span>
+        <span style="--c:#1F9CAD">Vibration mm/s</span>
+        <span style="--c:#C8322B">Alarm limit</span>
+        <span class="mk">Speed change</span>
+      </div>
+      <p class="note">Start, stop, jog, ramps and the demo sequence are on the <b>VFD control</b> tab.</p>
+    </div>
+  </div>
+  <div class="grid" style="grid-template-columns:1fr 1fr;margin-top:16px">
+    <div class="card">
+      <h2>Status word ETA (drive → PLC)</h2>
+      <div><code id="etaHex">–</code></div>
+      <div class="words" id="etaBits"></div>
+    </div>
+    <div class="card">
+      <h2>Command word CMD (PLC → drive)</h2>
+      <div><code id="cmdHex">–</code> <span class="sub" id="cmdText"></span></div>
+      <div class="words" id="cmdBits"></div>
+    </div>
+  </div>
+</section>
+
+<!-- ======================= VFD CONTROL ======================= -->
+<section class="tab" id="tab-vfd">
+  <div class="grid vtop">
+    <div class="card">
+      <h2>Ready to run?</h2>
+      <div class="ready" id="vReady">–</div>
+      <ul class="perm" id="perm"></ul>
+    </div>
+    <div class="card">
+      <h2>Speed</h2>
+      <div><span class="big" id="vSpeed">–</span><span class="unit">rpm</span> <span class="dir" id="vDir"></span></div>
+      <div class="bar" style="margin-top:14px;height:22px"><i id="vSpeedBar" style="width:0;background:var(--speed)"></i><b id="vRefMark" style="left:0"></b></div>
+      <div class="sub" style="margin-top:6px" id="vRef">–</div>
+      <h3 class="ctlh">Setpoint</h3>
+      <div class="ctl"><div class="row"><span class="sp"><span id="spVal">900</span> <span class="unit">rpm</span></span><input type="range" id="spSlider" min="0" max="1500" step="10" value="900"></div></div>
+      <div class="presets" id="presets"></div>
+    </div>
+    <div class="card">
+      <h2>Ramps · ATV930 ACC / DEC</h2>
+      <div class="form" style="grid-template-columns:130px 1fr">
+        <label for="accIn">Acceleration (s)</label><input id="accIn" type="number" min="0.1" max="60" step="0.1">
+        <label for="decIn">Deceleration (s)</label><input id="decIn" type="number" min="0.1" max="60" step="0.1">
+        <span></span><div><button class="btn orange" id="rampApply">Apply</button> <span class="note" id="rampSaved"></span></div>
+      </div>
+      <p class="sub" id="vRamps" style="margin:12px 0 4px">–</p>
+      <p class="note">Time from 0 to the motor’s nominal speed. The PLC passes them to the drive’s ACC and DEC parameters while this dashboard is in control, and goes back to its own defaults when it isn’t.</p>
+    </div>
+  </div>
+  <div class="grid vmid">
+    <div class="card ctl">
+      <h2>Commands · through the M580</h2>
+      <div id="ctlMsg"></div>
+      <div class="row">
+        <button class="btn go big2" id="dRun">▶ Start forward</button>
+        <button class="btn go big2" id="dRunRev">◀ Start reverse</button>
+      </div>
+      <div class="row"><button class="btn cut stopbig" id="dStop">STOP</button></div>
+      <div class="row">
+        <button class="btn jog" id="jogRev">◀ Jog</button>
+        <button class="btn jog" id="jogFwd">Jog ▶</button>
+        <span class="sub" id="jogTxt">hold to run</span>
+      </div>
+      <div class="row">
+        <button class="btn" id="dReset">Fault reset</button>
+        <button class="btn" id="dTrip">Trip drive (sim)</button>
+      </div>
+      <p class="sub" id="vSrc" style="margin:4px 0 8px">–</p>
+      <p class="note">The dashboard only <i>requests</i>. The M580 program decides: it stops the drive if the dashboard goes silent for 1 s, and the PLC-side enable must be on. The panel Stop button and the hard-wired E-stop on the ATV930’s STO input always win. Space bar = STOP.</p>
+    </div>
+    <div class="card">
+      <h2>Speed reference vs actual · last 2 minutes</h2>
+      <canvas id="vTrend" height="300"></canvas>
+      <div class="legend">
+        <span style="--c:#9AA0A6">Reference sent by the PLC</span>
+        <span style="--c:#5B5BD6">Actual speed (RFRD)</span>
+        <span class="mk">Speed change</span>
+      </div>
+    </div>
+  </div>
+  <div class="card" style="margin-top:16px">
+    <h2>Demo sequence · forward, reverse and speed changes on the real drive</h2>
+    <div id="seqMsg"></div>
+    <div style="overflow-x:auto">
+    <table class="map seqt">
+      <thead><tr><th style="width:44px">#</th><th>Direction</th><th>Speed (rpm)</th><th>Hold (s)</th><th style="width:50px"></th></tr></thead>
+      <tbody id="seqBody"></tbody>
+    </table>
+    </div>
+    <div class="row seqbar">
+      <button class="btn" id="seqAdd">+ Add step</button>
+      <button class="btn" id="seqSave">Save sequence</button>
+      <label class="sub"><input type="checkbox" id="seqLoop"> Loop</label>
+      <span class="note" id="seqSaved"></span>
+      <span class="spacer"></span>
+      <button class="btn go" id="seqPlay">▶ Play sequence</button>
+      <button class="btn cut" id="seqStop">■ Stop sequence</button>
+    </div>
+    <p class="note">Each step’s hold time starts when its command is sent, so the ramp is part of it. A change of direction stops the motor on its ramp first, then starts it the other way. STOP, the space bar, the panel Stop, a drive fault, losing the M580 or closing this page all end the sequence and stop the motor. The PLC rules still apply: speed limit, watchdog, enable key, xDashboardAllowed.</p>
+  </div>
+</section>
+
+<!-- ======================= NETWORK ======================= -->
+<section class="tab" id="tab-network">
+  <div class="card">
+    <h2>Sensor path, live</h2>
+    <div class="chain">
+      <div class="node" id="n-plc"><div class="ic">Controller</div><div class="nm">M580 BMEP584040</div><div class="sub" id="plcIp">–</div><div class="st">–</div></div>
+      <div class="link" id="l-bp"><div class="wire"></div><small>Ethernet<br>backplane</small></div>
+      <div class="node" id="n-noc"><div class="ic">EtherNet/IP scanner</div><div class="nm">BMENOC0301</div><div class="sub" id="nocIp">–</div><div class="st">–</div></div>
+      <div class="link" id="l-nrp"><div class="wire"></div><small>Cat6 · NOC ETH3</small></div>
+      <div class="node" id="n-nrp"><div class="ic">Control panel</div><div class="nm">Media converter</div><div class="sub">copper → fiber</div><div class="st">–</div></div>
+      <div class="link fiber" id="l-fiber"><div class="wire"></div><small>Multimode fiber<br>100BASE-FX</small></div>
+      <div class="node" id="n-conv"><div class="ic">Field box</div><div class="nm">Media converter</div><div class="sub">fiber → copper</div><div class="st">–</div></div>
+      <div class="link" id="l-sig"><div class="wire"></div><small>EtherNet/IP</small></div>
+      <div class="node" id="n-sig"><div class="ic">IO-Link master</div><div class="nm">SICK SIG200</div><div class="sub" id="sigIp">–</div><div class="st">–</div></div>
+      <div class="link iol" id="l-iol"><div class="wire"></div><small>IO-Link<br>port S1</small></div>
+      <div class="node" id="n-mpb"><div class="ic">Sensor</div><div class="nm">SICK MPB10</div><div class="sub">on the motor</div><div class="st">–</div></div>
+    </div>
+  </div>
+  <div class="card" style="margin-top:16px">
+    <h2>Drive path, live</h2>
+    <div class="chain">
+      <div class="node" id="n-plc2"><div class="ic">Controller</div><div class="nm">M580 BMEP584040</div><div class="sub" id="plcIp2">–</div><div class="st">–</div></div>
+      <div class="link" id="l-bp2"><div class="wire"></div><small>Ethernet<br>backplane</small></div>
+      <div class="node" id="n-noc2"><div class="ic">EtherNet/IP scanner</div><div class="nm">BMENOC0301</div><div class="sub" id="nocIp2">–</div><div class="st">–</div></div>
+      <div class="link" id="l-atv"><div class="wire"></div><small>EtherNet/IP · NOC ETH2</small></div>
+      <div class="node" id="n-atv"><div class="ic">Drive</div><div class="nm">Altivar ATV930</div><div class="sub" id="atvIp">–</div><div class="st">–</div></div>
+      <div class="link power" id="l-mot"><div class="wire"></div><small>Motor cable<br>(shielded VFD)</small></div>
+      <div class="node" id="n-mot"><div class="ic">Asset</div><div class="nm">Motor</div><div class="sub">MPB10 bolted on</div><div class="st">–</div></div>
+      <div style="flex:2 0 120px"></div>
+    </div>
+    <p class="note">The drive sits on the PLC side of the fiber, like a drive in an MCC. Pulling the fiber cuts the sensor data; the motor keeps running under PLC control.</p>
+  </div>
+  <div class="card" style="margin-top:16px">
+    <h2>Remote I/O path, live</h2>
+    <div class="chain">
+      <div class="node" id="n-plc3"><div class="ic">Controller</div><div class="nm">M580 BMEP584040</div><div class="sub">ETH2 · ETH3</div><div class="st">–</div></div>
+      <div class="link ring" id="l-ring"><div class="wire"></div><small>RIO main ring<br>2 paths (RSTP)</small></div>
+      <div class="node" id="n-cra"><div class="ic">eRIO drop</div><div class="nm">BMECRA31210</div><div class="sub" id="craIp">–</div><div class="st">–</div></div>
+      <div class="link" id="l-io"><div class="wire"></div><small>X80 backplane</small></div>
+      <div class="node" id="n-io"><div class="ic">Operator panel</div><div class="nm">Buttons · lamps</div><div class="sub">X80 I/O on the drop</div><div class="st">–</div></div>
+      <div style="flex:3 0 200px"></div>
+    </div>
+    <p class="note">The drop is wired as a ring from the CPU’s ETH2 back to ETH3. Open the ring anywhere and the drop keeps running on the other path. The <b>BMENUA0100</b> serves the same PLC data over secure OPC UA on its own control port (<span id="nuaIp">–</span>): show it with UaExpert on a second laptop.</p>
+  </div>
+
+  <div class="grid net2">
+    <div class="card">
+      <h2>SICK SIG200 IO-Link master</h2>
+      <div class="ports">
+        <div class="port on"><div class="pn"><span class="led" id="p1led"></span>PORT S1</div><div class="dv" id="p1dev">–</div><div class="sub" id="p1sub"></div></div>
+        <div class="port"><div class="pn"><span class="led"></span>PORT S2</div><div class="dv">Free</div><div class="sub">Room for another sensor</div></div>
+        <div class="port"><div class="pn"><span class="led"></span>PORT S3</div><div class="dv">Free</div><div class="sub">Photoelectric, pressure…</div></div>
+        <div class="port"><div class="pn"><span class="led"></span>PORT S4</div><div class="dv">Free</div><div class="sub">Level, flow, temperature…</div></div>
+      </div>
+      <table class="kv" style="margin-top:14px">
+        <tr><td>Fieldbus to the PLC</td><td>EtherNet/IP (implicit I/O)</td></tr>
+        <tr><td>EtherNet/IP connection</td><td id="kvEip">–</td></tr>
+        <tr><td>IO-Link on S1</td><td id="kvIol">–</td></tr>
+        <tr><td>Process data from MPB10</td><td>20 bytes (160 bits) per cycle</td></tr>
+      </table>
+    </div>
+    <div class="card">
+      <h2>Raw IO-Link process data → decoded in the M580</h2>
+      <div class="hex" id="hex"></div>
+      <table class="kv" style="margin-top:12px">
+        <tr><td>Alarm word (bytes 0–1)</td><td id="dAlarm">–</td></tr>
+        <tr><td>Velocity overall</td><td id="dV">–</td></tr>
+        <tr><td>Temperature</td><td id="dT">–</td></tr>
+        <tr><td>PLC heartbeat</td><td id="dHb">–</td></tr>
+        <tr><td>Updates per second</td><td id="dRate">–</td></tr>
+        <tr><td>Comms errors</td><td id="dErr">–</td></tr>
+      </table>
+      <p class="note" id="rawNote"></p>
+    </div>
+  </div>
+</section>
+
+<!-- ======================= IP ADDRESSES ======================= -->
+<section class="tab" id="tab-ips">
+  <div class="card">
+    <h2>IP plan for the demo rig</h2>
+    <p class="sub" style="margin-top:0">One place for every address. Changing a value here updates the dashboard and this sheet. It does <b>not</b> reprogram the device: set the new address where the “Set it in” column says, then save here. The reachability check runs from this laptop every 3 s.</p>
+    <div id="ipMsgs"></div>
+    <div style="overflow-x:auto">
+    <table class="ips">
+      <tr><th>Device</th><th>Address</th><th>Set it in</th><th>Must match in Control Expert</th><th>Reachable from this laptop</th></tr>
+      <tr><td>Laptop</td><td><input id="ip-laptop_ip"></td><td>Windows network adapter → IPv4, static. Plug into the M580 <b>CPU service port (ETH1)</b>.</td><td>–</td><td id="r-laptop">–</td></tr>
+      <tr><td>M580 CPU<br><span class="sub">BMEP584040</span></td><td><input id="ip-plc_host"></td><td>Control Expert → PLC bus → CPU → <b>IPConfig</b> (main IP), then download</td><td>This is the project itself</td><td id="r-plc_host">–</td></tr>
+      <tr><td>BMENOC0301</td><td><input id="ip-noc_host"></td><td>Control Expert → DTM Browser → BMENOC0301 → Channel Properties → TCP/IP. Backplane port <b>enabled</b>.</td><td>This is the project itself</td><td id="r-noc_host">–</td></tr>
+      <tr><td>BMENUA0100<br><span class="sub">backplane side</span></td><td><input id="ip-nua_host"></td><td>Control Expert → PLC bus → BMENUA0100 → IP configuration</td><td>This is the project itself</td><td class="sub">not checked</td></tr>
+      <tr><td>BMENUA0100<br><span class="sub">control port</span></td><td><input id="ip-nua_ctrl_host"></td><td>Same place. Its <b>own network</b> (SCADA / OPC UA side), not the device subnet. OPC UA on TCP 4840.</td><td>UaExpert: <code>opc.tcp://<span id="nuaUrl">–</span>:4840</code></td><td id="r-nua_ctrl_host">–</td></tr>
+      <tr><td>RIO drop<br><span class="sub">BMECRA31210</span></td><td><input id="ip-cra_host"><div style="margin-top:6px" class="sub">Drop no. <input id="ip-cra_drop" type="number" min="1" max="159" style="width:70px"></div></td><td>Control Expert → the drop → <b>IPConfig</b>. The CPU hands this address to the CRA at power-up; set the drop number on the CRA’s <b>rotary switches</b> to match.</td><td>This is the project itself</td><td id="r-cra_host">–</td></tr>
+      <tr><td>SICK SIG200</td><td><input id="ip-sig200_host"></td><td>SIG200 web UI (ships at 192.168.0.1) → Ethernet settings</td><td>DTM Browser → BMENOC0301 → SIG200 → Address Setting</td><td id="r-sig200_host">–</td></tr>
+      <tr><td>Altivar ATV930</td><td><input id="ip-atv_host"></td><td>Drive keypad → Communication → Embedded Ethernet → IP (fixed)</td><td>DTM Browser → BMENOC0301 → ATV930 → Address Setting</td><td id="r-atv_host">–</td></tr>
+      <tr><td>Subnet mask</td><td><input id="ip-netmask"></td><td>Same on every device</td><td>CPU IPConfig</td><td>–</td></tr>
+      <tr><td>Gateway</td><td><input id="ip-gateway"></td><td>Same on every device (the M580 is fine on an isolated rig)</td><td>CPU IPConfig</td><td>–</td></tr>
+      <tr><td>Media converters</td><td class="sub">no IP</td><td colspan="3" class="sub">Two, one at each end of the fiber. Unmanaged and transparent. A managed switch would need its own address here. (A BMXNRP0200 in the rack can replace the panel-end converter.)</td></tr>
+    </table>
+    </div>
+    <div style="margin-top:14px;display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+      <button class="btn orange" id="ipSave">Save addresses</button>
+      <button class="btn" id="ipReset">Back to defaults</button>
+      <button class="btn" id="ipCopy">Copy as text</button>
+      <button class="btn" id="ipPrint">Print IP sheet</button>
+      <span class="note" id="ipSaved"></span>
+    </div>
+    <p class="note">Web pages: <a id="lnkSig" target="_blank" rel="noopener">SIG200</a> · <a id="lnkAtv" target="_blank" rel="noopener">ATV930</a> (open from this laptop when it is on the rig network).</p>
+  </div>
+</section>
+
+<!-- ======================= SETUP ======================= -->
+<section class="tab" id="tab-setup">
+  <div class="grid setup">
+    <div class="card">
+      <h2>Data source &amp; limits</h2>
+      <div class="form">
+        <h3>Source</h3>
+        <label for="c-mode">Mode</label>
+        <select id="c-mode"><option value="sim">Simulation (no hardware)</option><option value="live">Live: talk to the M580</option></select>
+        <label for="c-port">Modbus TCP port</label><input id="c-port" type="number">
+        <label for="c-unit">Unit ID</label><input id="c-unit" type="number">
+        <label for="c-base">Status block starts at %MW</label><input id="c-base" type="number">
+        <label for="c-cmd">Command block starts at %MW</label><input id="c-cmd" type="number">
+        <h3>Asset &amp; alarm limits</h3>
+        <label for="c-asset">Asset name</label><input id="c-asset">
+        <label for="c-ab">Zone A/B limit (mm/s)</label><input id="c-ab" type="number" step="0.1">
+        <label for="c-bc">Warning, B/C (mm/s)</label><input id="c-bc" type="number" step="0.1">
+        <label for="c-cd">Alarm, C/D (mm/s)</label><input id="c-cd" type="number" step="0.1">
+        <label for="c-tw">Temperature warning (°C)</label><input id="c-tw" type="number" step="1">
+        <h3>Drive</h3>
+        <label for="c-allow">Allow drive control from the dashboard</label><input id="c-allow" type="checkbox">
+        <label for="c-max">Max speed request (rpm)</label><input id="c-max" type="number" step="10">
+        <label for="c-nom">Motor nominal speed (rpm)</label><input id="c-nom" type="number" step="10">
+        <label for="c-jog">Jog speed (rpm)</label><input id="c-jog" type="number" step="10">
+        <span></span><div><button class="btn orange" id="save">Save</button> <button class="btn" id="clear">Clear trends &amp; log</button> <span class="note" id="saved"></span></div>
+      </div>
+      <p class="note">Default zones: ISO 10816-3, group 2 machines (15–300 kW) on rigid foundations. With drive control off, live mode only reads the PLC. With it on, it also writes the 5-word command block. Only this laptop can change settings or send commands; TVs and iPads opened with <code>--lan</code> are view-only.</p>
+    </div>
+    <div class="card">
+      <h2>Modbus map in the M580</h2>
+      <table class="map"><tr><th style="width:110px">%MW (read)</th><th>Status block</th></tr><tbody id="mapBody"></tbody></table>
+      <table class="map"><tr><th style="width:110px">%MW (write)</th><th>Command block (only when drive control is on)</th></tr><tbody id="cmdMapBody"></tbody></table>
+      <p class="note">The matching Control Expert sections are in <code>m580-mpb-fiber\control-expert</code>.</p>
+    </div>
+  </div>
+</section>
+</main>
+<script src="app.js"></script>
+</body>
+</html>

@@ -1,0 +1,207 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Control Expert Build</title>
+<style>
+  :root { --orange: #F06A2A; --orange-ink: #B84A14; --char: #3A3B39; --ink: #282A2E; --muted: #5F646A; --bg: #F7F8FA;
+          --card: #FFFFFF; --rule: #DDE0E4; --fiber: #1F9CAD; --warn-bg: #FFF4EC; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 16px/1.5 "Segoe UI", Arial, sans-serif; }
+  .bar { height: 8px; background: var(--orange); }
+  main { max-width: 1040px; margin: 0 auto; padding: 32px 24px 64px; }
+  header { display: flex; align-items: center; justify-content: space-between; gap: 24px; flex-wrap: wrap; }
+  header img { height: 40px; }
+  .tag { font: 600 13px/1 "Segoe UI Semibold", "Segoe UI", sans-serif; letter-spacing: .08em; text-transform: uppercase; color: var(--orange-ink); }
+  h1 { font: 600 34px/1.15 "Segoe UI Semibold", "Segoe UI", sans-serif; margin: 28px 0 8px; }
+  h2 { font: 600 24px/1.2 "Segoe UI Semibold", "Segoe UI", sans-serif; margin: 44px 0 12px; padding-top: 16px; border-top: 2px solid var(--rule); }
+  h2 .n { color: var(--orange-ink); margin-right: 10px; }
+  h3 { font: 600 18px/1.3 "Segoe UI Semibold", "Segoe UI", sans-serif; margin: 22px 0 6px; }
+  .lede { font-size: 18px; color: var(--muted); max-width: 840px; }
+  .warn { background: var(--warn-bg); border: 1px solid #F3C6A8; border-left: 5px solid var(--orange); border-radius: 8px; padding: 12px 18px; margin: 14px 0; }
+  .note { border-left: 5px solid var(--fiber); background: #EAF6F8; border-radius: 8px; padding: 12px 18px; margin: 14px 0; }
+  table { width: 100%; border-collapse: collapse; background: var(--card); margin: 10px 0; font-size: 15px; }
+  th { background: var(--char); color: #F7F8FA; text-align: left; font-weight: 600; padding: 8px 10px; }
+  td { border-bottom: 1px solid var(--rule); padding: 8px 10px; vertical-align: top; }
+  td:first-child { font-weight: 600; }
+  .wrap { overflow-x: auto; }
+  ol.steps { padding-left: 0; list-style: none; counter-reset: s; }
+  ol.steps > li { counter-increment: s; position: relative; padding: 4px 0 10px 44px; }
+  ol.steps > li::before { content: counter(s); position: absolute; left: 0; top: 2px; width: 30px; height: 30px; border-radius: 50%; background: var(--orange); color: var(--ink); font-weight: 700; text-align: center; line-height: 30px; }
+  code { font-family: Consolas, monospace; background: #ECEEF1; padding: 1px 5px; border-radius: 4px; font-size: 14px; }
+  pre { background: #1F2124; color: #E8E9E6; padding: 14px 18px; border-radius: 10px; overflow-x: auto; font: 13.5px/1.45 Consolas, monospace; }
+  .flow { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin: 12px 0; }
+  .flow span { background: var(--card); border: 2px solid var(--rule); border-radius: 8px; padding: 6px 12px; font: 600 14px Consolas, monospace; }
+  .flow span.edit { border-color: var(--orange); }
+  .flow i { color: var(--muted); font-style: normal; }
+  footer { margin-top: 48px; font-size: 13px; color: var(--muted); }
+  @media print { body { background: #fff; font-size: 12.5px; } h2 { break-after: avoid; } table, pre { break-inside: avoid; }
+    .bar, th, ol.steps > li::before, .warn, .note { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
+</style>
+</head>
+<body>
+<div class="bar"></div>
+<main>
+<header>
+  <img src="../guillevin-logo.png" alt="Guillevin">
+  <span class="tag">Automation · Control Expert build</span>
+</header>
+
+<h1>Programming the M580 for the demo rig</h1>
+<p class="lede">How to build the EcoStruxure Control Expert project for the rig: a <b>BMEP584040</b> CPU with a <b>BMENOC0301</b> scanning the SIG200 and the ATV930, a <b>BMENUA0100</b> serving OPC UA, and a <b>BMECRA31210</b> eRIO drop carrying the operator panel I/O. The program reads the SICK MPB10, runs the ATV930, drives the stack light and talks to the Machine Health dashboard. The program is six Structured Text sections in this folder; this page is the order to put them together and test them.</p>
+
+<div class="warn"><b>Safety first.</b> The E-stop is hard-wired to the ATV930’s <b>STO</b> inputs and never goes through the PLC or the dashboard. Guard the motor and the unbalance weight. Test every drive step with the motor uncoupled and a low speed limit (<code>iMaxSpeed</code>).</div>
+
+<h2><span class="n">1</span>What’s in the folder</h2>
+<div class="flow">
+  <span class="edit">00_IO_Map</span><i>→</i><span>01_MPB10_Decode</span><i>→</i><span>02_Dashboard_In</span><i>→</i><span>03_ATV930_Control</span><i>→</i><span>04_Dashboard_Out</span><i>→</i><span class="edit">05_IO_Out</span>
+</div>
+<p>All six run in the <b>MAST</b> task, in that order. Only the two orange sections name the device DDTs Control Expert generates (SIG200, ATV930, and the X80 modules on the RIO drop), so they are the only ones you edit for your project. The others work on plain variables.</p>
+<div class="wrap"><table>
+<tr><th style="width:26%">File</th><th>Does</th></tr>
+<tr><td>00_IO_Map.st</td><td>Copies the SIG200 and ATV930 device-DDT inputs (health bits, input bytes, ETA, RFRD, LCR, OTR, THR, LFT) and the RIO drop inputs (drop health, ring status, Start, Stop, Reset, key switch) into plain variables. Ships “unmapped” (health FALSE) so it compiles and nothing runs.</td></tr>
+<tr><td>01_MPB10_Decode.st</td><td>Turns the 20 IO-Link bytes into mm/s, °C and alarm bits. Adds PLC-side limits and a shock counter. Zeroes everything when the sensor data is lost.</td></tr>
+<tr><td>02_Dashboard_In.st</td><td>Reads the dashboard command block at %MW1100 and runs a 1 s heartbeat watchdog.</td></tr>
+<tr><td>03_ATV930_Control.st</td><td>One run latch for three sources (panel, dashboard, animation table): last Start wins, any Stop wins. CiA402 state machine builds CMD and the speed reference.</td></tr>
+<tr><td>04_Dashboard_Out.st</td><td>Works out the stack light and fills the status block at %MW1000 for the dashboard (word 29 = panel and RIO bits, words 30–31 = ramps in use).</td></tr>
+<tr><td>05_IO_Out.st</td><td>Writes CMD and LFRD into the ATV930 device DDT and the three lamps to the X80 outputs on the drop.</td></tr>
+<tr><td>variables.csv</td><td>Every variable: name, type, located address, initial value, comment. Open it in Excel next to the Data Editor.</td></tr>
+</table></div>
+
+<h2><span class="n">2</span>Set up the ATV930 first</h2>
+<p>Do this on the drive’s keypad before the PLC gets involved. Menu names below are from the ATV900 family manuals; check them against your keypad.</p>
+<ol class="steps">
+  <li><b>Motor:</b> enter the nameplate data (power, voltage, current, frequency, speed), then run <b>autotune</b>. Jog the motor from the keypad to prove the power side.</li>
+  <li><b>Embedded Ethernet:</b> Communication → Embedded Ethernet: IP mode <b>Fixed</b>, IP <code>192.168.0.30</code>, mask <code>255.255.255.0</code>, gateway <code>192.168.0.10</code>. Power-cycle the drive so the address takes.</li>
+  <li><b>Command and reference:</b> Ref Freq 1 Config [Fr1] = <b>Embedded Ethernet</b>; Control mode [CHCF] = <b>Not separate</b>. That gives the CiA402 (Drivecom) profile this program uses.</li>
+  <li><b>Comms-loss response:</b> set the Embedded Ethernet fault response to <b>ramp stop</b> or <b>freewheel</b>, so a cut cable stops the motor.</li>
+  <li><b>STO:</b> wire the E-stop to the STO inputs as the ATV930 safety manual shows. Confirm the drive shows “STO” when the E-stop is pressed.</li>
+</ol>
+
+<h2><span class="n">3</span>Project and hardware</h2>
+<div class="wrap"><table>
+<tr><th style="width:26%">Where</th><th>What</th><th style="width:22%">IP</th></tr>
+<tr><td>Main rack (BMEXBP, Ethernet backplane)</td><td>Power supply, <b>BMEP584040</b> CPU, <b>BMENOC0301</b>, <b>BMENUA0100</b>. The NOC and NUA must sit in Ethernet-capable slots.</td><td>CPU <code>.10</code>, NOC <code>.11</code>, NUA <code>.12</code></td></tr>
+<tr><td>RIO main ring</td><td>CPU <b>ETH2</b> → CRA port A, CRA port B → CPU <b>ETH3</b>. Copper, closes the ring.</td><td>–</td></tr>
+<tr><td>RIO drop 1</td><td><b>BMECRA31210</b> plus the X80 discrete I/O: Start, Stop (N/C), Reset, key switch, three-lamp stack light.</td><td>CRA <code>.15</code></td></tr>
+<tr><td>BMENOC0301 front ports</td><td><b>ETH2</b> → ATV930. <b>ETH3</b> → media converter → fiber → media converter → SIG200.</td><td>ATV <code>.30</code>, SIG <code>.20</code></td></tr>
+<tr><td>CPU service port ETH1</td><td>The dashboard laptop.</td><td>Laptop <code>.100</code></td></tr>
+<tr><td>BMENUA0100 control port</td><td>Its own network for OPC UA (second laptop with UaExpert, or SCADA).</td><td><code>192.168.1.10</code></td></tr>
+</table></div>
+<p>All device-side addresses are <code>192.168.0.x</code> / <code>255.255.255.0</code>. The dashboard’s IP addresses tab holds the same plan; change it there and here together.</p>
+<ol class="steps">
+  <li>New project: <b>BMEP584040</b>. On the main rack add the power supply, <b>BMENOC0301</b> and <b>BMENUA0100</b> in their real slots.</li>
+  <li>CPU → <b>IPConfig</b>: main IP <code>192.168.0.10</code>, mask <code>255.255.255.0</code>. Leave the service port (ETH1) in access mode so the laptop reaches the device network through it.</li>
+  <li>Add the <b>RIO drop</b> to the PLC bus (EIO bus): a BME (Ethernet) or BMX rack matching yours, the <b>BMECRA31210</b>, then each X80 I/O module in its real slot. Drop number <b>1</b>, IP <code>192.168.0.15</code> on the drop’s IPConfig. Set the CRA’s <b>rotary switches</b> to drop 1 (tens 0, ones 1) with the power off. The CPU hands the CRA its address at power-up.</li>
+  <li>Assign the drop to the <b>MAST</b> task (the default), so its I/O is read and written in the same scan as the sections.</li>
+  <li><b>BMENOC0301</b> → open its DTM: IP <code>192.168.0.11</code>, and <b>enable the backplane port</b> so the NOC, the CPU and the laptop on ETH1 share one device network. (Disable it only if a customer wants the drive and sensor network isolated; the laptop then can’t reach the SIG200 or ATV930 through the CPU.)</li>
+  <li><b>BMENUA0100</b>: backplane address <code>192.168.0.12</code>, control port <code>192.168.1.10</code>. Section 7 covers the OPC UA side.</li>
+  <li>Check the project allows located <code>%MW</code> memory with at least %MW1000–%MW1104 free (CPU configuration / project settings).</li>
+</ol>
+
+<h2><span class="n">4</span>Add the devices in the DTM Browser</h2>
+<h3>SICK SIG200</h3>
+<ol class="steps">
+  <li>Tools → <b>Hardware Catalog</b> → add the SIG200 <b>EDS</b> file with the EDS wizard (download it from the SIG200 product page).</li>
+  <li>DTM Browser → right-click the <b>BMENOC0301</b> → Add → SIG200. Alias <code>SIG200</code>. (Both devices hang off the NOC, not the CPU’s embedded scanner.)</li>
+  <li>Address Setting: IP <code>192.168.0.20</code> (static, matches the SIG200 web UI). RPI <b>50 ms</b>.</li>
+  <li>Pick the connection that carries the IO-Link port data. Note which input bytes hold port S1: that becomes <code>iPD_Ofs</code>.</li>
+</ol>
+<h3>Altivar ATV930</h3>
+<ol class="steps">
+  <li>Add the ATV930 under the same BMENOC0301, using the Altivar DTM from the Schneider DTM library (or the ATV930 EDS). Alias <code>ATV930</code>, IP <code>192.168.0.30</code>, RPI <b>20 ms</b>.</li>
+  <li>In the drive’s I/O scanning set-up, exchange these parameters:
+    <div class="wrap"><table>
+      <tr><th>Direction</th><th>Parameters</th></tr>
+      <tr><td>PLC → drive</td><td><code>CMD</code> command word, <code>LFRD</code> speed reference (rpm). Optional: <code>ACC</code> and <code>DEC</code> ramp times, so the VFD control tab can change them (units follow the drive’s ramp increment <code>Inr</code>, 0.1 s by default).</td></tr>
+      <tr><td>Drive → PLC</td><td><code>ETA</code> status word, <code>RFRD</code> output speed, <code>LCR</code> motor current, <code>OTR</code> torque, <code>THR</code> motor thermal state, <code>LFT</code> last fault</td></tr>
+    </table></div>
+    If the drive’s scanner can’t carry all six inputs, keep ETA and RFRD cyclic and leave the others at 0. The dashboard shows “–” for them.</li>
+  <li><b>Build → Analyze</b>. Control Expert generates a device DDT for each device. Open the Data Editor and expand <code>SIG200</code> and <code>ATV930</code> to see the element names you need in section 6.</li>
+</ol>
+
+<h2><span class="n">5</span>Variables and sections</h2>
+<p>Set <code>iPanelSpeed</code> (speed when started from the panel Start button) and leave <code>xPB_StopNC</code> at its initial value TRUE.</p>
+<ol class="steps">
+  <li>Data Editor → Variables: create every row in <code>variables.csv</code>. Give <code>aDash</code> the address <code>%MW1000</code> and <code>aCmd</code> <code>%MW1100</code>, and set the initial values shown (limits, <code>iMaxSpeed</code>, the placeholders).</li>
+  <li>Program → Tasks → MAST → Sections: create six <b>ST</b> sections with the file names, in order <code>00</code> to <code>05</code>.</li>
+  <li>Paste each file’s text into its section. Build → Analyze. It should compile with zero errors before you map anything.</li>
+</ol>
+
+<h2><span class="n">6</span>Map the devices</h2>
+<p>Open <code>00_IO_Map</code> and replace each right-hand side marked <b>EDIT</b> with the device-DDT element:</p>
+<pre>xSIG200_Health := SIG200.Freshness;          (* example: use the names your Data Editor shows *)
+aSIG200_In[iMapIdx] := SIG200.Inputs.Data[iMapIdx];
+xATV_Health    := ATV930.Freshness;
+wATV_ETA       := INT_TO_WORD(ATV930.Inputs.ETA);
+iATV_Speed     := ATV930.Inputs.RFRD;</pre>
+<p>The RIO drop, in the same section. X80 discrete modules give device DDTs whose channels are <code>DIS_CH_IN[n].VALUE</code> and <code>DIS_CH_OUT[n].VALUE</code>:</p>
+<pre>xDrop_Health := ...;                          (* the drop's health bit *)
+xRing_Closed := ...;                          (* CPU DDT: RIO main ring redundancy OK; then set xRingDiagMapped TRUE *)
+xPB_Start    := DI_Module.DIS_CH_IN[0].VALUE;  (* use your module's instance name *)
+xPB_StopNC   := DI_Module.DIS_CH_IN[1].VALUE;  (* N/C contact *)
+xPB_Reset    := DI_Module.DIS_CH_IN[2].VALUE;
+xKeySwitch   := DI_Module.DIS_CH_IN[3].VALUE;
+xDemoEnable  := xKeySwitch AND xDrop_Health;  (* uncomment once the key switch is wired *)</pre>
+<p>Then uncomment and edit the lines in <code>05_IO_Out</code> so CMD and LFRD reach the drive and the lamps reach the stack light. Build, then download over USB (first time) or ETH1.</p>
+<div class="note">The Stop push-button is a normal control stop, not an E-stop. Use an N/C contact so a broken wire stops the motor. The E-stop stays on the ATV930 STO inputs.</div>
+<div class="note">The MPB10 offsets and scaling (<code>iVal1_Ofs</code>, <code>iVal2_Ofs</code>, <code>rVal1_Gain</code>, <code>rVal2_Gain</code>) are placeholders. Take them from the MPB10 IODD for the measurement mode you set on the sensor. Until then the vibration and temperature numbers are not meaningful.</div>
+
+<h2><span class="n">7</span>OPC UA on the BMENUA0100</h2>
+<p>This shows the same PLC data reaching an IT/SCADA network through a secure, separate port, with no route from that network to the drive or sensor.</p>
+<ol class="steps">
+  <li>Project Settings → General → PLC embedded data: tick <b>Data dictionary</b>, so the module can browse the PLC variables.</li>
+  <li>Expose the variables you want to show (for example <code>rVibVelocity</code>, <code>rTemperature</code>, <code>iATV_Speed</code>, <code>xVibAlarm</code>). In the Data Editor, the <b>HMI</b> column marks a variable as visible to OPC UA.</li>
+  <li>The module’s operating mode (Standard or Secured) is chosen on the module itself. <b>Standard</b> is quickest for a first test. <b>Secured</b> is the one to show a customer: certificates, user accounts, signed and encrypted sessions.</li>
+  <li>On a second laptop at <code>192.168.1.100</code>, plug into the NUA <b>control port</b> and open UaExpert: <code>opc.tcp://192.168.1.10:4840</code>. Browse to the variables and drag them into the data view.</li>
+</ol>
+<div class="note">Schneider’s FAQ <a href="https://www.se.com/us/en/faqs/FA409424">FA409424</a> has a video of a BMENUA0100 configured in Control Expert and read with UaExpert in Standard mode. The default account differs by mode; it’s in FAQ <a href="https://se.com/za/en/faqs/FA405101">FA405101</a>. Change it on first login.</div>
+
+<h2><span class="n">8</span>Commission it, in this order</h2>
+<h3>RIO drop and panel</h3>
+<ol class="steps">
+  <li>Power the drop. The CRA should take its address and <code>xDrop_Health</code> go TRUE. Press each button and turn the key: watch <code>xPB_Start</code>, <code>xPB_StopNC</code> (goes FALSE when pressed), <code>xPB_Reset</code>, <code>xKeySwitch</code>.</li>
+  <li>Force each lamp from an animation table, then release the forces.</li>
+  <li>Pull one ring cable: the drop stays healthy and <code>xRing_Closed</code> goes FALSE. Reconnect. Pull both: <code>xDrop_Health</code> goes FALSE and a panel-started run stops.</li>
+</ol>
+<h3>Sensor</h3>
+<ol class="steps">
+  <li>Animation table: <code>xSIG200_Health</code> TRUE. Watch <code>aSIG200_In</code> and tap the motor: the bytes that move are the MPB10’s. Set <code>iPD_Ofs</code> so byte 0 of the 20 lines up with them.</li>
+  <li>Fill in the IODD offsets and gains. Check <code>rTemperature</code> reads room temperature at rest and <code>rVibVelocity</code> rises when you tap.</li>
+  <li>Pull the fiber: <code>xSensorCommAlarm</code> TRUE and the values go to 0 within a second. Reconnect.</li>
+</ol>
+<h3>Drive (motor uncoupled, low speed)</h3>
+<ol class="steps">
+  <li>Set <code>iMaxSpeed</code> to 300 for the first run. <code>xATV_Health</code> must be TRUE and <code>wATV_ETA</code> must change when you press the E-stop.</li>
+  <li>Set <code>xDemoEnable</code> TRUE, <code>iLocalSpeed</code> 200, then <code>xLocalRun</code> TRUE. Watch ETA go <code>16#0040</code> → <code>16#0021</code> → <code>16#0023</code> → <code>16#0027</code> and <code>iATV_Speed</code> follow the ramp.</li>
+  <li>Set <code>xLocalRun</code> FALSE: the motor stops on its ramp. Try <code>xLocalReverse</code>. Press the E-stop while running: the motor must stop no matter what the PLC says.</li>
+  <li>From the panel: key ON, press Start (runs at <code>iPanelSpeed</code>), press Stop. Turn the key OFF while running: it stops and won’t restart until Start is pressed again.</li>
+  <li>Raise <code>iMaxSpeed</code> to the demo limit (1500 rpm or the motor’s rating, whichever is lower).</li>
+</ol>
+<h3>Dashboard</h3>
+<ol class="steps">
+  <li>Dashboard → IP addresses tab: check every device shows reachable. Setup → Mode <b>Live</b>. The heartbeat counts and all boxes on the network tab go green.</li>
+  <li>To let the dashboard run the motor: tick <b>Allow drive control</b> in Setup, then set <code>xDashboardAllowed</code> TRUE in the PLC. The <b>VFD control</b> tab lists every permissive and shows which one is blocking.</li>
+  <li>On the VFD control tab: Start forward, Stop, Start reverse, then hold Jog (the PLC caps it at <code>iJogSpeedMax</code>). Change the ramps and watch the reference-vs-actual chart.</li>
+  <li>Run the <b>demo sequence</b> once with the motor uncoupled and a low <code>iMaxSpeed</code>. It uses the same command block as the buttons, so the PLC needs nothing extra. Check that STOP, the panel Stop and the E-stop each end it.</li>
+  <li>Close the dashboard page while the motor runs: the PLC watchdog drops the run command within about 1 s.</li>
+</ol>
+
+<h2><span class="n">9</span>Confirm on your hardware</h2>
+<div class="warn"><ul style="margin:0">
+  <li>Which X80 I/O modules are on the drop, their instance names, and which channel each button and lamp is wired to.</li>
+  <li>The drop’s health bit and the CPU’s RIO main-ring status bit (element names in the Data Editor).</li>
+  <li>BMENOC0301 backplane port enabled, and the laptop on ETH1 can reach the SIG200 and ATV930.</li>
+  <li>BMENUA0100: firmware and Control Expert version, the mode selector, and how the HMI flag exposes variables on your version.</li>
+  <li>Device-DDT element names for the SIG200 and ATV930 (health/Freshness bits, input and output elements).</li>
+  <li>Which SIG200 bit means “device present / process data valid on S1”, and the S1 byte offset.</li>
+  <li>MPB10 IODD: value offsets, scaling, and alarm-bit meanings.</li>
+  <li>ATV930 keypad menu names, the comms-fault parameter, and whether LCR/OTR/THR/LFT (and ACC/DEC on the output side) fit in the drive’s cyclic exchange.</li>
+  <li>The Modbus unit ID the M580 answers on (the dashboard defaults to 255; try 0 if it gets no reply).</li>
+</ul></div>
+
+<footer>Guillevin Automation · Control Expert build for the M580 + ATV930 + SICK MPB10 demo · Draft, November 2026</footer>
+</main>
+</body>
+</html>

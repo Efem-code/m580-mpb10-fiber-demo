@@ -1,0 +1,94 @@
+Name;Type;Address;Initial value;Comment
+aDash;ARRAY[0..31] OF INT;%MW1000;;Status block read by the dashboard
+aCmd;ARRAY[0..4] OF INT;%MW1100;;Command block written by the dashboard (only when drive control is on)
+aSIG200_In;ARRAY[0..63] OF BYTE;;;Copy of the SIG200 input assembly (00_IO_Map)
+xSIG200_Health;BOOL;;FALSE;SIG200 EtherNet/IP connection healthy
+xMPB_PortActive;BOOL;;FALSE;Port S1 has a working IO-Link device
+xMPB_DataOK;BOOL;;FALSE;MPB10 values are valid this scan
+iPD_Ofs;INT;;0;PLACEHOLDER: offset of port S1 process data in aSIG200_In
+iVal1_Ofs;INT;;2;PLACEHOLDER: offset of the vibration value inside the 20 bytes (IODD)
+iVal2_Ofs;INT;;12;PLACEHOLDER: offset of the temperature value inside the 20 bytes (IODD)
+rVal1_Gain;REAL;;0.01;PLACEHOLDER: vibration scaling to mm/s (IODD)
+rVal2_Gain;REAL;;0.1;PLACEHOLDER: temperature scaling to degC (IODD)
+wMPB_Alarm;WORD;;;MPB10 alarm word (process data bits 0-15)
+wMPB_Val1;WORD;;;Raw vibration value
+wMPB_Val2;WORD;;;Raw temperature value
+rVibVelocity;REAL;;;Vibration velocity RMS, mm/s
+rTemperature;REAL;;;Temperature, degC
+rVibWarnLimit;REAL;;2.8;PLC warning limit, mm/s (ISO 10816-3 B/C)
+rVibAlarmLimit;REAL;;4.5;PLC alarm limit, mm/s (ISO 10816-3 C/D)
+rTempWarnLimit;REAL;;70.0;PLC temperature warning, degC
+xVibWarning;BOOL;;;Vibration warning
+xVibAlarm;BOOL;;;Vibration alarm
+xShock;BOOL;;;Shock detected
+xTempWarning;BOOL;;;Temperature warning
+xSensorCommAlarm;BOOL;;;Sensor data not reaching the PLC
+rtShock;R_TRIG;;;Shock edge
+iShockCount;INT;;0;Shock counter
+iMapIdx;INT;;;Loop index (00_IO_Map)
+xDemoEnable;BOOL;;FALSE;Bench enable / key switch. FALSE = drive never gets a run command
+xDrop_Health;BOOL;;FALSE;BMECRA31210 RIO drop healthy (00_IO_Map)
+xRing_Closed;BOOL;;FALSE;RIO main ring redundant: both paths OK (00_IO_Map)
+xRingDiagMapped;BOOL;;FALSE;Set TRUE once xRing_Closed is mapped, so the dashboard shows ring status
+xPB_Start;BOOL;;FALSE;Panel Start push-button (N/O) on the RIO drop
+xPB_StopNC;BOOL;;TRUE;Panel Stop push-button (N/C): TRUE = not pressed
+xPB_Reset;BOOL;;FALSE;Panel fault reset push-button
+xKeySwitch;BOOL;;FALSE;Panel enable key switch
+xPanelStop;BOOL;;;Panel Stop pressed (or its wire broken)
+xStopAny;BOOL;;;Any stop request
+rtPanelStart;R_TRIG;;;Panel Start edge
+rtDashRun;R_TRIG;;;Dashboard run edge
+rtLocalRun;R_TRIG;;;Animation-table run edge
+iRunSource;INT;;0;Who started the motor: 0 none, 1 panel, 2 dashboard, 3 animation table
+iPanelSpeed;INT;;900;Speed when started from the panel, rpm
+xLampGreen;BOOL;;;Stack light green: running
+xLampAmber;BOOL;;;Stack light amber: warning
+xLampRed;BOOL;;;Stack light red: alarm / fault, blinking = no sensor data
+wDashPanel;WORD;;;Panel / RIO bits for the dashboard (aDash[29])
+xDashboardAllowed;BOOL;;FALSE;PLC-side permission for the dashboard to run the motor
+iDashHbLast;INT;;;Last dashboard heartbeat
+xDashHbChanged;BOOL;;;Heartbeat changed this scan
+tonDashWd;TON;;;Dashboard watchdog, 1 s
+xDashOK;BOOL;;;Dashboard allowed and alive
+wDashCmd;WORD;;;Dashboard command bits
+xDashRun;BOOL;;;Dashboard run request
+xDashStop;BOOL;;;Dashboard stop request
+xDashReset;BOOL;;;Dashboard fault reset request
+xDashReverse;BOOL;;;Dashboard reverse request
+iDashSpeed;INT;;;Dashboard speed request, rpm
+xDashJog;BOOL;;;Dashboard jog (hold-to-run) request
+iDashAcc;INT;;;Dashboard accel ramp, s x10
+iDashDec;INT;;;Dashboard decel ramp, s x10
+iJogSpeedMax;INT;;300;Jog speed limit, rpm
+iAccDefault;INT;;50;Accel ramp when the dashboard is not in control, s x10
+iDecDefault;INT;;50;Decel ramp when the dashboard is not in control, s x10
+iATV_Acc;INT;;;Accel ramp sent to the drive (ACC), s x10
+iATV_Dec;INT;;;Decel ramp sent to the drive (DEC), s x10
+xLocalRun;BOOL;;FALSE;Commissioning: run from the animation table
+xLocalStop;BOOL;;FALSE;Commissioning: stop
+xLocalReset;BOOL;;FALSE;Commissioning: fault reset
+xLocalReverse;BOOL;;FALSE;Commissioning: reverse
+iLocalSpeed;INT;;300;Commissioning: speed, rpm
+iMaxSpeed;INT;;1500;Bench speed limit, rpm
+xRunReq;BOOL;;;A start is latched (iRunSource <> 0)
+xRunCmd;BOOL;;;Run request with all permissives
+xResetReq;BOOL;;;Fault reset request
+xReverse;BOOL;;;Reverse request
+iSpeedReq;INT;;;Speed request after limits, rpm
+xATV_Health;BOOL;;FALSE;ATV930 EtherNet/IP connection healthy
+wATV_ETA;WORD;;;ATV930 status word
+wATV_State;WORD;;;ETA masked with 16#006F
+iATV_Speed;INT;;;Output speed, rpm (RFRD)
+iATV_Current;INT;;;Motor current, 0.1 A (LCR)
+iATV_Torque;INT;;;Motor torque, % (OTR)
+iATV_Thermal;INT;;;Motor thermal state, % (THR)
+iATV_LastFault;INT;;;Last fault code (LFT)
+xATV_Fault;BOOL;;;Drive in fault
+xATV_Running;BOOL;;;Operation enabled
+xATV_Ready;BOOL;;;Ready / switched on / running
+wATV_CMD;WORD;;;Command word to the drive
+iATV_SpeedRef;INT;;;Speed reference to the drive (LFRD), rpm
+iHeartbeat;INT;;0;PLC heartbeat for the dashboard
+wDashStatus;WORD;;;Sensor status bits for the dashboard
+wDashDrive;WORD;;;Drive status bits for the dashboard
+iDashIdx;INT;;;Loop index (04_Dashboard_Out)
