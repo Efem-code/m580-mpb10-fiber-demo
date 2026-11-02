@@ -304,6 +304,7 @@ function render(s) {
   renderDrive(s);
   renderVfd(s);
   renderNetwork(s);
+  renderRacks(s);
   renderReach(s.reach || {});
 
   if ((m.v != null || d.speed != null) && (!hist.length || s.t - hist[hist.length - 1][0] >= 0.5)) {
@@ -502,6 +503,34 @@ function renderNetwork(s) {
   $("rawNote").textContent = s.mode === "sim"
     ? "Simulation: byte layout is illustrative. Live mode shows the real bytes the M580 received from the SIG200."
     : "Live bytes as copied by the M580 from the SIG200 input assembly.";
+}
+
+function renderRacks(s) {   // the board drawing at the top of the network tab
+  const L = s.links, P = s.panel || {}, known = L.fresh, live = known && L.drop;
+  const G = "#2E9E45", R = "#C8322B", OFF = "#8A8F94", CH = "#3A3B39", OR = "#F06A2A";
+  const fill = (id, c) => $(id).setAttribute("fill", c);
+  fill("rk-cpu", L.plc ? (L.fresh ? G : R) : R);
+  fill("rk-noc", !known ? OFF : L.eip || L.atv ? G : R);
+  fill("rk-cra", !known ? OFF : L.drop ? G : R);
+  const cable = (id, ok) => { $(id).setAttribute("stroke", ok ? (id.startsWith("rk-r") ? OR : CH) : R); $(id).setAttribute("stroke-dasharray", ok ? "" : "7 5"); };
+  // which half of the ring is open isn't reported, so an open ring is drawn on ETH3
+  const ringOpen = live && P.ring_known && !P.ring;
+  cable("rk-r2", !known || L.drop);
+  cable("rk-r3", !known || (L.drop && !ringOpen));
+  $("rk-ringt").textContent = !known ? "RIO ring" : !L.drop ? "RIO ring: drop lost" : ringOpen ? "RIO ring OPEN: 1 path" : "RIO ring: 2 paths";
+  $("rk-ringt").setAttribute("fill", !known ? "#B84A14" : !L.drop ? R : ringOpen ? "#9A6100" : G);
+  cable("rk-atv", !known || L.atv);
+  cable("rk-fib", !known || L.eip);
+  $("rk-atvt").textContent = !known ? "" : L.atv ? "· connected" : "· no connection";
+  $("rk-fibt").textContent = !known ? "" : L.eip ? "· connected" : "· no data";
+  $("rk-dropn").textContent = `drop ${cfg.cra_drop ?? 1}`;
+  $("rk-dropt").textContent = !known ? "" : L.drop ? "· drop OK" : "· drop lost";
+  const io = (id, on, c = G) => fill(id, live && on ? c : OFF);
+  io("io-start", P.start); io("io-stop", !P.stop); io("io-reset", P.reset); io("io-key", P.enable);   // Stop is N/C: on until pressed
+  io("io-g", P.green); io("io-a", P.amber, "#D98A00"); io("io-r", P.red, R);
+  fill("rk-lg", live && P.green ? "#2EBD4E" : "#2f4a35");
+  fill("rk-la", live && P.amber ? "#F5A623" : "#5a4c30");
+  fill("rk-lr", live && P.red ? "#E53935" : "#5a3a38");
 }
 
 function renderReach(r) {

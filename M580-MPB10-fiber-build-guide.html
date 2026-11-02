@@ -64,12 +64,12 @@
 
 <h2><span class="n">1</span>What you’re building</h2>
 <div class="card">
-<svg viewBox="0 0 1000 520" role="img" aria-label="Wiring diagram: M580 rack with BMEP584040, BMENOC0301 and BMENUA0100; RIO ring to a BMECRA31210 drop; NOC to the ATV930 and through two media converters and fiber to the SIG200 and MPB10">
-  <rect x="10" y="10" width="590" height="500" rx="12" fill="#F7F8FA" stroke="#DDE0E4"/>
+<svg viewBox="0 0 1000 524" role="img" aria-label="Wiring diagram: M580 rack with BMEP584040, BMENOC0301 and BMENUA0100; RIO ring to a BMECRA31210 drop; NOC to the ATV930 and through two media converters and fiber to the SIG200 and MPB10">
+  <rect x="10" y="10" width="590" height="506" rx="12" fill="#F7F8FA" stroke="#DDE0E4"/>
   <text x="28" y="40" font-family="Segoe UI" font-size="14" font-weight="600" fill="#5F646A">PLC END (control panel)</text>
-  <rect x="615" y="10" width="200" height="500" rx="12" fill="#F7F8FA" stroke="#DDE0E4"/>
+  <rect x="615" y="10" width="200" height="506" rx="12" fill="#F7F8FA" stroke="#DDE0E4"/>
   <text x="630" y="40" font-family="Segoe UI" font-size="14" font-weight="600" fill="#5F646A">FIELD END</text>
-  <rect x="830" y="10" width="160" height="500" rx="12" fill="#F7F8FA" stroke="#DDE0E4"/>
+  <rect x="830" y="10" width="160" height="506" rx="12" fill="#F7F8FA" stroke="#DDE0E4"/>
   <text x="848" y="40" font-family="Segoe UI" font-size="14" font-weight="600" fill="#5F646A">ASSET</text>
 
   <!-- main rack -->
@@ -77,15 +77,17 @@
   <text x="44" y="78" font-family="Segoe UI" font-size="14" font-weight="600" fill="#282A2E">M580 main rack (BMEXBP)</text>
   <rect x="44" y="90" width="50" height="104" rx="4" fill="#ECEEF1" stroke="#9AA0A6"/><text x="69" y="146" text-anchor="middle" font-family="Segoe UI" font-size="12" fill="#282A2E">PSU</text>
   <rect x="100" y="90" width="84" height="104" rx="4" fill="#ECEEF1" stroke="#9AA0A6"/><text x="142" y="110" text-anchor="middle" font-family="Segoe UI" font-size="12" font-weight="600" fill="#282A2E">CPU</text><text x="142" y="125" text-anchor="middle" font-family="Segoe UI" font-size="10" fill="#5F646A">BMEP584040</text>
-  <rect x="190" y="90" width="100" height="104" rx="4" fill="#ECEEF1" stroke="#9AA0A6"/><text x="240" y="110" text-anchor="middle" font-family="Segoe UI" font-size="12" font-weight="600" fill="#282A2E">BMENOC0301</text><text x="240" y="125" text-anchor="middle" font-family="Segoe UI" font-size="10" fill="#5F646A">EtherNet/IP scanner</text>
-  <rect x="296" y="90" width="122" height="104" rx="4" fill="#ECEEF1" stroke="#9AA0A6"/><text x="357" y="110" text-anchor="middle" font-family="Segoe UI" font-size="12" font-weight="600" fill="#282A2E">BMENUA0100</text><text x="357" y="125" text-anchor="middle" font-family="Segoe UI" font-size="10" fill="#5F646A">OPC UA server</text>
+  <rect x="190" y="90" width="72" height="104" rx="4" fill="#3A3B39" stroke="#3A3B39"/><text x="226" y="110" text-anchor="middle" font-family="Segoe UI" font-size="11" font-weight="600" fill="#fff">BMENUA</text><text x="226" y="125" text-anchor="middle" font-family="Segoe UI" font-size="10" fill="#C9CCC8">0100 OPC UA</text>
+  <rect x="268" y="90" width="100" height="104" rx="4" fill="#ECEEF1" stroke="#9AA0A6"/><text x="318" y="110" text-anchor="middle" font-family="Segoe UI" font-size="12" font-weight="600" fill="#282A2E">BMENOC0301</text><text x="318" y="125" text-anchor="middle" font-family="Segoe UI" font-size="10" fill="#5F646A">EtherNet/IP scanner</text>
+  <rect x="374" y="90" width="44" height="104" rx="4" fill="none" stroke="#9AA0A6" stroke-dasharray="4 3"/><text x="396" y="146" text-anchor="middle" font-family="Segoe UI" font-size="10" fill="#8A8F94">spare</text>
   <g font-family="Segoe UI" font-size="9" fill="#5F646A" text-anchor="middle">
     <circle cx="118" cy="168" r="6" fill="#fff" stroke="#3A3B39"/><text x="118" y="154">ETH1</text>
     <circle cx="142" cy="168" r="6" fill="#3A3B39"/><text x="142" y="154">ETH2</text>
     <circle cx="166" cy="168" r="6" fill="#3A3B39"/><text x="166" y="154">ETH3</text>
-    <circle cx="232" cy="168" r="6" fill="#3A3B39"/><text x="232" y="154">ETH2</text>
-    <circle cx="258" cy="168" r="6" fill="#3A3B39"/><text x="258" y="154">ETH3</text>
-    <circle cx="357" cy="168" r="6" fill="#fff" stroke="#5B5BD6" stroke-width="2"/><text x="357" y="154">control</text>
+    <circle cx="226" cy="168" r="6" fill="#fff" stroke="#5B5BD6" stroke-width="2"/><text x="226" y="154" fill="#C9CCC8">control</text>
+    <circle cx="288" cy="168" r="6" fill="#fff" stroke="#3A3B39"/><text x="288" y="154">ETH1</text>
+    <circle cx="318" cy="168" r="6" fill="#3A3B39"/><text x="318" y="154">ETH2</text>
+    <circle cx="344" cy="168" r="6" fill="#3A3B39"/><text x="344" y="154">ETH3</text>
   </g>
 
   <!-- laptop on ETH1 -->
@@ -95,35 +97,43 @@
   <text x="74" y="283" text-anchor="middle" font-family="Segoe UI" font-size="10" fill="#5F646A">dashboard · CE</text>
 
   <!-- RIO ring to the drop -->
-  <path d="M142 174 V400" fill="none" stroke="#3A3B39" stroke-width="4"/>
-  <path d="M166 174 V400" fill="none" stroke="#3A3B39" stroke-width="4"/>
-  <text x="176" y="330" font-family="Segoe UI" font-size="11" font-weight="700" fill="#3A3B39">RIO ring</text>
-  <text x="176" y="345" font-family="Segoe UI" font-size="10" fill="#5F646A">ETH2 → drop → ETH3</text>
-  <rect x="30" y="400" width="290" height="94" rx="8" fill="#fff" stroke="#2E9E45" stroke-width="2"/>
-  <text x="44" y="422" font-family="Segoe UI" font-size="14" font-weight="600" fill="#282A2E">RIO drop 1 · BMECRA31210</text>
-  <text x="44" y="442" font-family="Segoe UI" font-size="11" fill="#5F646A">X80 DI: Start · Stop (N/C) · Reset · key switch</text>
-  <text x="44" y="458" font-family="Segoe UI" font-size="11" fill="#5F646A">X80 DO: stack light red · amber · green</text>
-  <text x="44" y="478" font-family="Segoe UI" font-size="11" fill="#5F646A">rotary switches = drop 1</text>
-  <g><rect x="272" y="420" width="30" height="62" rx="5" fill="#2E2F2D"/><circle cx="287" cy="434" r="7" fill="#E53935"/><circle cx="287" cy="451" r="7" fill="#F5A623"/><circle cx="287" cy="468" r="7" fill="#2EBD4E"/></g>
+  <path d="M142 174 V412" fill="none" stroke="#3A3B39" stroke-width="4"/>
+  <path d="M166 174 V412" fill="none" stroke="#3A3B39" stroke-width="4"/>
+  <text x="176" y="368" font-family="Segoe UI" font-size="11" font-weight="700" fill="#3A3B39">RIO ring to drop 1</text>
+  <text x="176" y="383" font-family="Segoe UI" font-size="10" fill="#5F646A">CPU ETH2/ETH3 → CRA ETH2/ETH3</text>
+  <rect x="30" y="396" width="470" height="104" rx="8" fill="#fff" stroke="#2E9E45" stroke-width="2"/>
+  <g font-family="Segoe UI" text-anchor="middle" fill="#282A2E">
+    <rect x="44" y="404" width="50" height="88" rx="4" fill="#ECEEF1" stroke="#9AA0A6"/><text x="69" y="452" font-size="12">PSU</text>
+    <rect x="100" y="404" width="84" height="88" rx="4" fill="#ECEEF1" stroke="#9AA0A6"/>
+    <circle cx="118" cy="418" r="6" fill="#fff" stroke="#3A3B39"/><circle cx="142" cy="418" r="6" fill="#3A3B39"/><circle cx="166" cy="418" r="6" fill="#3A3B39"/>
+    <g font-size="9" fill="#5F646A"><text x="118" y="436">ETH1</text><text x="142" y="436">ETH2</text><text x="166" y="436">ETH3</text></g>
+    <text x="142" y="458" font-size="11" font-weight="600">BMECRA31210</text><text x="142" y="474" font-size="10" fill="#5F646A">drop 1</text>
+    <rect x="190" y="404" width="72" height="88" rx="4" fill="#fff" stroke="#F06A2A" stroke-dasharray="4 3"/><text x="226" y="440" font-size="11" font-weight="600">2nd module</text><text x="226" y="456" font-size="10" fill="#B84A14">P/N to confirm</text>
+    <rect x="268" y="404" width="112" height="88" rx="4" fill="#ECEEF1" stroke="#9AA0A6"/><text x="324" y="422" font-size="11" font-weight="600">Discrete I/O</text>
+    <g font-size="10" fill="#5F646A"><text x="324" y="440">IN: Start · Stop (N/C)</text><text x="324" y="454">Reset · key switch</text><text x="324" y="472">OUT: stack light</text><text x="324" y="485">red · amber · green</text></g>
+    <rect x="386" y="404" width="34" height="88" rx="4" fill="#F7F8FA" stroke="#9AA0A6"/><text x="403" y="452" font-size="9" fill="#8A8F94">blank</text>
+    <rect x="426" y="404" width="34" height="88" rx="4" fill="none" stroke="#9AA0A6" stroke-dasharray="4 3"/><text x="443" y="452" font-size="9" fill="#8A8F94">spare</text>
+  </g>
+  <g><rect x="466" y="414" width="26" height="62" rx="5" fill="#2E2F2D"/><circle cx="479" cy="428" r="7" fill="#E53935"/><circle cx="479" cy="445" r="7" fill="#F5A623"/><circle cx="479" cy="462" r="7" fill="#2EBD4E"/></g>
 
   <!-- NUA control port to its own network -->
-  <path d="M357 174 V214" fill="none" stroke="#5B5BD6" stroke-width="2" stroke-dasharray="6 4"/>
-  <rect x="300" y="214" width="122" height="40" rx="6" fill="#fff" stroke="#5B5BD6"/>
-  <text x="361" y="231" text-anchor="middle" font-family="Segoe UI" font-size="11" font-weight="600" fill="#282A2E">OPC UA client</text>
-  <text x="361" y="246" text-anchor="middle" font-family="Segoe UI" font-size="10" fill="#5F646A">192.168.1.x network</text>
+  <path d="M226 174 V214" fill="none" stroke="#5B5BD6" stroke-width="2" stroke-dasharray="6 4"/>
+  <rect x="180" y="214" width="110" height="40" rx="6" fill="#fff" stroke="#5B5BD6"/>
+  <text x="235" y="231" text-anchor="middle" font-family="Segoe UI" font-size="11" font-weight="600" fill="#282A2E">OPC UA client</text>
+  <text x="235" y="246" text-anchor="middle" font-family="Segoe UI" font-size="10" fill="#5F646A">192.168.1.x network</text>
 
   <!-- NOC ETH2 to ATV930 -->
-  <path d="M232 174 V330 H300" fill="none" stroke="#3A3B39" stroke-width="4"/>
-  <rect x="300" y="300" width="122" height="60" rx="8" fill="#fff" stroke="#5B5BD6" stroke-width="2"/>
-  <text x="361" y="324" text-anchor="middle" font-family="Segoe UI" font-size="14" font-weight="600" fill="#282A2E">ATV930</text>
-  <text x="361" y="342" text-anchor="middle" font-family="Segoe UI" font-size="10" fill="#5F646A">E-stop → STO</text>
+  <path d="M318 174 V300" fill="none" stroke="#3A3B39" stroke-width="4"/>
+  <rect x="270" y="300" width="122" height="60" rx="8" fill="#fff" stroke="#5B5BD6" stroke-width="2"/>
+  <text x="331" y="324" text-anchor="middle" font-family="Segoe UI" font-size="14" font-weight="600" fill="#282A2E">ATV930U07M3</text>
+  <text x="331" y="342" text-anchor="middle" font-family="Segoe UI" font-size="10" fill="#5F646A">E-stop → STO</text>
   <!-- motor cable -->
-  <path d="M422 330 H520 V496 H910 V302" fill="none" stroke="#5B5BD6" stroke-width="4"/>
-  <text x="700" y="490" text-anchor="middle" font-family="Segoe UI" font-size="11" fill="#5F646A">shielded motor cable</text>
+  <path d="M392 330 H520 V506 H910 V302" fill="none" stroke="#5B5BD6" stroke-width="4"/>
+  <text x="700" y="500" text-anchor="middle" font-family="Segoe UI" font-size="11" fill="#5F646A">shielded motor cable</text>
 
   <!-- NOC ETH3 to converter A -->
-  <path d="M258 174 V272 H460 V250" fill="none" stroke="#3A3B39" stroke-width="4"/>
-  <text x="380" y="288" text-anchor="middle" font-family="Segoe UI" font-size="11" fill="#5F646A">Cat6</text>
+  <path d="M344 174 V272 H460 V250" fill="none" stroke="#3A3B39" stroke-width="4"/>
+  <text x="410" y="288" text-anchor="middle" font-family="Segoe UI" font-size="11" fill="#5F646A">Cat6 · NOC ETH3</text>
   <rect x="446" y="182" width="140" height="68" rx="8" fill="#fff" stroke="#1F9CAD" stroke-width="2"/>
   <text x="458" y="204" font-family="Segoe UI" font-size="13" font-weight="600" fill="#282A2E">Media converter A</text>
   <text x="458" y="222" font-family="Segoe UI" font-size="11" fill="#5F646A">copper → fiber</text>
