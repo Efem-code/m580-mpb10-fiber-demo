@@ -89,7 +89,7 @@
 <tr><td>RIO drop 1</td><td><b>BMECRA31210</b> plus the X80 discrete I/O: Start, Stop (N/C), Reset, key switch, three-lamp stack light. Our board, left to right: power supply, CRA, a second module with rotary switches (part number to confirm), the wired I/O module (part number to confirm), a blank module, spare slot.</td><td>CRA <code>.15</code></td></tr>
 <tr><td>BMENOC0301 front ports</td><td><b>ETH2</b> → ATV930. <b>ETH3</b> → media converter → fiber → media converter → SIG200.</td><td>ATV <code>.30</code>, SIG <code>.20</code></td></tr>
 <tr><td>CPU service port ETH1</td><td>The dashboard laptop. (The NOC’s top port, ETH1, is a service port too: fine for the Magelis HMI or a second laptop.)</td><td>Laptop <code>.100</code></td></tr>
-<tr><td>BMENUA0100 control port</td><td>Its own network for OPC UA (second laptop with UaExpert, or SCADA).</td><td><code>192.168.1.10</code></td></tr>
+<tr><td>BMENUA0100 control port</td><td>Its own network for OPC UA: the laptop’s USB Ethernet adapter (the dashboard’s IT side), UaExpert or SCADA.</td><td><code>192.168.30.10</code>, laptop adapter <code>.30.100</code></td></tr>
 </table></div>
 <p>All device-side addresses are <code>192.168.0.x</code> / <code>255.255.255.0</code>. The dashboard’s IP addresses tab holds the same plan; change it there and here together.</p>
 <ol class="steps">
@@ -98,7 +98,7 @@
   <li>Add the <b>RIO drop</b> to the PLC bus (EIO bus): a BME (Ethernet) or BMX rack matching yours, the <b>BMECRA31210</b>, then each X80 I/O module in its real slot. Drop number <b>1</b>, IP <code>192.168.0.15</code> on the drop’s IPConfig. Set the CRA’s <b>rotary switches</b> to drop 1 (tens 0, ones 1) with the power off. The CPU hands the CRA its address at power-up.</li>
   <li>Assign the drop to the <b>MAST</b> task (the default), so its I/O is read and written in the same scan as the sections.</li>
   <li><b>BMENOC0301</b> → open its DTM: IP <code>192.168.0.11</code>, and <b>enable the backplane port</b> so the NOC, the CPU and the laptop on ETH1 share one device network. (Disable it only if a customer wants the drive and sensor network isolated; the laptop then can’t reach the SIG200 or ATV930 through the CPU.)</li>
-  <li><b>BMENUA0100</b>: backplane address <code>192.168.0.12</code>, control port <code>192.168.1.10</code>. Section 7 covers the OPC UA side.</li>
+  <li><b>BMENUA0100</b>: backplane address <code>192.168.0.12</code>, control port <code>192.168.30.10</code>. Section 7 covers the OPC UA side.</li>
   <li>Check the project allows located <code>%MW</code> memory with at least %MW1000–%MW1104 free (CPU configuration / project settings).</li>
 </ol>
 
@@ -150,15 +150,58 @@ xDemoEnable  := xKeySwitch AND xDrop_Health;  (* uncomment once the key switch i
 <div class="note">The Stop push-button is a normal control stop, not an E-stop. Use an N/C contact so a broken wire stops the motor. The E-stop stays on the ATV930 STO inputs.</div>
 <div class="note">The MPB10 offsets and scaling (<code>iVal1_Ofs</code>, <code>iVal2_Ofs</code>, <code>rVal1_Gain</code>, <code>rVal2_Gain</code>) are placeholders. Take them from the MPB10 IODD for the measurement mode we set on the sensor. Until then the vibration and temperature numbers are not meaningful.</div>
 
-<h2><span class="n">7</span>OPC UA on the BMENUA0100</h2>
-<p>This shows the same PLC data reaching an IT/SCADA network through a secure, separate port, with no route from that network to the drive or sensor.</p>
+<h2><span class="n">7</span>OPC UA on the BMENUA0100 · the IT side</h2>
+<p>This is the part of the demo for IT and management: the same live machine data reaching a separate IT network over secure OPC UA, with no route from that network back to the drive or the sensor. The dashboard laptop plays the IT client through a USB Ethernet adapter, and its <b>IT side · OPC UA</b> tab shows the values arriving both ways, side by side.</p>
+
+<h3>Network</h3>
+<div class="wrap"><table>
+<tr><th style="width:30%">Port</th><th style="width:24%">Address</th><th>Notes</th></tr>
+<tr><td>BMENUA0100 control port</td><td><code>192.168.30.10</code> / 24</td><td>No gateway. 192.168.30.x clashes with neither the lab networks (192.168.10.x, 192.168.20.x) nor typical office Wi-Fi (192.168.1.x).</td></tr>
+<tr><td>Laptop USB Ethernet adapter</td><td><code>192.168.30.100</code> / 24</td><td><b>No gateway, no DNS</b>, so internet traffic stays on the Wi-Fi. Rename the adapter “NUA OPC UA”. Mark the network Private. Never bridge it or share a connection across it.</td></tr>
+<tr><td>Laptop built-in Ethernet</td><td><code>192.168.0.100</code> / 24</td><td>The OT side, to the CPU service port ETH1, as before. Also no gateway.</td></tr>
+</table></div>
+<p>Plug the USB adapter into the NUA control port directly, or through a small unmanaged switch if a second client (UaExpert on another laptop) joins in.</p>
+
+<h3>In Control Expert</h3>
 <ol class="steps">
+  <li>BMENUA0100 in its real slot. IP configuration: backplane side <code>192.168.0.12</code>; control port <code>192.168.30.10</code>, mask <code>255.255.255.0</code>, no gateway.</li>
   <li>Project Settings → General → PLC embedded data: tick <b>Data dictionary</b>, so the module can browse the PLC variables.</li>
-  <li>Expose the variables we want to show (for example <code>rVibVelocity</code>, <code>rTemperature</code>, <code>iATV_Speed</code>, <code>xVibAlarm</code>). In the Data Editor, the <b>HMI</b> column marks a variable as visible to OPC UA.</li>
-  <li>The module’s operating mode (Standard or Secured) is chosen on the module itself. <b>Standard</b> is quickest for a first test. <b>Secured</b> is the one to show a customer: certificates, user accounts, signed and encrypted sessions.</li>
-  <li>On a second laptop at <code>192.168.1.100</code>, plug into the NUA <b>control port</b> and open UaExpert: <code>opc.tcp://192.168.1.10:4840</code>. Browse to the variables and drag them into the data view.</li>
+  <li>In the Data Editor, tick the <b>HMI</b> column for the variables the dashboard looks for: <code>iHeartbeat</code>, <code>rVibVelocity</code>, <code>rTemperature</code>, <code>xVibWarning</code>, <code>xVibAlarm</code>, <code>xTempWarning</code>, <code>iShockCount</code>, <code>iATV_Speed</code>, <code>iATV_SpeedRef</code>, <code>iATV_Current</code>, <code>xATV_Running</code>, <code>xATV_Fault</code>, <code>xDrop_Health</code>, <code>iRunSource</code>. Also tick <code>xDemoEnable</code>: the dashboard’s write test tries it (it writes back the value it already holds, so nothing changes).</li>
+  <li>Don’t expose the dashboard command block (<code>aCmd</code>) or anything that starts the motor. The IT side is for reading.</li>
+  <li>Build, download, and check the NUA’s status LEDs.</li>
 </ol>
-<div class="note">Schneider’s FAQ <a href="https://www.se.com/us/en/faqs/FA409424">FA409424</a> has a video of a BMENUA0100 configured in Control Expert and read with UaExpert in Standard mode. The default account differs by mode; it’s in FAQ <a href="https://se.com/za/en/faqs/FA405101">FA405101</a>. Change it on first login.</div>
+
+<h3>First test: Standard mode</h3>
+<ol class="steps">
+  <li>Set the module’s mode selector to <b>Standard</b> (power-cycle after changing it).</li>
+  <li>Dashboard → <b>IP addresses</b>: BMENUA0100 control port <code>192.168.30.10</code>, laptop USB adapter <code>192.168.30.100</code>. The tab’s check column should show the control port answering on TCP 4840.</li>
+  <li>Dashboard → <b>Setup</b> → IT side: Security <b>None</b>, user blank (or the default account from FAQ FA405101). Save.</li>
+  <li><b>IT side · OPC UA</b> tab → <b>Connect</b>. Expect “14 of 14” variables found and the two value columns matching.</li>
+</ol>
+
+<h3>For the customer: Secured mode</h3>
+<ol class="steps">
+  <li>Set the mode selector to <b>Secured</b>. Change the default password on first login, and create an OPC UA user for the dashboard (for example <code>itviewer</code>) with <b>read-only</b> access.</li>
+  <li>Dashboard → Setup → IT side: Security <b>Basic256Sha256 · Sign &amp; encrypt</b>, that user and password. Save, then Connect.</li>
+  <li>The first attempt is rejected: the module doesn’t trust our certificate yet. On the NUA’s certificate management, move the dashboard’s certificate (<code>M580 demo dashboard</code>, <code>urn:guillevin:m580-demo:dashboard</code>) from rejected to <b>trusted</b>, then Connect again. The certificate is made on first use in <code>dashboard\opcua-pki\</code>; keep that folder, or the module will have to trust a new one.</li>
+  <li>Press <b>Try a write from the IT side</b>. It should be <b>refused</b>: that is the point to make. If it’s accepted, tighten the user’s role or the variable’s access before showing it.</li>
+</ol>
+
+<h3>Rehearse without the module</h3>
+<p>Run <code>python fake_nua.py</code> in the dashboard folder (needs <code>python -m pip install asyncua</code>): a stand-in NUA with the same variables, read-only, offering None and Sign &amp; encrypt (user <code>demo</code> / <code>demo</code>). Set the control port to <code>127.0.0.1</code> on the IP addresses tab and Connect. With <code>--plc 127.0.0.1:5020</code> it reads <code>fake_m580.py</code> over Modbus instead, so the two columns really come by two separate paths.</p>
+
+<h3>When the IT side doesn’t connect</h3>
+<div class="wrap"><table>
+<tr><th style="width:30%">What the tab says</th><th>Check</th></tr>
+<tr><td>No answer from 192.168.30.10</td><td>USB adapter address and mask, the cable into the NUA <b>control</b> port (not the backplane side), NUA powered and configured. <code>ping 192.168.30.10</code> from the laptop.</td></tr>
+<tr><td>Refused the connection</td><td>The NUA answers but its OPC UA server is off, or the port isn’t 4840.</td></tr>
+<tr><td>Rejected the security settings or our certificate</td><td>Trust the dashboard’s certificate on the module; or the mode doesn’t match (Security None needs Standard mode).</td></tr>
+<tr><td>Rejected the user name or password</td><td>The OPC UA user on the module, and the password in Setup (a blank password field keeps the saved one).</td></tr>
+<tr><td>Connected, but none of the demo variables are visible</td><td>Data dictionary not ticked, HMI column not ticked, or not rebuilt and downloaded.</td></tr>
+<tr><td>Some variables “not visible”</td><td>Their names in the project differ from the list above, or their HMI box isn’t ticked.</td></tr>
+<tr><td>Works, then drops when Wi-Fi connects</td><td>The Wi-Fi is on the same subnet as the NUA network: keep the NUA on 192.168.30.x.</td></tr>
+</table></div>
+<div class="note">Schneider’s FAQ <a href="https://www.se.com/us/en/faqs/FA409424">FA409424</a> has a video of a BMENUA0100 configured in Control Expert and read with UaExpert in Standard mode. The default account differs by mode; it’s in FAQ <a href="https://se.com/za/en/faqs/FA405101">FA405101</a>.</div>
 
 <h2><span class="n">8</span>Commission it, in this order</h2>
 <h3>RIO drop and panel</h3>
@@ -197,6 +240,7 @@ xDemoEnable  := xKeySwitch AND xDrop_Health;  (* uncomment once the key switch i
   <li>The drop’s health bit and the CPU’s RIO main-ring status bit (element names in the Data Editor).</li>
   <li>BMENOC0301 backplane port enabled, and the laptop on ETH1 can reach the SIG200 and ATV930.</li>
   <li>BMENUA0100: firmware and Control Expert version, the mode selector, and how the HMI flag exposes variables on our version.</li>
+  <li>BMENUA0100 Secured mode on our firmware: where users, roles and certificate trust are managed, and how to make the dashboard’s user read-only so the write test is refused.</li>
   <li>Device-DDT element names for the SIG200 and ATV930 (health/Freshness bits, input and output elements).</li>
   <li>Which SIG200 bit means “device present / process data valid on S1”, and the S1 byte offset.</li>
   <li>MPB10 IODD: value offsets, scaling, and alarm-bit meanings.</li>

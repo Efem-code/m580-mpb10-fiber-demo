@@ -40,13 +40,14 @@ function drawBands() {
 }
 
 // ------------------------------------------------------------ config: IP + setup tabs
-const IPS = ["laptop_ip", "plc_host", "noc_host", "nua_host", "nua_ctrl_host", "cra_host", "sig200_host", "atv_host", "netmask", "gateway"];
+const IPS = ["laptop_ip", "plc_host", "noc_host", "nua_host", "nua_ctrl_host", "laptop_it_ip", "cra_host", "sig200_host", "atv_host", "netmask", "gateway"];
 const IP_DEFAULTS = { laptop_ip: "192.168.0.100", plc_host: "192.168.0.10", noc_host: "192.168.0.11", nua_host: "192.168.0.12",
-  nua_ctrl_host: "192.168.1.10", cra_host: "192.168.0.15", sig200_host: "192.168.0.20", atv_host: "192.168.0.30",
+  nua_ctrl_host: "192.168.30.10", laptop_it_ip: "192.168.30.100", cra_host: "192.168.0.15", sig200_host: "192.168.0.20", atv_host: "192.168.0.30",
   netmask: "255.255.255.0", gateway: "192.168.0.10", cra_drop: 1 };
 const FIELDS = { "c-mode": "mode", "c-port": "plc_port", "c-unit": "unit_id", "c-base": "base", "c-cmd": "cmd_base",
   "c-asset": "asset", "c-ab": "zone_ab", "c-bc": "zone_bc", "c-cd": "zone_cd", "c-tw": "temp_warn",
-  "c-max": "max_rpm", "c-nom": "nominal_rpm", "c-jog": "jog_rpm" };
+  "c-max": "max_rpm", "c-nom": "nominal_rpm", "c-jog": "jog_rpm",
+  "c-opcport": "nua_ctrl_port", "c-opcsec": "opcua_security", "c-opcuser": "opcua_user" };
 const MAP = [
   [0, "Heartbeat (PLC counts up; frozen = stale)"],
   [1, "Sensor bits: b0 SIG200 OK · b1 MPB10 on S1 · b2 vib warning · b3 vib alarm · b4 shock · b5 temp warning"],
@@ -67,6 +68,8 @@ function applyCfg(c) {
   if (c._local !== undefined) local = c._local;
   for (const [id, k] of Object.entries(FIELDS)) $(id).value = c[k];
   $("c-allow").checked = !!c.allow_control;
+  $("c-opcpw").value = "";
+  $("c-opcpw").placeholder = c.opcua_password_set ? "saved (type to change)" : "blank = none";
   for (const k of IPS) $("ip-" + k).value = c[k];
   $("ip-cra_drop").value = c.cra_drop;
   seqLoad(c);
@@ -103,6 +106,7 @@ async function saveCfg(body, note) {
 $("save").onclick = () => {
   const body = { allow_control: $("c-allow").checked };
   for (const [id, k] of Object.entries(FIELDS)) body[k] = $(id).value;
+  if ($("c-opcpw").value) body.opcua_password = $("c-opcpw").value;   // blank keeps the saved one
   if (body.allow_control && !cfg.allow_control &&
       !confirm("Allow the dashboard to start and stop the motor through the M580?\n\nMake sure the E-stop is wired to the ATV930 STO input and the motor is guarded.")) {
     $("c-allow").checked = false; return;
@@ -131,7 +135,8 @@ $("ipCopy").onclick = () => {
     `SICK SIG200          ${cfg.sig200_host}   (on the NOC, over the fiber)`,
     `Altivar ATV930       ${cfg.atv_host}   (on the NOC)`,
     `Subnet mask          ${cfg.netmask}`, `Gateway              ${cfg.gateway}`, "",
-    `BMENUA0100 control port ${cfg.nua_ctrl_host}   (separate network, OPC UA opc.tcp://${cfg.nua_ctrl_host}:4840)`, "",
+    `BMENUA0100 control port ${cfg.nua_ctrl_host}   (separate network, OPC UA opc.tcp://${cfg.nua_ctrl_host}:${cfg.nua_ctrl_port})`,
+    `Laptop USB adapter      ${cfg.laptop_it_ip}   (IT side: no gateway, no DNS)`, "",
     `Modbus: status %MW${cfg.base}-${cfg.base + 31}, commands %MW${cfg.cmd_base}-${cfg.cmd_base + 4}, unit ID ${cfg.unit_id}`];
   navigator.clipboard.writeText(lines.join("\n")).then(() => { $("ipSaved").textContent = "Copied"; setTimeout(() => $("ipSaved").textContent = "", 2000); });
 };
@@ -305,6 +310,7 @@ function render(s) {
   renderVfd(s);
   renderNetwork(s);
   renderRacks(s);
+  renderIt(s);
   renderReach(s.reach || {});
 
   if ((m.v != null || d.speed != null) && (!hist.length || s.t - hist[hist.length - 1][0] >= 0.5)) {
@@ -532,6 +538,70 @@ function renderRacks(s) {   // the board drawing at the top of the network tab
   fill("rk-la", live && P.amber ? "#F5A623" : "#5a4c30");
   fill("rk-lr", live && P.red ? "#E53935" : "#5a3a38");
 }
+
+// ------------------------------------------------------------ IT side · OPC UA tab
+const OT_SIDE = {
+  iHeartbeat: s => s.plc.heartbeat, rVibVelocity: s => s.mpb.v, rTemperature: s => s.mpb.temp,
+  xVibWarning: s => s.mpb.warn, xVibAlarm: s => s.mpb.alarm, xTempWarning: s => s.mpb.temp_warn,
+  iShockCount: s => s.mpb.shocks, iATV_Speed: s => s.drive.speed, iATV_SpeedRef: s => s.drive.ref,
+  iATV_Current: s => s.drive.current == null ? null : Math.round(s.drive.current * 10),
+  xATV_Running: s => s.links.atv ? s.drive.running : null, xATV_Fault: s => s.links.atv ? s.drive.fault : null,
+  xDrop_Health: s => s.links.fresh ? s.panel.drop : null, iRunSource: () => null,
+};
+function opcVal(v) {
+  if (v === null || v === undefined) return "–";
+  if (typeof v === "boolean") return v ? "TRUE" : "FALSE";
+  if (typeof v === "number" && !Number.isInteger(v)) return v.toFixed(2);
+  return String(v);
+}
+function renderIt(s) {
+  const o = s.opcua || { available: false, status: "off", values: {}, vars: [] }, c = cfg;
+  const on = o.status === "connected", L = s.links;
+  // diagram
+  $("itOtIp").textContent = `${c.laptop_ip} → ${c.plc_host}`;
+  $("itItIp").textContent = `${c.laptop_it_ip} → ${c.nua_ctrl_host}`;
+  $("itOt").setAttribute("stroke", L.fresh ? "#3A3B39" : "#C8322B");
+  $("itOt").setAttribute("stroke-dasharray", L.fresh ? "" : "7 5");
+  $("itIt").setAttribute("stroke", on ? "#5B5BD6" : o.status === "error" ? "#C8322B" : "#9AA0A6");
+  $("itIt").setAttribute("stroke-dasharray", on ? "" : "7 5");
+  $("itOtT").textContent = L.fresh ? "OT side · reading" : "OT side · no data";
+  $("itItT").textContent = on ? "IT side · reading" : o.status === "connecting" ? "IT side · connecting…" : o.status === "error" ? "IT side · no connection" : "IT side · not connected";
+  // connection card
+  let msg;
+  if (!o.available) msg = `<div class="msg warn">OPC UA support isn’t installed on this laptop. In a terminal: <code>python -m pip install asyncua</code>, then restart the dashboard.</div>`;
+  else if (on) msg = o.error ? `<div class="msg warn">${o.error}</div>` : `<div class="msg ok">Connected: reading ${o.found} PLC variables over OPC UA.</div>`;
+  else if (o.status === "connecting") msg = `<div class="msg">Connecting to ${o.endpoint}…</div>`;
+  else if (o.status === "error") msg = `<div class="msg bad">${o.error}</div>`;
+  else msg = `<div class="msg">Not connected. Press Connect to read the PLC through the BMENUA0100.</div>`;
+  if ($("itMsg").dataset.m !== msg) { $("itMsg").innerHTML = msg; $("itMsg").dataset.m = msg; }
+  $("itEp").textContent = o.endpoint || `opc.tcp://${c.nua_ctrl_host}:${c.nua_ctrl_port}`;
+  $("itSrv").textContent = on ? o.server : "–";
+  $("itSec").textContent = on ? o.security : (c.opcua_security === "sign_encrypt" ? "Basic256Sha256 · Sign & encrypt" : "None") + " (from Setup)";
+  $("itFound").textContent = on ? `${o.found} of ${o.vars.length}` + (o.missing.length ? ` · not visible: ${o.missing.join(", ")}` : "") : "–";
+  $("itLat").textContent = on && o.latency_ms != null ? `${o.latency_ms} ms for all variables` : "–";
+  $("itConnect").textContent = c.opcua_on ? "Disconnect" : "Connect";
+  $("itConnect").className = "btn " + (c.opcua_on ? "" : "go");
+  $("itConnect").disabled = !local || !o.available;
+  $("itWrite").disabled = !local || !on;
+  const w = o.write, wm = w ? `<div class="msg ${w.ok === false ? "ok" : w.ok ? "warn" : "bad"}">${w.text}</div>` : "";
+  if ($("itWriteMsg").dataset.m !== wm) { $("itWriteMsg").innerHTML = wm; $("itWriteMsg").dataset.m = wm; }
+  // side-by-side table
+  const now = Date.now() / 1000;
+  $("itBody").innerHTML = (o.vars || []).map(([name, meaning]) => {
+    const ot = OT_SIDE[name] ? OT_SIDE[name](s) : null, it = (o.values || {})[name];
+    const itv = it ? it.v : null;
+    const same = ot != null && itv != null && (typeof ot === "number" ? Math.abs(ot - itv) <= Math.max(0.02, Math.abs(ot) * 0.02) : ot === itv);
+    const age = it && it.ts ? now - it.ts : null;
+    const ts = age == null ? "–" : age >= -2 && age < 120 ? `${Math.max(0, age).toFixed(1)} s ago` : new Date(it.ts * 1000).toLocaleTimeString();
+    return `<tr><td><code>${name}</code></td><td>${meaning}</td><td>${opcVal(ot)}</td>` +
+      `<td class="${!it ? "dim" : same ? "ok" : ""}">${it ? opcVal(itv) + (it.good ? "" : " (bad quality)") : on ? "not visible" : "–"}</td><td class="sub">${ts}</td></tr>`;
+  }).join("");
+}
+$("itConnect").onclick = () => saveCfg({ opcua_on: !cfg.opcua_on }, $("saved"));
+$("itWrite").onclick = async () => {
+  const r = await post("/api/opcua", { action: "write_test" });
+  if (r.error) { $("itWriteMsg").innerHTML = `<div class="msg bad">${r.error}</div>`; $("itWriteMsg").dataset.m = ""; }
+};
 
 function renderReach(r) {
   for (const k of ["plc_host", "noc_host", "cra_host", "sig200_host", "atv_host", "nua_ctrl_host"]) {

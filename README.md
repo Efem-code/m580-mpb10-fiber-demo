@@ -35,6 +35,16 @@ Start Dashboard.bat --port 8781  use another port
 python fake_m580.py              stand-in PLC on 127.0.0.1:5020, to try Live mode without hardware
 ```
 
+### The IT side (OPC UA), optional
+
+The **IT side · OPC UA** tab reads the same PLC values over OPC UA from the BMENUA0100's control port, a separate network reached through a USB Ethernet adapter, and shows them next to the Modbus values. It needs one extra package:
+
+```bash
+python -m pip install asyncua
+```
+
+Without it, everything else works as before. To rehearse without the module, run `python fake_nua.py` in the `dashboard` folder and set the BMENUA0100 control port to `127.0.0.1` on the IP addresses tab.
+
 To try Live mode without a PLC: run `python fake_m580.py`, then in the dashboard set the M580 address to `127.0.0.1` on the **IP addresses** tab, and port `5020` and Live mode on the **Setup** tab.
 
 ## Using it with the real hardware
@@ -44,6 +54,7 @@ Our demo board has a BMEP584040 CPU, BMENOC0301, BMENUA0100 and a BMECRA31210 RI
 1. Build the rig with `M580-MPB10-fiber-build-guide.html` (open it in a browser).
 2. Build and download the PLC program with `control-expert/Control-Expert-build-guide.html`.
 3. Plug the laptop into the M580 CPU service port (ETH1), set it to `192.168.0.100 / 255.255.255.0`, and start the dashboard with `--live`.
+4. For the IT side: a USB Ethernet adapter at `192.168.30.100 / 255.255.255.0` (no gateway) into the BMENUA0100 control port at `192.168.30.10`. Setup is in section 7 of the Control Expert guide.
 
 Drive control from the dashboard is **off by default**. It needs **Allow drive control** ticked in Setup *and* `xDashboardAllowed` set in the PLC. The E-stop must be hard-wired to the ATV930 STO inputs; it is not in software. Commission with the motor uncoupled and a low `iMaxSpeed` first.
 

@@ -25,6 +25,10 @@
   main { padding: 20px 24px 28px; max-width: 1500px; margin: 0 auto; }
   .tab { display: none; } .tab.on { display: block; }
   .grid { display: grid; gap: 16px; }
+  .grid.it2 { grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); }
+  @media (max-width: 900px) { .grid.it2 { grid-template-columns: 1fr; } }
+  svg.itnet { width: 100%; height: auto; display: block; }
+  .ittab td.ok { color: var(--good); font-weight: 600; } .ittab td.dim { color: var(--off); }
   .card { background: var(--card); border: 1px solid var(--rule); border-radius: 12px; padding: 16px 18px; }
   .card h2 { font: 600 13px "Segoe UI Semibold", "Segoe UI", sans-serif; letter-spacing: .07em; text-transform: uppercase; color: var(--muted); margin: 0 0 10px; }
   .big { font: 600 54px/1 "Segoe UI Semibold", "Segoe UI", sans-serif; }
@@ -178,6 +182,7 @@
     <button data-tab="drive">Drive (ATV930)</button>
     <button data-tab="vfd">VFD control</button>
     <button data-tab="network">SIG200 &amp; network</button>
+    <button data-tab="it">IT side · OPC UA</button>
     <button data-tab="ips">IP addresses</button>
     <button data-tab="setup">Setup</button>
   </nav>
@@ -550,6 +555,64 @@
   </div>
 </section>
 
+<!-- ======================= IT SIDE ======================= -->
+<section class="tab" id="tab-it">
+  <div class="grid it2">
+    <div class="card">
+      <h2>Two networks, one laptop</h2>
+      <svg class="itnet" viewBox="0 0 640 300" role="img" aria-label="The laptop's built-in port reads the M580 over Modbus on the device network; its USB adapter reads the BMENUA0100 over OPC UA on a separate network">
+        <rect x="225" y="16" width="190" height="64" rx="10" fill="#fff" stroke="#3A3B39" stroke-width="2"/>
+        <text x="320" y="44" font-family="Segoe UI, Arial" font-size="15" font-weight="600" text-anchor="middle" fill="#24262A">Dashboard laptop</text>
+        <text x="320" y="64" font-family="Segoe UI, Arial" font-size="11" text-anchor="middle" fill="#5F646A">no routing between its ports</text>
+        <path id="itOt" d="M270 80 V130 H110 V200" fill="none" stroke="#3A3B39" stroke-width="4"/>
+        <path id="itIt" d="M370 80 V130 H530 V200" fill="none" stroke="#5B5BD6" stroke-width="4"/>
+        <text x="190" y="122" font-family="Segoe UI, Arial" font-size="12" font-weight="600" text-anchor="middle" fill="#24262A">built-in Ethernet</text>
+        <text x="450" y="122" font-family="Segoe UI, Arial" font-size="12" font-weight="600" text-anchor="middle" fill="#24262A">USB Ethernet adapter</text>
+        <text id="itOtIp" x="190" y="150" font-family="Segoe UI, Arial" font-size="11" text-anchor="middle" fill="#5F646A"></text>
+        <text id="itItIp" x="450" y="150" font-family="Segoe UI, Arial" font-size="11" text-anchor="middle" fill="#5F646A"></text>
+        <text x="110" y="182" font-family="Segoe UI, Arial" font-size="11" text-anchor="end" fill="#5F646A" dx="-8">Modbus TCP 502</text>
+        <text x="530" y="182" font-family="Segoe UI, Arial" font-size="11" fill="#5F646A" dx="8">OPC UA 4840</text>
+        <rect x="20" y="200" width="180" height="62" rx="8" fill="#fff" stroke="#9AA0A6"/>
+        <text x="110" y="224" font-family="Segoe UI, Arial" font-size="13" font-weight="600" text-anchor="middle" fill="#24262A">M580 CPU ETH1</text>
+        <text id="itOtT" x="110" y="244" font-family="Segoe UI, Arial" font-size="11" text-anchor="middle" fill="#5F646A">OT side · device network</text>
+        <rect x="440" y="200" width="180" height="62" rx="8" fill="#fff" stroke="#9AA0A6"/>
+        <text x="530" y="224" font-family="Segoe UI, Arial" font-size="13" font-weight="600" text-anchor="middle" fill="#24262A">BMENUA0100 control port</text>
+        <text id="itItT" x="530" y="244" font-family="Segoe UI, Arial" font-size="11" text-anchor="middle" fill="#5F646A">IT side · its own network</text>
+        <path d="M200 231 H440" fill="none" stroke="#9AA0A6" stroke-width="2" stroke-dasharray="5 5"/>
+        <text x="320" y="224" font-family="Segoe UI, Arial" font-size="11" text-anchor="middle" fill="#5F646A">same M580 rack, same data</text>
+        <text x="320" y="286" font-family="Segoe UI, Arial" font-size="11" text-anchor="middle" fill="#5F646A">The NUA serves data to IT; it never routes IT traffic into the device network.</text>
+      </svg>
+    </div>
+    <div class="card">
+      <h2>OPC UA connection · BMENUA0100</h2>
+      <div id="itMsg"></div>
+      <table class="kv">
+        <tr><td>Endpoint</td><td id="itEp">–</td></tr>
+        <tr><td>Server</td><td id="itSrv">–</td></tr>
+        <tr><td>Security</td><td id="itSec">–</td></tr>
+        <tr><td>Demo variables found</td><td id="itFound">–</td></tr>
+        <tr><td>Read time</td><td id="itLat">–</td></tr>
+      </table>
+      <div class="row" style="display:flex;gap:10px;flex-wrap:wrap;margin-top:12px">
+        <button class="btn go" id="itConnect">Connect</button>
+        <button class="btn" id="itWrite">Try a write from the IT side</button>
+      </div>
+      <div id="itWriteMsg"></div>
+      <p class="note">Security, user and port are on the Setup tab; addresses on the IP addresses tab. To rehearse without the module run <code>python fake_nua.py</code> and set the control port to <code>127.0.0.1</code>.</p>
+    </div>
+  </div>
+  <div class="card" style="margin-top:16px">
+    <h2>Same values, two paths</h2>
+    <div style="overflow-x:auto">
+    <table class="map ittab">
+      <thead><tr><th>PLC variable</th><th>Meaning</th><th>OT side · Modbus</th><th>IT side · OPC UA</th><th>OPC UA timestamp</th></tr></thead>
+      <tbody id="itBody"></tbody>
+    </table>
+    </div>
+    <p class="note">The left column comes from the dashboard’s Modbus block through the CPU service port; the right one from the BMENUA0100 over OPC UA. They should match (OPC UA reads twice a second, so a moving value can lag by a tick).</p>
+  </div>
+</section>
+
 <!-- ======================= IP ADDRESSES ======================= -->
 <section class="tab" id="tab-ips">
   <div class="card">
@@ -564,6 +627,7 @@
       <tr><td>BMENOC0301</td><td><input id="ip-noc_host"></td><td>Control Expert → DTM Browser → BMENOC0301 → Channel Properties → TCP/IP. Backplane port <b>enabled</b>.</td><td>This is the project itself</td><td id="r-noc_host">–</td></tr>
       <tr><td>BMENUA0100<br><span class="sub">backplane side</span></td><td><input id="ip-nua_host"></td><td>Control Expert → PLC bus → BMENUA0100 → IP configuration</td><td>This is the project itself</td><td class="sub">not checked</td></tr>
       <tr><td>BMENUA0100<br><span class="sub">control port</span></td><td><input id="ip-nua_ctrl_host"></td><td>Same place. Its <b>own network</b> (SCADA / OPC UA side), not the device subnet. OPC UA on TCP 4840.</td><td>UaExpert: <code>opc.tcp://<span id="nuaUrl">–</span>:4840</code></td><td id="r-nua_ctrl_host">–</td></tr>
+      <tr><td>Laptop<br><span class="sub">USB adapter (IT side)</span></td><td><input id="ip-laptop_it_ip"></td><td>Windows → Network connections → the USB adapter → IPv4: this address, mask 255.255.255.0, <b>no gateway, no DNS</b></td><td>Same network as the NUA control port</td><td class="sub">this laptop</td></tr>
       <tr><td>RIO drop<br><span class="sub">BMECRA31210</span></td><td><input id="ip-cra_host"><div style="margin-top:6px" class="sub">Drop no. <input id="ip-cra_drop" type="number" min="1" max="159" style="width:70px"></div></td><td>Control Expert → the drop → <b>IPConfig</b>. The CPU hands this address to the CRA at power-up; set the drop number on the CRA’s <b>rotary switches</b> to match.</td><td>This is the project itself</td><td id="r-cra_host">–</td></tr>
       <tr><td>SICK SIG200</td><td><input id="ip-sig200_host"></td><td>SIG200 web UI (ships at 192.168.0.1) → Ethernet settings</td><td>DTM Browser → BMENOC0301 → SIG200 → Address Setting</td><td id="r-sig200_host">–</td></tr>
       <tr><td>Altivar ATV930</td><td><input id="ip-atv_host"></td><td>Drive keypad → Communication → Embedded Ethernet → IP (fixed)</td><td>DTM Browser → BMENOC0301 → ATV930 → Address Setting</td><td id="r-atv_host">–</td></tr>
@@ -607,6 +671,12 @@
         <label for="c-max">Max speed request (rpm)</label><input id="c-max" type="number" step="10">
         <label for="c-nom">Motor nominal speed (rpm)</label><input id="c-nom" type="number" step="10">
         <label for="c-jog">Jog speed (rpm)</label><input id="c-jog" type="number" step="10">
+        <h3>IT side · OPC UA (BMENUA0100)</h3>
+        <label for="c-opcport">OPC UA port</label><input id="c-opcport" type="number">
+        <label for="c-opcsec">Security</label>
+        <select id="c-opcsec"><option value="none">None (module in Standard mode)</option><option value="sign_encrypt">Basic256Sha256 · Sign &amp; encrypt (Secured mode)</option></select>
+        <label for="c-opcuser">User name</label><input id="c-opcuser" placeholder="blank = anonymous" autocomplete="off">
+        <label for="c-opcpw">Password</label><input id="c-opcpw" type="password" autocomplete="new-password">
         <span></span><div><button class="btn orange" id="save">Save</button> <button class="btn" id="clear">Clear trends &amp; log</button> <span class="note" id="saved"></span></div>
       </div>
       <p class="note">Default zones: ISO 10816-3, group 2 machines (15–300 kW) on rigid foundations. With drive control off, live mode only reads the PLC. With it on, it also writes the 5-word command block. Only this laptop can change settings or send commands; TVs and iPads opened with <code>--lan</code> are view-only.</p>

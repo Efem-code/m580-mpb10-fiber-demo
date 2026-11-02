@@ -9,6 +9,9 @@ from the dashboard" is ticked in Setup: then a 3-register command block, refresh
 PLC's watchdog sees the dashboard is alive. The PLC decides whether the drive actually runs.
 Control Expert side: ../control-expert/.
 
+IT SIDE (optional): with `asyncua` installed, the "IT side · OPC UA" tab reads the same PLC variables over
+OPC UA from the BMENUA0100 control port (a second network, e.g. a USB Ethernet adapter). See opcua_side.py.
+
 STATUS MAP  (read, offset from the status base, default %MW1000)
   +0   heartbeat          PLC counts up every scan; frozen = PLC data stale
   +1   status bits        b0 SIG200 EtherNet/IP healthy   b1 IO-Link device on S1
@@ -57,6 +60,7 @@ from collections import deque
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 from modbus import ModbusClient
+from opcua_side import AVAILABLE as OPCUA_AVAILABLE, OpcUaSide
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 STATIC = os.path.join(HERE, "static")
@@ -74,8 +78,11 @@ DEFAULTS = {
     "nua_host": "192.168.0.12", "cra_host": "192.168.0.15", "cra_drop": 1,
     "sig200_host": "192.168.0.20", "atv_host": "192.168.0.30", "netmask": "255.255.255.0",
     "gateway": "192.168.0.10",
-    # BMENUA0100 control port: its own network (SCADA / OPC UA side), never the device network
-    "nua_ctrl_host": "192.168.1.10",
+    # BMENUA0100 control port: its own network (SCADA / OPC UA side), never the device network.
+    # 192.168.30.x so it can't clash with the lab networks (192.168.10.x, 192.168.20.x) or office Wi-Fi.
+    "nua_ctrl_host": "192.168.30.10", "laptop_it_ip": "192.168.30.100",
+    # IT side: OPC UA client to the NUA control port
+    "opcua_on": False, "nua_ctrl_port": 4840, "opcua_security": "none", "opcua_user": "", "opcua_password": "",
     # Modbus
     "plc_port": 502, "unit_id": 255, "base": 1000, "cmd_base": 1100,
     # ISO 10816-3 group 2 (15-300 kW), rigid mounting: zone limits in mm/s RMS
@@ -136,6 +143,10 @@ def clean_sequence(v):
 def coerce(k, v):
     if k == "sequence":
         return clean_sequence(v)
+    if k == "opcua_security":
+        if v not in ("none", "sign_encrypt"):
+            raise ValueError("OPC UA security must be None or Sign & encrypt")
+        return v
     t = type(DEFAULTS[k])
     if t is bool:
         return v if isinstance(v, bool) else str(v).lower() in ("1", "true", "on", "yes")
@@ -158,10 +169,13 @@ def check_ip_plan(cfg):
             addrs[k] = ipaddress.IPv4Address(cfg[k])
         except ValueError:
             errors.append(f"{LABELS[k]}: “{cfg[k]}” is not an IPv4 address")
-    try:
-        ctrl = ipaddress.IPv4Address(cfg["nua_ctrl_host"])
-    except ValueError:
-        errors.append(f"{LABELS['nua_ctrl_host']}: “{cfg['nua_ctrl_host']}” is not an IPv4 address")
+    for k in ("nua_ctrl_host", "laptop_it_ip"):
+        try:
+            ipaddress.IPv4Address(cfg[k])
+        except ValueError:
+            errors.append(f"{LABELS[k]}: “{cfg[k]}” is not an IPv4 address")
+    if not 1 <= int(cfg["nua_ctrl_port"]) <= 65535:
+        errors.append("OPC UA port must be 1–65535 (the BMENUA0100 uses 4840)")
     if not 1 <= int(cfg["cra_drop"]) <= 159:
         errors.append("RIO drop number must be 1–159 (the BMECRA31210 rotary switches)")
     if errors:
@@ -173,9 +187,18 @@ def check_ip_plan(cfg):
         elif a in (net.network_address, net.broadcast_address):
             errors.append(f"{LABELS[k]} {a} is the network or broadcast address")
     seen = {}
+    ctrl, it = ipaddress.IPv4Address(cfg["nua_ctrl_host"]), ipaddress.IPv4Address(cfg["laptop_it_ip"])
+    it_net = ipaddress.IPv4Network(f"{ctrl}/24", strict=False)
     if ctrl in net:
         warns.append(f"{LABELS['nua_ctrl_host']} {ctrl} is inside the device network {net}: "
                      "the BMENUA0100 control port should be on a separate network")
+    if it == ctrl:
+        errors.append(f"{LABELS['laptop_it_ip']} and {LABELS['nua_ctrl_host']} both use {it}")
+    elif it not in it_net and not ctrl.is_loopback:      # 127.0.0.1 = the stand-in NUA on this laptop
+        warns.append(f"{LABELS['laptop_it_ip']} {it} is not in the NUA control port’s network {it_net}: "
+                     "OPC UA won’t reach the module")
+    if it in net:
+        warns.append(f"{LABELS['laptop_it_ip']} {it} is inside the device network {net}: use the NUA’s separate network")
     for k in DEVICE_KEYS:
         a = str(addrs[k])
         if a in seen:
@@ -188,7 +211,8 @@ def check_ip_plan(cfg):
 
 LABELS = {"laptop_ip": "Laptop", "plc_host": "M580 CPU", "noc_host": "BMENOC0301", "nua_host": "BMENUA0100",
           "cra_host": "RIO drop (BMECRA31210)", "sig200_host": "SIG200", "atv_host": "ATV930",
-          "gateway": "Gateway", "nua_ctrl_host": "BMENUA0100 control port"}
+          "gateway": "Gateway", "nua_ctrl_host": "BMENUA0100 control port",
+          "laptop_it_ip": "Laptop USB adapter (IT side)"}
 
 
 def local_ips():
@@ -372,6 +396,7 @@ class Engine:
         self.reach = {}
         self.prog = {"on": False}           # demo sequence runner
         self.marks = deque(maxlen=60)      # speed-change markers for the charts: [t, label]
+        self.opc = OpcUaSide(lambda: dict(self.cfg), self.event)   # IT side, its own thread
         threading.Thread(target=self._loop, daemon=True, name="poll").start()
         threading.Thread(target=self._reach_loop, daemon=True, name="reach").start()
 
@@ -379,6 +404,9 @@ class Engine:
     def configure(self, new):
         with self.lock:
             trial = dict(self.cfg)
+            # the password is never sent back to the page; a blank or missing one keeps the saved one
+            if not new.get("opcua_password"):
+                new = {k: v for k, v in new.items() if k != "opcua_password"}
             trial.update({k: coerce(k, v) for k, v in new.items() if k in DEFAULTS})
             errors, warns = check_ip_plan(trial)
             if errors:
@@ -399,7 +427,7 @@ class Engine:
                 self.last_hb = None
                 self.prev = {}
                 self.event("info", f"Switched to {'live PLC' if self.cfg['mode'] == 'live' else 'simulation'} mode")
-            return {"errors": [], "warnings": warns, "config": self.cfg}
+            return {"errors": [], "warnings": warns, "config": public_cfg(self.cfg)}
 
     def event(self, level, text):
         self.events.appendleft({"t": time.time(), "level": level, "text": text})
@@ -755,7 +783,13 @@ class Engine:
 
     def snapshot(self):
         with self.lock:
-            return dict(self.state, events=list(self.events)[:14], reach=self.reach, marks=list(self.marks))
+            return dict(self.state, events=list(self.events)[:14], reach=self.reach, marks=list(self.marks),
+                        opcua=self.opc.snapshot())
+
+
+def public_cfg(cfg):
+    """The settings as the page sees them: no password, just whether one is saved."""
+    return dict(cfg, opcua_password="", opcua_password_set=bool(cfg["opcua_password"]), _opcua_available=OPCUA_AVAILABLE)
 
 
 def cia402_state(eta):
@@ -803,7 +837,7 @@ class Handler(BaseHTTPRequestHandler):
                 return self._json(list(eng.history))
         if path == "/api/config":
             errors, warns = check_ip_plan(eng.cfg)
-            return self._json(dict(eng.cfg, _warnings=warns, _local=self._is_local()))
+            return self._json(dict(public_cfg(eng.cfg), _warnings=warns, _local=self._is_local()))
         if path == "/api/stream":
             self.send_response(200)
             self.send_header("Content-Type", "text/event-stream")
@@ -866,6 +900,9 @@ class Handler(BaseHTTPRequestHandler):
             except (TypeError, ValueError) as e:
                 return self._json({"errors": [str(e)], "warnings": []}, 400)
             return self._json(r, 400 if r["errors"] else 200)
+        if path == "/api/opcua":
+            err = eng.opc.request_write_test() if b.get("action") == "write_test" else "unknown action"
+            return self._json({"error": err} if err else {"ok": True}, 409 if err else 200)
         if path == "/api/clear":
             with eng.lock:
                 eng.history.clear()

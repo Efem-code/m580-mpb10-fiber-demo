@@ -119,8 +119,8 @@
   <!-- NUA control port to its own network -->
   <path d="M226 174 V214" fill="none" stroke="#5B5BD6" stroke-width="2" stroke-dasharray="6 4"/>
   <rect x="180" y="214" width="110" height="40" rx="6" fill="#fff" stroke="#5B5BD6"/>
-  <text x="235" y="231" text-anchor="middle" font-family="Segoe UI" font-size="11" font-weight="600" fill="#282A2E">OPC UA client</text>
-  <text x="235" y="246" text-anchor="middle" font-family="Segoe UI" font-size="10" fill="#5F646A">192.168.1.x network</text>
+  <text x="235" y="231" text-anchor="middle" font-family="Segoe UI" font-size="11" font-weight="600" fill="#282A2E">Laptop USB adapter</text>
+  <text x="235" y="246" text-anchor="middle" font-family="Segoe UI" font-size="10" fill="#5F646A">OPC UA · 192.168.30.x</text>
 
   <!-- NOC ETH2 to ATV930 -->
   <path d="M318 174 V300" fill="none" stroke="#3A3B39" stroke-width="4"/>
@@ -195,7 +195,8 @@
 <tr><td>Motor + unbalance weight</td><td>Three-phase motor that suits the ATV930U07M3: 208–230 V, <b>1 HP or less, full-load current 4.6 A or less</b>. A 4-pole motor on 60 Hz runs at about 1750 rpm. with the MPB10 bolted near the drive-end bearing and a guarded clip-on offset weight on the shaft or a disc, so we can make vibration on cue.</td></tr>
 <tr><td>E-stop</td><td>Wired to the ATV930 <b>STO</b> inputs per its safety manual. The key switch on the RIO drop is the demo enable, not a safety device.</td></tr>
 <tr><td>Also on the demo board</td><td>A Magelis HMI and a small knob with a digital display. The demo doesn’t use them yet.</td></tr>
-<tr><td>Second laptop (optional)</td><td>UaExpert on the BMENUA0100 control port, to show the OPC UA side.</td></tr>
+<tr><td>USB Ethernet adapter</td><td>A second wired port for the dashboard laptop, to the BMENUA0100 control port: the IT side of the demo, over OPC UA. Any USB 3 / USB-C gigabit adapter.</td></tr>
+<tr><td>Second laptop (optional)</td><td>UaExpert on the NUA network as well, through a small unmanaged switch.</td></tr>
 <tr><td>Laptop</td><td>EcoStruxure Control Expert with the SICK SIG200 EDS file and the Altivar DTM library, SOPAS ET (optional), USB cable for the CPU’s first connection.</td></tr>
 </table></div>
 
@@ -210,7 +211,8 @@
 <tr><td>SICK SIG200</td><td><code>192.168.0.20</code></td><td>SIG200 web UI (from its default 192.168.0.1)</td></tr>
 <tr><td>Laptop</td><td><code>192.168.0.100</code></td><td>Windows adapter settings, mask 255.255.255.0</td></tr>
 <tr><td>Altivar ATV930</td><td><code>192.168.0.30</code></td><td>Drive keypad → Communication → Embedded Ethernet (fixed IP)</td></tr>
-<tr><td>BMENUA0100, control port</td><td><code>192.168.1.10</code></td><td>Same module configuration. Separate network for OPC UA</td></tr>
+<tr><td>BMENUA0100, control port</td><td><code>192.168.30.10</code></td><td>Same module configuration. Separate network for OPC UA, clear of the lab’s 192.168.10.x and 192.168.20.x</td></tr>
+<tr><td>Laptop, USB adapter</td><td><code>192.168.30.100</code></td><td>Windows adapter settings, mask 255.255.255.0, <b>no gateway, no DNS</b></td></tr>
 <tr><td>Media converters</td><td>none</td><td>Unmanaged, transparent</td></tr>
 </table></div>
 
@@ -228,6 +230,11 @@
   <li>Mount the ATV930 in the PLC panel. Run the motor cable (shielded, 360° bonded at both ends) to the motor.</li>
   <li>Patch the ATV930’s embedded Ethernet port to BMENOC0301 <b>ETH2</b>. It stays on the PLC side of the fiber, so pulling the fiber cuts only the sensor data.</li>
   <li>Wire the E-stop to the STO inputs. Set up the drive on its keypad as in the Control Expert guide, section 2.</li>
+</ol>
+<h3>IT side (OPC UA)</h3>
+<ol class="steps">
+  <li>Plug the USB Ethernet adapter into the dashboard laptop and set it to <code>192.168.30.100</code> / <code>255.255.255.0</code>, no gateway, no DNS.</li>
+  <li>Patch it to the BMENUA0100 <b>control port</b> (the module’s front port, not the backplane side). The module’s setup is in the Control Expert guide, section 7.</li>
 </ol>
 <h3>Fiber link</h3>
 <ol class="steps">
@@ -257,7 +264,7 @@
 
 <h2><span class="n">6</span>Program the M580 and run the dashboard</h2>
 <p>The Control Expert program and its step-by-step build live in <code>m580-mpb-fiber\control-expert</code>. Open <b>Control-Expert-build-guide.html</b> there. It covers the ATV930 keypad set-up, the rack, RIO drop and BMENOC0301 set-up, the SIG200 and ATV930 in the DTM Browser, OPC UA on the BMENUA0100, the six ST sections (MPB10 decode, drive state machine with the panel buttons, stack light, dashboard link), and the commissioning order.</p>
-<p>The customer screen is in <code>m580-mpb-fiber\dashboard</code>: run <code>Start Dashboard.bat</code>. It has tabs for machine health, the drive, VFD control (run the ATV930 through the M580), the network path, every IP address, and setup. Plug the laptop into the CPU <b>service port (ETH1)</b> so the screen stays up when we pull the fiber; it then shows exactly where the data stops. Test the screen before the PLC is ready with <code>python fake_m580.py</code>.</p>
+<p>The customer screen is in <code>m580-mpb-fiber\dashboard</code>: run <code>Start Dashboard.bat</code>. It has tabs for machine health, the drive, VFD control (run the ATV930 through the M580), the network path, the IT side over OPC UA, every IP address, and setup. Plug the laptop into the CPU <b>service port (ETH1)</b> so the screen stays up when we pull the fiber; it then shows exactly where the data stops. Test the screen before the PLC is ready with <code>python fake_m580.py</code>.</p>
 <div class="note">The dashboard only <b>reads</b> the PLC unless “Allow drive control” is ticked in its Setup tab <i>and</i> the PLC sets <code>xDashboardAllowed</code>. A 1 s watchdog in the PLC stops the motor if the dashboard goes silent. The E-stop is hard-wired to the ATV930 STO inputs.</div>
 
 <h2><span class="n">7</span>Bring-up checklist</h2>
@@ -274,7 +281,7 @@
   <li>Clip on the weight: vibration rises and the warning bit trips</li>
   <li>Dashboard in Live mode: heartbeat counting, every box on the SIG200 &amp; network tab green, every device reachable on the IP addresses tab</li>
   <li>Drive runs from the animation table, then from the panel Start button, then from the dashboard; panel Stop stops a dashboard run; the E-stop stops it regardless</li>
-  <li>UaExpert on the BMENUA0100 control port browses the PLC variables</li>
+  <li>Dashboard IT side · OPC UA tab connects to <code>192.168.30.10</code>: 14 of 14 variables, both value columns match, and the write test is refused</li>
 </ul></div>
 
 <h2><span class="n">8</span>When it doesn’t work</h2>
@@ -286,6 +293,7 @@
 <tr><td>RIO drop not healthy</td><td>Rotary switches don’t match the drop number in the project (set them with the power off), ring cables in the wrong CPU ports, or the drop’s IP clashes with another device.</td></tr>
 <tr><td>Ping OK, health bit FALSE</td><td>Wrong EDS or SIG200 variant (PROFINET model), assembly mismatch, or IP in the DTM doesn’t match the device.</td></tr>
 <tr><td>Data arrives but values look wrong</td><td>Byte order (swap high/low), wrong <code>PD_OFS</code>, or the MPB10 measurement mode doesn’t match the offsets we used.</td></tr>
+<tr><td>IT side tab won’t connect</td><td>USB adapter on 192.168.30.100 with no gateway, cable in the NUA control port, the module’s mode matching the Security setting, and our certificate trusted in Secured mode. Full table in the Control Expert guide, section 7.</td></tr>
 <tr><td>MPB10 not found on S1</td><td>Port not in IO-Link mode, cable not A-coded or too long (&gt; 20 m), or the port is disabled in the SIG200.</td></tr>
 </table></div>
 
