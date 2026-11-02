@@ -60,7 +60,7 @@
 </header>
 
 <h1>Modicon M580 ↔ SICK MPB10 over fiber</h1>
-<p class="lede">How to wire and set up the demo rig: a SICK Multi Physics Box (MPB10) on a SICK SIG200 IO-Link master, linked to a Modicon M580 (BMEP584040 with BMENOC0301, BMENUA0100 and a BMECRA31210 RIO drop) over a multimode fiber run, with an ATV930 running the motor. Follow the sections in order and you end with live vibration, shock and temperature values in Control Expert.</p>
+<p class="lede">How to wire and set up the demo rig: a SICK Multi Physics Box (MPB10) on a SICK SIG200 IO-Link master, linked to a Modicon M580 (BMEP584040 with BMENOC0301, BMENUA0100 and a BMECRA31210 RIO drop) over a multimode fiber run, with an ATV930 running the motor. We follow the sections in order and end with live vibration, shock and temperature values in Control Expert.</p>
 
 <h2><span class="n">1</span>What we’re building</h2>
 <div class="card">
@@ -185,14 +185,14 @@
 <tr><th style="width:32%">Item</th><th>Notes</th></tr>
 <tr><td>M580 main rack</td><td>BMEXBP Ethernet backplane, BMXCPS power supply, <b>BMEP584040</b> CPU, <b>BMENOC0301</b> (EtherNet/IP scanner for the SIG200 and ATV930), <b>BMENUA0100</b> (OPC UA server). The NOC and NUA need Ethernet-capable slots. <i>On our demo board, left to right: power supply, CPU, BMENUA0100, BMENOC0301, one spare slot.</i></td></tr>
 <tr><td>RIO drop</td><td><b>BMECRA31210</b> eRIO adapter on its own X80 rack with power supply and a few discrete I/O: inputs for Start, Stop (N/C), Reset and a key switch; outputs for a three-lamp stack light. Two Cat6 cords for the ring. <i>On our demo board, left to right: power supply, BMECRA31210, a second module with rotary switches and three ports (part number to confirm), one wired discrete I/O module (part number to confirm), a blank module, one spare slot.</i></td></tr>
-<tr><td>Media converters (2)</td><td>A matched pair: <b>100BASE-FX</b>, multimode, <b>1310 nm</b>, same connector, 24 VDC DIN rail. Unmanaged is fine. One in the control panel (NOC side), one at the field end. A BMXNRP0200 in the main rack could replace the panel-end one, if you have one.</td></tr>
+<tr><td>Media converters (2)</td><td>A matched pair: <b>100BASE-FX</b>, multimode, <b>1310 nm</b>, same connector, 24 VDC DIN rail. Unmanaged is fine. One in the control panel (NOC side), one at the field end. A BMXNRP0200 in the main rack could replace the panel-end one, if we have one.</td></tr>
 <tr><td>Fiber</td><td>Multimode duplex patch cord or spool, 50/125 (OM2/OM3) or 62.5/125, connectors to match the converters (LC–LC or LC–SC).</td></tr>
 <tr><td>SICK SIG200, EtherNet/IP</td><td>Check the order code: <code>SIG200-0A0512200</code> lists EtherNet/IP; <code>SIG200-0A0G12200</code> is PROFINET and <b>will not</b> work with this setup. Power is M12 4-pin A-coded, 10–30 VDC; Ethernet is M12 D-coded.</td></tr>
 <tr><td>SICK MPB10</td><td>IO-Link V1.1. Bolt it rigidly to the motor housing near the bearing.</td></tr>
 <tr><td>Cables</td><td>Cat6 RJ45 patches (NOC → converter A, NOC → ATV930, two for the RIO ring); RJ45-to-M12 D-coded Ethernet (converter → SIG200); M12 A-coded 4/5-pin sensor cable (SIG200 → MPB10); M12 A-coded power cable for the SIG200.</td></tr>
 <tr><td>24 VDC supplies</td><td>Field end: converter B and the SIG200, about 2.5 A covers both. Panel end: converter A and the drop’s I/O.</td></tr>
 <tr><td>Altivar ATV930 · <b>ATV930U07M3</b></td><td>The unit on our demo board: 0.75 kW / 1 HP, IP21, with the graphic keypad. <b>Input 200–240 V three-phase, 50/60 Hz</b> (it will not run from a 120 V outlet). Output 0–240 V, <b>4.6 A</b> max. On the PLC side (like an MCC). Embedded Ethernet port to the BMENOC0301 <b>ETH2</b> (EtherNet/IP). Shielded motor cable to the motor.</td></tr>
-<tr><td>Motor + unbalance weight</td><td>Three-phase motor that suits the ATV930U07M3: 208–230 V, <b>1 HP or less, full-load current 4.6 A or less</b>. A 4-pole motor on 60 Hz runs at about 1750 rpm. with the MPB10 bolted near the drive-end bearing and a guarded clip-on offset weight on the shaft or a disc, so you can make vibration on cue.</td></tr>
+<tr><td>Motor + unbalance weight</td><td>Three-phase motor that suits the ATV930U07M3: 208–230 V, <b>1 HP or less, full-load current 4.6 A or less</b>. A 4-pole motor on 60 Hz runs at about 1750 rpm. with the MPB10 bolted near the drive-end bearing and a guarded clip-on offset weight on the shaft or a disc, so we can make vibration on cue.</td></tr>
 <tr><td>E-stop</td><td>Wired to the ATV930 <b>STO</b> inputs per its safety manual. The key switch on the RIO drop is the demo enable, not a safety device.</td></tr>
 <tr><td>Also on the demo board</td><td>A Magelis HMI and a small knob with a digital display. The demo doesn’t use them yet.</td></tr>
 <tr><td>Second laptop (optional)</td><td>UaExpert on the BMENUA0100 control port, to show the OPC UA side.</td></tr>
@@ -231,7 +231,7 @@
 </ol>
 <h3>Fiber link</h3>
 <ol class="steps">
-  <li>Remove the dust caps only when you are ready to plug in. Clean each LC ferrule with a one-click cleaner. Most bench “no link” faults are dirty ends.</li>
+  <li>Remove the dust caps only when we’re ready to plug in. Clean each LC ferrule with a one-click cleaner. Most bench “no link” faults are dirty ends.</li>
   <li>Plug the duplex cord into media converter A (panel) and the other end into media converter B (field).</li>
   <li><b>Tx must land on Rx.</b> Standard A–B duplex cords already cross over. If there is no link light later, flip the two simplex connectors at <i>one</i> end only.</li>
   <li>Dress the run in a loop or on the spool, no tighter than about a 30 mm bend radius. Put a label at each end.</li>
@@ -252,12 +252,12 @@
   <li>Set port <b>S1</b> to <b>IO-Link</b> mode. The MPB10 should be listed with its vendor and device ID, and the port LED should show IO-Link communication.</li>
   <li>Load the MPB10 IODD into the SIG200 (if it isn’t built in) so its values show by name. Set the measurement mode and warning/alarm thresholds here or in SOPAS ET.</li>
   <li>Turn on <b>Data Storage</b> on port S1 so a replacement MPB10 gets the same settings (demo step 5).</li>
-  <li>Note the SIG200’s EtherNet/IP assembly instances and where port S1’s process data starts in the input assembly. You need that byte offset in section 7.</li>
+  <li>Note the SIG200’s EtherNet/IP assembly instances and where port S1’s process data starts in the input assembly. We need that byte offset in section 7.</li>
 </ol>
 
 <h2><span class="n">6</span>Program the M580 and run the dashboard</h2>
 <p>The Control Expert program and its step-by-step build live in <code>m580-mpb-fiber\control-expert</code>. Open <b>Control-Expert-build-guide.html</b> there. It covers the ATV930 keypad set-up, the rack, RIO drop and BMENOC0301 set-up, the SIG200 and ATV930 in the DTM Browser, OPC UA on the BMENUA0100, the six ST sections (MPB10 decode, drive state machine with the panel buttons, stack light, dashboard link), and the commissioning order.</p>
-<p>The customer screen is in <code>m580-mpb-fiber\dashboard</code>: run <code>Start Dashboard.bat</code>. It has tabs for machine health, the drive, VFD control (run the ATV930 through the M580), the network path, every IP address, and setup. Plug the laptop into the CPU <b>service port (ETH1)</b> so the screen stays up when you pull the fiber; it then shows exactly where the data stops. Test the screen before the PLC is ready with <code>python fake_m580.py</code>.</p>
+<p>The customer screen is in <code>m580-mpb-fiber\dashboard</code>: run <code>Start Dashboard.bat</code>. It has tabs for machine health, the drive, VFD control (run the ATV930 through the M580), the network path, every IP address, and setup. Plug the laptop into the CPU <b>service port (ETH1)</b> so the screen stays up when we pull the fiber; it then shows exactly where the data stops. Test the screen before the PLC is ready with <code>python fake_m580.py</code>.</p>
 <div class="note">The dashboard only <b>reads</b> the PLC unless “Allow drive control” is ticked in its Setup tab <i>and</i> the PLC sets <code>xDashboardAllowed</code>. A 1 s watchdog in the PLC stops the motor if the dashboard goes silent. The E-stop is hard-wired to the ATV930 STO inputs.</div>
 
 <h2><span class="n">7</span>Bring-up checklist</h2>
@@ -269,7 +269,7 @@
   <li>Laptop on ETH1 pings <code>.10</code>, <code>.11</code>, <code>.15</code>, <code>.20</code> and <code>.30</code></li>
   <li>SIG200 NS LED solid green; port S1 shows IO-Link communication</li>
   <li>Device health bit TRUE in the animation table</li>
-  <li>Values change when you tap the motor; temperature reads close to room temperature at rest</li>
+  <li>Values change when we tap the motor; temperature reads close to room temperature at rest</li>
   <li>Pull the fiber: <code>xSensorCommAlarm</code> goes TRUE within a few RPIs. Reconnect and it clears</li>
   <li>Clip on the weight: vibration rises and the warning bit trips</li>
   <li>Dashboard in Live mode: heartbeat counting, every box on the SIG200 &amp; network tab green, every device reachable on the IP addresses tab</li>
@@ -285,7 +285,7 @@
 <tr><td>Fiber link up, no ping to SIG200</td><td>SIG200 IP still at 192.168.0.1, wrong mask, or the BMENOC0301 backplane port is disabled (the laptop on ETH1 then can’t see the NOC’s devices).</td></tr>
 <tr><td>RIO drop not healthy</td><td>Rotary switches don’t match the drop number in the project (set them with the power off), ring cables in the wrong CPU ports, or the drop’s IP clashes with another device.</td></tr>
 <tr><td>Ping OK, health bit FALSE</td><td>Wrong EDS or SIG200 variant (PROFINET model), assembly mismatch, or IP in the DTM doesn’t match the device.</td></tr>
-<tr><td>Data arrives but values look wrong</td><td>Byte order (swap high/low), wrong <code>PD_OFS</code>, or the MPB10 measurement mode doesn’t match the offsets you used.</td></tr>
+<tr><td>Data arrives but values look wrong</td><td>Byte order (swap high/low), wrong <code>PD_OFS</code>, or the MPB10 measurement mode doesn’t match the offsets we used.</td></tr>
 <tr><td>MPB10 not found on S1</td><td>Port not in IO-Link mode, cable not A-coded or too long (&gt; 20 m), or the port is disabled in the SIG200.</td></tr>
 </table></div>
 
@@ -295,7 +295,7 @@ These came from datasheets and distributor listings; check them against the offi
 <ul>
   <li>SIG200 order code really is the EtherNet/IP variant, and its power pin-out.</li>
   <li>MPB10 process-data layout, scaling and alarm-bit meanings (IODD / operating instructions).</li>
-  <li>The two media converters match: 100BASE-FX, multimode, 1310 nm, same connector, and the link budget covers the cord length you bring.</li>
+  <li>The two media converters match: 100BASE-FX, multimode, 1310 nm, same connector, and the link budget covers the cord length we bring.</li>
   <li>Which X80 I/O modules are on the drop and which channel each button and lamp uses. On our board: the second module with rotary switches next to the CRA, and the wired I/O module.</li>
   <li>The supply to the ATV930U07M3 is 200–240 V three-phase, and the motor nameplate (voltage, current 4.6 A or less, speed) suits it.</li>
   <li>BMENUA0100 firmware, mode selector setting, and default login (Schneider FAQ FA405101).</li>

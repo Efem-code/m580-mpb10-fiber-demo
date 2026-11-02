@@ -377,7 +377,7 @@ function renderVfd(s) {
   if (document.activeElement !== $("decIn")) $("decIn").value = c.decel_s;
   $("vRamps").textContent = d.accel == null ? "–" : `In use by the PLC: accel ${d.accel.toFixed(1)} s · decel ${d.decel.toFixed(1)} s`;
 
-  // permissives, in the order you'd check them
+  // permissives, in the order we'd check them
   const stoOff = d.eta != null && d.state !== "Switch on disabled";
   const perms = [
     [L.fresh, "M580 connected and running"],

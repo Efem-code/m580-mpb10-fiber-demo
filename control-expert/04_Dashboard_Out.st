@@ -20,7 +20,7 @@ wDashStatus.5 := xTempWarning;
 aDash[1] := WORD_TO_INT(wDashStatus);
 
 aDash[2] := REAL_TO_INT(rVibVelocity * 100.0);   (* mm/s x100 *)
-aDash[3] := -32768;                              (* X: -32768 = not available; fill in if you decode per-axis values *)
+aDash[3] := -32768;                              (* X: -32768 = not available; fill in if we decode per-axis values *)
 aDash[4] := -32768;                              (* Y *)
 aDash[5] := -32768;                              (* Z *)
 aDash[6] := REAL_TO_INT(rTemperature * 10.0);    (* degC x10 *)

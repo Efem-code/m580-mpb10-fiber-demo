@@ -57,7 +57,7 @@
 <div class="flow">
   <span class="edit">00_IO_Map</span><i>→</i><span>01_MPB10_Decode</span><i>→</i><span>02_Dashboard_In</span><i>→</i><span>03_ATV930_Control</span><i>→</i><span>04_Dashboard_Out</span><i>→</i><span class="edit">05_IO_Out</span>
 </div>
-<p>All six run in the <b>MAST</b> task, in that order. Only the two orange sections name the device DDTs Control Expert generates (SIG200, ATV930, and the X80 modules on the RIO drop), so they are the only ones you edit for your project. The others work on plain variables.</p>
+<p>All six run in the <b>MAST</b> task, in that order. Only the two orange sections name the device DDTs Control Expert generates (SIG200, ATV930, and the X80 modules on the RIO drop), so they are the only ones we edit for our project. The others work on plain variables.</p>
 <div class="wrap"><table>
 <tr><th style="width:26%">File</th><th>Does</th></tr>
 <tr><td>00_IO_Map.st</td><td>Copies the SIG200 and ATV930 device-DDT inputs (health bits, input bytes, ETA, RFRD, LCR, OTR, THR, LFT) and the RIO drop inputs (drop health, ring status, Start, Stop, Reset, key switch) into plain variables. Ships “unmapped” (health FALSE) so it compiles and nothing runs.</td></tr>
@@ -70,7 +70,7 @@
 </table></div>
 
 <h2><span class="n">2</span>Set up the ATV930 first</h2>
-<p>Do this on the drive’s keypad before the PLC gets involved. Menu names below are from the ATV900 family manuals; check them against your keypad. Our drive is an <b>ATV930U07M3</b>: 0.75 kW / 1 HP, 200–240 V three-phase in, 4.6 A out.</p>
+<p>Do this on the drive’s keypad before the PLC gets involved. Menu names below are from the ATV900 family manuals; check them against our keypad. Our drive is an <b>ATV930U07M3</b>: 0.75 kW / 1 HP, 200–240 V three-phase in, 4.6 A out.</p>
 <ol class="steps">
   <li><b>Supply:</b> 200–240 V three-phase on L1/L2/L3. It won’t run from a 120 V outlet.</li>
   <li><b>Motor:</b> enter the nameplate data (power, voltage, current, frequency, speed), then run <b>autotune</b>. The motor’s full-load current must be 4.6 A or less. In North America that’s usually 60 Hz and about 1750 rpm for a 4-pole motor. Jog the motor from the keypad to prove the power side.</li>
@@ -120,7 +120,7 @@
       <tr><td>Drive → PLC</td><td><code>ETA</code> status word, <code>RFRD</code> output speed, <code>LCR</code> motor current, <code>OTR</code> torque, <code>THR</code> motor thermal state, <code>LFT</code> last fault</td></tr>
     </table></div>
     If the drive’s scanner can’t carry all six inputs, keep ETA and RFRD cyclic and leave the others at 0. The dashboard shows “–” for them.</li>
-  <li><b>Build → Analyze</b>. Control Expert generates a device DDT for each device. Open the Data Editor and expand <code>SIG200</code> and <code>ATV930</code> to see the element names you need in section 6.</li>
+  <li><b>Build → Analyze</b>. Control Expert generates a device DDT for each device. Open the Data Editor and expand <code>SIG200</code> and <code>ATV930</code> to see the element names we need in section 6.</li>
 </ol>
 
 <h2><span class="n">5</span>Variables and sections</h2>
@@ -128,12 +128,12 @@
 <ol class="steps">
   <li>Data Editor → Variables: create every row in <code>variables.csv</code>. Give <code>aDash</code> the address <code>%MW1000</code> and <code>aCmd</code> <code>%MW1100</code>, and set the initial values shown (limits, <code>iMaxSpeed</code>, the placeholders).</li>
   <li>Program → Tasks → MAST → Sections: create six <b>ST</b> sections with the file names, in order <code>00</code> to <code>05</code>.</li>
-  <li>Paste each file’s text into its section. Build → Analyze. It should compile with zero errors before you map anything.</li>
+  <li>Paste each file’s text into its section. Build → Analyze. It should compile with zero errors before we map anything.</li>
 </ol>
 
 <h2><span class="n">6</span>Map the devices</h2>
 <p>Open <code>00_IO_Map</code> and replace each right-hand side marked <b>EDIT</b> with the device-DDT element:</p>
-<pre>xSIG200_Health := SIG200.Freshness;          (* example: use the names your Data Editor shows *)
+<pre>xSIG200_Health := SIG200.Freshness;          (* example: use the names our Data Editor shows *)
 aSIG200_In[iMapIdx] := SIG200.Inputs.Data[iMapIdx];
 xATV_Health    := ATV930.Freshness;
 wATV_ETA       := INT_TO_WORD(ATV930.Inputs.ETA);
@@ -141,20 +141,20 @@ iATV_Speed     := ATV930.Inputs.RFRD;</pre>
 <p>The RIO drop, in the same section. X80 discrete modules give device DDTs whose channels are <code>DIS_CH_IN[n].VALUE</code> and <code>DIS_CH_OUT[n].VALUE</code>:</p>
 <pre>xDrop_Health := ...;                          (* the drop's health bit *)
 xRing_Closed := ...;                          (* CPU DDT: RIO main ring redundancy OK; then set xRingDiagMapped TRUE *)
-xPB_Start    := DI_Module.DIS_CH_IN[0].VALUE;  (* use your module's instance name *)
+xPB_Start    := DI_Module.DIS_CH_IN[0].VALUE;  (* use our module's instance name *)
 xPB_StopNC   := DI_Module.DIS_CH_IN[1].VALUE;  (* N/C contact *)
 xPB_Reset    := DI_Module.DIS_CH_IN[2].VALUE;
 xKeySwitch   := DI_Module.DIS_CH_IN[3].VALUE;
 xDemoEnable  := xKeySwitch AND xDrop_Health;  (* uncomment once the key switch is wired *)</pre>
 <p>Then uncomment and edit the lines in <code>05_IO_Out</code> so CMD and LFRD reach the drive and the lamps reach the stack light. Build, then download over USB (first time) or ETH1.</p>
 <div class="note">The Stop push-button is a normal control stop, not an E-stop. Use an N/C contact so a broken wire stops the motor. The E-stop stays on the ATV930 STO inputs.</div>
-<div class="note">The MPB10 offsets and scaling (<code>iVal1_Ofs</code>, <code>iVal2_Ofs</code>, <code>rVal1_Gain</code>, <code>rVal2_Gain</code>) are placeholders. Take them from the MPB10 IODD for the measurement mode you set on the sensor. Until then the vibration and temperature numbers are not meaningful.</div>
+<div class="note">The MPB10 offsets and scaling (<code>iVal1_Ofs</code>, <code>iVal2_Ofs</code>, <code>rVal1_Gain</code>, <code>rVal2_Gain</code>) are placeholders. Take them from the MPB10 IODD for the measurement mode we set on the sensor. Until then the vibration and temperature numbers are not meaningful.</div>
 
 <h2><span class="n">7</span>OPC UA on the BMENUA0100</h2>
 <p>This shows the same PLC data reaching an IT/SCADA network through a secure, separate port, with no route from that network to the drive or sensor.</p>
 <ol class="steps">
   <li>Project Settings → General → PLC embedded data: tick <b>Data dictionary</b>, so the module can browse the PLC variables.</li>
-  <li>Expose the variables you want to show (for example <code>rVibVelocity</code>, <code>rTemperature</code>, <code>iATV_Speed</code>, <code>xVibAlarm</code>). In the Data Editor, the <b>HMI</b> column marks a variable as visible to OPC UA.</li>
+  <li>Expose the variables we want to show (for example <code>rVibVelocity</code>, <code>rTemperature</code>, <code>iATV_Speed</code>, <code>xVibAlarm</code>). In the Data Editor, the <b>HMI</b> column marks a variable as visible to OPC UA.</li>
   <li>The module’s operating mode (Standard or Secured) is chosen on the module itself. <b>Standard</b> is quickest for a first test. <b>Secured</b> is the one to show a customer: certificates, user accounts, signed and encrypted sessions.</li>
   <li>On a second laptop at <code>192.168.1.100</code>, plug into the NUA <b>control port</b> and open UaExpert: <code>opc.tcp://192.168.1.10:4840</code>. Browse to the variables and drag them into the data view.</li>
 </ol>
@@ -170,12 +170,12 @@ xDemoEnable  := xKeySwitch AND xDrop_Health;  (* uncomment once the key switch i
 <h3>Sensor</h3>
 <ol class="steps">
   <li>Animation table: <code>xSIG200_Health</code> TRUE. Watch <code>aSIG200_In</code> and tap the motor: the bytes that move are the MPB10’s. Set <code>iPD_Ofs</code> so byte 0 of the 20 lines up with them.</li>
-  <li>Fill in the IODD offsets and gains. Check <code>rTemperature</code> reads room temperature at rest and <code>rVibVelocity</code> rises when you tap.</li>
+  <li>Fill in the IODD offsets and gains. Check <code>rTemperature</code> reads room temperature at rest and <code>rVibVelocity</code> rises when we tap.</li>
   <li>Pull the fiber: <code>xSensorCommAlarm</code> TRUE and the values go to 0 within a second. Reconnect.</li>
 </ol>
 <h3>Drive (motor uncoupled, low speed)</h3>
 <ol class="steps">
-  <li>Set <code>iMaxSpeed</code> to 300 for the first run. <code>xATV_Health</code> must be TRUE and <code>wATV_ETA</code> must change when you press the E-stop.</li>
+  <li>Set <code>iMaxSpeed</code> to 300 for the first run. <code>xATV_Health</code> must be TRUE and <code>wATV_ETA</code> must change when we press the E-stop.</li>
   <li>Set <code>xDemoEnable</code> TRUE, <code>iLocalSpeed</code> 200, then <code>xLocalRun</code> TRUE. Watch ETA go <code>16#0040</code> → <code>16#0021</code> → <code>16#0023</code> → <code>16#0027</code> and <code>iATV_Speed</code> follow the ramp.</li>
   <li>Set <code>xLocalRun</code> FALSE: the motor stops on its ramp. Try <code>xLocalReverse</code>. Press the E-stop while running: the motor must stop no matter what the PLC says.</li>
   <li>From the panel: key ON, press Start (runs at <code>iPanelSpeed</code>), press Stop. Turn the key OFF while running: it stops and won’t restart until Start is pressed again.</li>
@@ -190,13 +190,13 @@ xDemoEnable  := xKeySwitch AND xDrop_Health;  (* uncomment once the key switch i
   <li>Close the dashboard page while the motor runs: the PLC watchdog drops the run command within about 1 s.</li>
 </ol>
 
-<h2><span class="n">9</span>Confirm on your hardware</h2>
+<h2><span class="n">9</span>Confirm on our hardware</h2>
 <div class="warn"><ul style="margin:0">
   <li>Which X80 I/O modules are on the drop, their instance names, and which channel each button and lamp is wired to. On our board: the second module with rotary switches next to the CRA, and the wired I/O module.</li>
   <li>ATV930U07M3 supply is 200–240 V three-phase, the keypad is on Remote, and the motor nameplate suits a 4.6 A drive.</li>
   <li>The drop’s health bit and the CPU’s RIO main-ring status bit (element names in the Data Editor).</li>
   <li>BMENOC0301 backplane port enabled, and the laptop on ETH1 can reach the SIG200 and ATV930.</li>
-  <li>BMENUA0100: firmware and Control Expert version, the mode selector, and how the HMI flag exposes variables on your version.</li>
+  <li>BMENUA0100: firmware and Control Expert version, the mode selector, and how the HMI flag exposes variables on our version.</li>
   <li>Device-DDT element names for the SIG200 and ATV930 (health/Freshness bits, input and output elements).</li>
   <li>Which SIG200 bit means “device present / process data valid on S1”, and the S1 byte offset.</li>
   <li>MPB10 IODD: value offsets, scaling, and alarm-bit meanings.</li>

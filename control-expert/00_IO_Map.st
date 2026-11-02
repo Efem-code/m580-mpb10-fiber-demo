@@ -2,14 +2,14 @@
    Section 00_IO_Map   (MAST task, FIRST section)
    The ONLY section that reads the device DDTs Control Expert created for the SIG200 and
    the ATV930 (both scanned by the BMENOC0301) and the X80 I/O on the BMECRA31210 RIO drop. Everything else works on the plain variables filled in here, so if a device
-   alias or DDT element name differs on your project, you fix it in this one place.
+   alias or DDT element name differs on our project, we fix it in this one place.
 
    As shipped it compiles with the devices "not mapped": health bits FALSE, so nothing runs.
    For each line marked EDIT, replace the right-hand side with the element from the Data
    Editor (Data Editor > Variables > expand the device alias, e.g. SIG200 / ATV930):
      - health      : the connection "Freshness" bit of the device's input connection
      - input bytes : the input assembly of the SIG200 (array of bytes / words)
-     - drive words : the ETA, RFRD, LCR, OTR, THR, LFT elements you set up for I/O scanning
+     - drive words : the ETA, RFRD, LCR, OTR, THR, LFT elements we set up for I/O scanning
    ===================================================================================== *)
 
 (* ---------------- SICK SIG200 (EtherNet/IP, IO-Link master) ---------------- *)

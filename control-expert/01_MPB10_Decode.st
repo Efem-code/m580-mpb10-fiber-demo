@@ -5,7 +5,7 @@
    iPD_Ofs   : where port S1's process data starts inside aSIG200_In (SIG200 manual / web UI)
    iVal1_Ofs, iVal2_Ofs, rVal1_Gain, rVal2_Gain :
                PLACEHOLDERS. Take the offsets and scaling from the MPB10 IODD / operating
-               instructions for the measurement mode you configured. IO-Link data is
+               instructions for the measurement mode we configured. IO-Link data is
                big-endian (high byte first).
    ===================================================================================== *)
 
