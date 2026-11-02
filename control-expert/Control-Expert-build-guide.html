@@ -70,11 +70,13 @@
 </table></div>
 
 <h2><span class="n">2</span>Set up the ATV930 first</h2>
-<p>Do this on the drive’s keypad before the PLC gets involved. Menu names below are from the ATV900 family manuals; check them against your keypad.</p>
+<p>Do this on the drive’s keypad before the PLC gets involved. Menu names below are from the ATV900 family manuals; check them against your keypad. Our drive is an <b>ATV930U07M3</b>: 0.75 kW / 1 HP, 200–240 V three-phase in, 4.6 A out.</p>
 <ol class="steps">
-  <li><b>Motor:</b> enter the nameplate data (power, voltage, current, frequency, speed), then run <b>autotune</b>. Jog the motor from the keypad to prove the power side.</li>
+  <li><b>Supply:</b> 200–240 V three-phase on L1/L2/L3. It won’t run from a 120 V outlet.</li>
+  <li><b>Motor:</b> enter the nameplate data (power, voltage, current, frequency, speed), then run <b>autotune</b>. The motor’s full-load current must be 4.6 A or less. In North America that’s usually 60 Hz and about 1750 rpm for a 4-pole motor. Jog the motor from the keypad to prove the power side.</li>
   <li><b>Embedded Ethernet:</b> Communication → Embedded Ethernet: IP mode <b>Fixed</b>, IP <code>192.168.0.30</code>, mask <code>255.255.255.0</code>, gateway <code>192.168.0.10</code>. Power-cycle the drive so the address takes.</li>
   <li><b>Command and reference:</b> Ref Freq 1 Config [Fr1] = <b>Embedded Ethernet</b>; Control mode [CHCF] = <b>Not separate</b>. That gives the CiA402 (Drivecom) profile this program uses.</li>
+  <li><b>Local / Remote:</b> the keypad’s <b>LOCAL/REMOTE</b> key must be on <b>Remote</b>. In Local the keypad owns the drive and the M580 can’t run it, which is the usual “it won’t start” on the day.</li>
   <li><b>Comms-loss response:</b> set the Embedded Ethernet fault response to <b>ramp stop</b> or <b>freewheel</b>, so a cut cable stops the motor.</li>
   <li><b>STO:</b> wire the E-stop to the STO inputs as the ATV930 safety manual shows. Confirm the drive shows “STO” when the E-stop is pressed.</li>
 </ol>
@@ -82,11 +84,11 @@
 <h2><span class="n">3</span>Project and hardware</h2>
 <div class="wrap"><table>
 <tr><th style="width:26%">Where</th><th>What</th><th style="width:22%">IP</th></tr>
-<tr><td>Main rack (BMEXBP, Ethernet backplane)</td><td>Power supply, <b>BMEP584040</b> CPU, <b>BMENOC0301</b>, <b>BMENUA0100</b>. The NOC and NUA must sit in Ethernet-capable slots.</td><td>CPU <code>.10</code>, NOC <code>.11</code>, NUA <code>.12</code></td></tr>
+<tr><td>Main rack (BMEXBP, Ethernet backplane)</td><td>Power supply, <b>BMEP584040</b> CPU, <b>BMENOC0301</b>, <b>BMENUA0100</b>. The NOC and NUA must sit in Ethernet-capable slots. Our board, left to right: power supply, CPU, NUA, NOC, spare slot. Put them in the same slots in the project.</td><td>CPU <code>.10</code>, NOC <code>.11</code>, NUA <code>.12</code></td></tr>
 <tr><td>RIO main ring</td><td>CPU <b>ETH2</b> → CRA port A, CRA port B → CPU <b>ETH3</b>. Copper, closes the ring.</td><td>–</td></tr>
-<tr><td>RIO drop 1</td><td><b>BMECRA31210</b> plus the X80 discrete I/O: Start, Stop (N/C), Reset, key switch, three-lamp stack light.</td><td>CRA <code>.15</code></td></tr>
+<tr><td>RIO drop 1</td><td><b>BMECRA31210</b> plus the X80 discrete I/O: Start, Stop (N/C), Reset, key switch, three-lamp stack light. Our board, left to right: power supply, CRA, a second module with rotary switches (part number to confirm), the wired I/O module (part number to confirm), a blank module, spare slot.</td><td>CRA <code>.15</code></td></tr>
 <tr><td>BMENOC0301 front ports</td><td><b>ETH2</b> → ATV930. <b>ETH3</b> → media converter → fiber → media converter → SIG200.</td><td>ATV <code>.30</code>, SIG <code>.20</code></td></tr>
-<tr><td>CPU service port ETH1</td><td>The dashboard laptop.</td><td>Laptop <code>.100</code></td></tr>
+<tr><td>CPU service port ETH1</td><td>The dashboard laptop. (The NOC’s top port, ETH1, is a service port too: fine for the Magelis HMI or a second laptop.)</td><td>Laptop <code>.100</code></td></tr>
 <tr><td>BMENUA0100 control port</td><td>Its own network for OPC UA (second laptop with UaExpert, or SCADA).</td><td><code>192.168.1.10</code></td></tr>
 </table></div>
 <p>All device-side addresses are <code>192.168.0.x</code> / <code>255.255.255.0</code>. The dashboard’s IP addresses tab holds the same plan; change it there and here together.</p>
@@ -177,7 +179,7 @@ xDemoEnable  := xKeySwitch AND xDrop_Health;  (* uncomment once the key switch i
   <li>Set <code>xDemoEnable</code> TRUE, <code>iLocalSpeed</code> 200, then <code>xLocalRun</code> TRUE. Watch ETA go <code>16#0040</code> → <code>16#0021</code> → <code>16#0023</code> → <code>16#0027</code> and <code>iATV_Speed</code> follow the ramp.</li>
   <li>Set <code>xLocalRun</code> FALSE: the motor stops on its ramp. Try <code>xLocalReverse</code>. Press the E-stop while running: the motor must stop no matter what the PLC says.</li>
   <li>From the panel: key ON, press Start (runs at <code>iPanelSpeed</code>), press Stop. Turn the key OFF while running: it stops and won’t restart until Start is pressed again.</li>
-  <li>Raise <code>iMaxSpeed</code> to the demo limit (1500 rpm or the motor’s rating, whichever is lower).</li>
+  <li>Raise <code>iMaxSpeed</code> to the demo limit: the motor’s nameplate speed or lower (about 1750 rpm for a 60 Hz 4-pole motor). Set the dashboard’s Setup → speed limit and nominal speed to match.</li>
 </ol>
 <h3>Dashboard</h3>
 <ol class="steps">
@@ -190,7 +192,8 @@ xDemoEnable  := xKeySwitch AND xDrop_Health;  (* uncomment once the key switch i
 
 <h2><span class="n">9</span>Confirm on your hardware</h2>
 <div class="warn"><ul style="margin:0">
-  <li>Which X80 I/O modules are on the drop, their instance names, and which channel each button and lamp is wired to.</li>
+  <li>Which X80 I/O modules are on the drop, their instance names, and which channel each button and lamp is wired to. On our board: the second module with rotary switches next to the CRA, and the wired I/O module.</li>
+  <li>ATV930U07M3 supply is 200–240 V three-phase, the keypad is on Remote, and the motor nameplate suits a 4.6 A drive.</li>
   <li>The drop’s health bit and the CPU’s RIO main-ring status bit (element names in the Data Editor).</li>
   <li>BMENOC0301 backplane port enabled, and the laptop on ETH1 can reach the SIG200 and ATV930.</li>
   <li>BMENUA0100: firmware and Control Expert version, the mode selector, and how the HMI flag exposes variables on your version.</li>

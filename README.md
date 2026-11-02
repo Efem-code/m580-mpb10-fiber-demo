@@ -39,6 +39,8 @@ To try Live mode without a PLC: run `python fake_m580.py`, then in the dashboard
 
 ## Using it with the real hardware
 
+Our demo board has a BMEP584040 CPU, BMENOC0301, BMENUA0100 and a BMECRA31210 RIO drop, plus an **ATV930U07M3** drive (0.75 kW / 1 HP, **200–240 V three-phase input**, 4.6 A output).
+
 1. Build the rig with `M580-MPB10-fiber-build-guide.html` (open it in a browser).
 2. Build and download the PLC program with `control-expert/Control-Expert-build-guide.html`.
 3. Plug the laptop into the M580 CPU service port (ETH1), set it to `192.168.0.100 / 255.255.255.0`, and start the dashboard with `--live`.
