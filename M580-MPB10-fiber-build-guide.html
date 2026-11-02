@@ -46,7 +46,7 @@
   @media print {
     body { background: #fff; font-size: 12.5px; }
     .bar { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-    h2 { break-after: avoid; } .card, table, pre, svg { break-inside: avoid; }
+    h2, h3 { break-after: avoid; } .card, pre, svg, tr, .warn, .note, ol.steps > li { break-inside: avoid; }
     th, ol.steps > li::before, .warn, .note { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
   }
 </style>
