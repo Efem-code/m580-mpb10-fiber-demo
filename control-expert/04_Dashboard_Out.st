@@ -1,5 +1,5 @@
 (* =====================================================================================
-   Section 04_Dashboard_Out   (MAST task)
+   Section S04_Dashboard_Out   (MAST task)
    Fills the status block the dashboard reads.
 
    aDash AT %MW1000 : ARRAY[0..31] OF INT     (map: Setup tab of the dashboard)

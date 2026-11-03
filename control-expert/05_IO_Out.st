@@ -1,5 +1,5 @@
 (* =====================================================================================
-   Section 05_IO_Out   (MAST task, LAST section)
+   Section S05_IO_Out   (MAST task, LAST section)
    Writes the command word and speed reference into the ATV930 device DDT (scanned by the
    BMENOC0301) and the stack light to the X80 outputs on the BMECRA31210 RIO drop.
    EDIT each line to the element in the Data Editor, then remove the comment marks.

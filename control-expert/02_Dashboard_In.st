@@ -1,5 +1,5 @@
 (* =====================================================================================
-   Section 02_Dashboard_In   (MAST task)
+   Section S02_Dashboard_In   (MAST task)
    Reads the dashboard's command block and runs the watchdog.
 
    aCmd AT %MW1100 : ARRAY[0..4] OF INT

@@ -1,5 +1,5 @@
 (* =====================================================================================
-   Section 03_ATV930_Control   (MAST task)
+   Section S03_ATV930_Control   (MAST task)
    Runs the ATV930 through the CiA402 (Drivecom) state machine over EtherNet/IP
    (the drive is scanned by the BMENOC0301).
 

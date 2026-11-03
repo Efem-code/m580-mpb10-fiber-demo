@@ -1,5 +1,5 @@
 (* =====================================================================================
-   Section 01_MPB10_Decode   (MAST task)
+   Section S01_MPB10_Decode   (MAST task)
    Turns the MPB10's 20-byte IO-Link process data into engineering values.
 
    iPD_Ofs   : where port S1's process data starts inside aSIG300_In (SIG300 manual / web UI)
