@@ -83,6 +83,12 @@ iATV_Current;INT;;;Motor current, 0.1 A (LCR)
 iATV_Torque;INT;;;Motor torque, % (OTR)
 iATV_Thermal;INT;;;Motor thermal state, % (THR)
 iATV_LastFault;INT;;;Last fault code (LFT)
+xSimBridge;BOOL;;FALSE;Testing only: drive values from drive_bridge.py (PLC simulator). FALSE on the real M580
+aBridge;ARRAY[0..9] OF INT;%MW1200;;Drive bridge block (drive_bridge.py writes 0-7, the PLC writes 8)
+iBridgeHbLast;INT;;;Last bridge heartbeat
+xBridgeHbChanged;BOOL;;;Bridge heartbeat changed this scan
+tonBridgeWd;TON;;;Bridge watchdog, 1 s
+wBridgeStat;WORD;;;Bridge status bits (aBridge[1])
 xATV_Fault;BOOL;;;Drive in fault
 xATV_Running;BOOL;;;Operation enabled
 xATV_Ready;BOOL;;;Ready / switched on / running

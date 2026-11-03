@@ -9,6 +9,8 @@ Start Dashboard.bat --lan        also show it on a TV / iPad on the same network
 python fake_m580.py              stand-in PLC on 127.0.0.1:5020 that obeys the command block
 python fake_m580.py --no-enable  ...with the PLC-side permission off
 python fake_nua.py               stand-in BMENUA0100 (OPC UA on 127.0.0.1:4840), needs: python -m pip install asyncua
+python drive_bridge.py           Control Expert's PLC simulator runs the real ATV930 (testing only, see the
+                                 Control Expert guide, section 8; or Start Drive Bridge.bat)
 ```
 
 Tabs:

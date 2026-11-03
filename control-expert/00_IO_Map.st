@@ -33,6 +33,29 @@ iATV_Torque    := 0;                             (* EDIT: ATV930.Inputs.OTR   mo
 iATV_Thermal   := 0;                             (* EDIT: ATV930.Inputs.THR   motor thermal state, % *)
 iATV_LastFault := 0;                             (* EDIT: ATV930.Inputs.LFT   last fault code *)
 
+(* ---------------- Testing only: PLC simulator + real drive through drive_bridge.py ----------------
+   The PLC simulator can't scan the ATV930, so dashboard\drive_bridge.py does it over Modbus TCP:
+   it sends our CMD, LFRD, ACC and DEC (aDash[28], [23], [30], [31]) to the drive and writes the
+   drive's values back into aBridge AT %MW1200. Set xSimBridge TRUE only in the simulator; on the
+   real M580 leave it FALSE (its initial value) and the DDT lines above are used.
+     aBridge[0] bridge heartbeat   [1] bit 0 = drive answering   [2] ETA  [3] RFRD  [4] LCR
+            [5] OTR  [6] THR  [7] LFT   [8] written HERE: 1 = this program is in bridge mode
+   The bridge only drives the motor while [8] = 1 and our heartbeat (aDash[0]) is counting. *)
+aBridge[8] := BOOL_TO_INT(xSimBridge);
+IF xSimBridge THEN
+    xBridgeHbChanged := aBridge[0] <> iBridgeHbLast;
+    iBridgeHbLast    := aBridge[0];
+    tonBridgeWd(IN := NOT xBridgeHbChanged, PT := t#1s);
+    wBridgeStat    := INT_TO_WORD(aBridge[1]);
+    xATV_Health    := NOT tonBridgeWd.Q AND wBridgeStat.0;
+    wATV_ETA       := INT_TO_WORD(aBridge[2]);
+    iATV_Speed     := aBridge[3];
+    iATV_Current   := aBridge[4];
+    iATV_Torque    := aBridge[5];
+    iATV_Thermal   := aBridge[6];
+    iATV_LastFault := aBridge[7];
+END_IF;
+
 (* ---------------- RIO drop: BMECRA31210 + X80 I/O (operator panel) ---------------- *)
 (* X80 discrete modules on the drop give device DDTs whose channels are .DIS_CH_IN[n].VALUE
    (inputs) and .DIS_CH_OUT[n].VALUE (outputs). Check the instance names in the Data Editor. *)

@@ -254,6 +254,28 @@ xDemoEnable  := xKeySwitch AND xDrop_Health;  (* uncomment once the key switch i
   <li>Close the dashboard page while the motor runs: the PLC watchdog drops the run command within about 1 s.</li>
 </ol>
 
+<h3>Before the M580 is ready: the PLC simulator and the real drive</h3>
+<p>Control Expert’s PLC simulator runs our program but can’t scan the ATV930. <code>dashboard\drive_bridge.py</code> does the drive’s half over Modbus TCP: it sends our <code>CMD</code>, <code>LFRD</code>, <code>ACC</code> and <code>DEC</code> to the drive and writes <code>ETA</code>, <code>RFRD</code>, <code>LCR</code>, <code>OTR</code>, <code>THR</code> and <code>LFT</code> back into <code>aBridge</code> at <code>%MW1200</code>. With <code>xSimBridge</code> TRUE, <code>00_IO_Map</code> takes the drive values from there instead of the DDT. For testing only, motor uncoupled.</p>
+<ol class="steps">
+  <li>Free port 502 on this PC: the PLC simulator’s Modbus server needs it. Close anything else that uses it (the Lexium cobot simulator does).</li>
+  <li>Make sure the real M580 isn’t scanning the drive (rack off, or NOC ETH2 unplugged): one master at a time. Patch the laptop to the drive’s Ethernet port (directly or through a small switch) and give that port an address on the device network, for example <code>192.168.20.100</code>.</li>
+  <li>On the drive: keypad on <b>Remote</b>, the command and reference channel on embedded Ethernet (as in section 2), and the communication-loss response set, so a crashed PC also stops the motor.</li>
+  <li>Control Expert: PLC → <b>Simulation mode</b>, build, connect, download, RUN.</li>
+  <li>Start the bridge: <b>Start Drive Bridge.bat</b> in the dashboard folder (or <code>python drive_bridge.py</code>). It says what it’s waiting for, once a second.</li>
+  <li>Animation table: <code>xSimBridge</code> TRUE. The bridge says <i>driving</i> and <code>xATV_Health</code> goes TRUE. Then commission as in “Drive” above: <code>xDemoEnable</code>, <code>iLocalSpeed</code> 200, <code>xLocalRun</code>.</li>
+  <li>The dashboard can watch too: IP addresses tab → M580 CPU <code>127.0.0.1</code>, Setup → Mode <b>Live</b>. (It warns that 127.0.0.1 isn’t on the control network; that’s expected here.) Put the real address back afterwards.</li>
+</ol>
+<div class="wrap"><table>
+<tr><th style="width:38%">What stops the motor</th><th>How</th></tr>
+<tr><td>E-stop</td><td>Hard-wired to STO: works whatever the PC does.</td></tr>
+<tr><td>Simulator stopped, paused or closed</td><td>Its heartbeat stops; within 1 s the bridge sends a ramp stop (<code>CMD 16#0007</code>, <code>LFRD 0</code>). It won’t restart by itself: stop the run in the program, then start again.</td></tr>
+<tr><td><code>xSimBridge</code> set FALSE</td><td>The same ramp stop.</td></tr>
+<tr><td>Bridge closed (Ctrl+C or its window)</td><td>A ramp stop on the way out.</td></tr>
+<tr><td>PC crash or cable pulled</td><td>The drive’s own communication-loss response.</td></tr>
+<tr><td>Bridge stops talking to the simulator</td><td>The program’s 1 s watchdog on <code>aBridge[0]</code> drops <code>xATV_Health</code>, so it stops asking for a run.</td></tr>
+</table></div>
+<p>The bridge caps the speed reference at 300 rpm until we pass <code>--max-rpm</code> (for example <code>python drive_bridge.py --max-rpm 1750</code>). If the drive doesn’t answer, try <code>--drive-unit 248</code> or <code>255</code>. <code>--no-ramps</code> keeps the keypad ramps. Leave <code>xSimBridge</code>’s initial value FALSE, so the real M580 always uses the DDT.</p>
+
 <h2><span class="n">9</span>Confirm on our hardware</h2>
 <div class="warn"><ul style="margin:0">
   <li>Which X80 I/O modules are on the drop, their instance names, and which channel each button and lamp is wired to. On our board: the second module with rotary switches next to the CRA, and the wired I/O module.</li>
@@ -266,6 +288,7 @@ xDemoEnable  := xKeySwitch AND xDrop_Health;  (* uncomment once the key switch i
   <li>Which SIG300 bit means “device present / process data valid on S1”, and the S1 byte offset.</li>
   <li>MPB10 IODD: value offsets, scaling, and alarm-bit meanings.</li>
   <li>ATV930 keypad menu names, the comms-fault parameter, and whether LCR/OTR/THR/LFT (and ACC/DEC on the output side) fit in the drive’s cyclic exchange.</li>
+  <li>Drive bridge (simulator testing): the ATV930’s Modbus unit ID, that it accepts CMD and LFRD over Modbus TCP with the channel set to embedded Ethernet, and that the PLC simulator answers on 127.0.0.1:502.</li>
   <li>The Modbus unit ID the M580 answers on (the dashboard defaults to 255; try 0 if it gets no reply).</li>
 </ul></div>
 
