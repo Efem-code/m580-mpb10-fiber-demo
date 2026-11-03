@@ -1,0 +1,339 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<VariablesExchangeFile>
+<fileHeader company="Schneider Automation" product="EcoStruxure Control Expert" dateTime="date_and_time#2026-11-03-15:42:27" content="Variable source file" DTDVersion="41"></fileHeader>
+<contentHeader name="M580 MPB10 demo" version="0.0.000" dateTime="date_and_time#2026-11-03-15:42:27"></contentHeader>
+<dataBlock>
+<variables name="aDash" typeName="ARRAY[0..31] OF INT" topologicalAddress="%MW1000">
+<comment>Status block read by the dashboard</comment>
+</variables>
+<variables name="aCmd" typeName="ARRAY[0..4] OF INT" topologicalAddress="%MW1100">
+<comment>Command block written by the dashboard (only when drive control is on)</comment>
+</variables>
+<variables name="aSIG300_In" typeName="ARRAY[0..63] OF BYTE">
+<comment>Copy of the SIG300 input assembly (00_IO_Map)</comment>
+</variables>
+<variables name="xSIG300_Health" typeName="BOOL">
+<comment>SIG300 EtherNet/IP connection healthy</comment>
+<variableInit value="FALSE"></variableInit>
+</variables>
+<variables name="xMPB_PortActive" typeName="BOOL">
+<comment>Port S1 has a working IO-Link device</comment>
+<variableInit value="FALSE"></variableInit>
+</variables>
+<variables name="xMPB_DataOK" typeName="BOOL">
+<comment>MPB10 values are valid this scan</comment>
+<variableInit value="FALSE"></variableInit>
+</variables>
+<variables name="iPD_Ofs" typeName="INT">
+<comment>PLACEHOLDER: offset of port S1 process data in aSIG300_In</comment>
+<variableInit value="0"></variableInit>
+</variables>
+<variables name="iVal1_Ofs" typeName="INT">
+<comment>PLACEHOLDER: offset of the vibration value inside the 20 bytes (IODD)</comment>
+<variableInit value="2"></variableInit>
+</variables>
+<variables name="iVal2_Ofs" typeName="INT">
+<comment>PLACEHOLDER: offset of the temperature value inside the 20 bytes (IODD)</comment>
+<variableInit value="12"></variableInit>
+</variables>
+<variables name="rVal1_Gain" typeName="REAL">
+<comment>PLACEHOLDER: vibration scaling to mm/s (IODD)</comment>
+<variableInit value="0.01"></variableInit>
+</variables>
+<variables name="rVal2_Gain" typeName="REAL">
+<comment>PLACEHOLDER: temperature scaling to degC (IODD)</comment>
+<variableInit value="0.1"></variableInit>
+</variables>
+<variables name="wMPB_Alarm" typeName="WORD">
+<comment>MPB10 alarm word (process data bits 0-15)</comment>
+</variables>
+<variables name="wMPB_Val1" typeName="WORD">
+<comment>Raw vibration value</comment>
+</variables>
+<variables name="wMPB_Val2" typeName="WORD">
+<comment>Raw temperature value</comment>
+</variables>
+<variables name="rVibVelocity" typeName="REAL">
+<comment>Vibration velocity RMS, mm/s</comment>
+</variables>
+<variables name="rTemperature" typeName="REAL">
+<comment>Temperature, degC</comment>
+</variables>
+<variables name="rVibWarnLimit" typeName="REAL">
+<comment>PLC warning limit, mm/s (ISO 10816-3 B/C)</comment>
+<variableInit value="2.8"></variableInit>
+</variables>
+<variables name="rVibAlarmLimit" typeName="REAL">
+<comment>PLC alarm limit, mm/s (ISO 10816-3 C/D)</comment>
+<variableInit value="4.5"></variableInit>
+</variables>
+<variables name="rTempWarnLimit" typeName="REAL">
+<comment>PLC temperature warning, degC</comment>
+<variableInit value="70.0"></variableInit>
+</variables>
+<variables name="xVibWarning" typeName="BOOL">
+<comment>Vibration warning</comment>
+</variables>
+<variables name="xVibAlarm" typeName="BOOL">
+<comment>Vibration alarm</comment>
+</variables>
+<variables name="xShock" typeName="BOOL">
+<comment>Shock detected</comment>
+</variables>
+<variables name="xTempWarning" typeName="BOOL">
+<comment>Temperature warning</comment>
+</variables>
+<variables name="xSensorCommAlarm" typeName="BOOL">
+<comment>Sensor data not reaching the PLC</comment>
+</variables>
+<variables name="rtShock" typeName="R_TRIG">
+<comment>Shock edge</comment>
+</variables>
+<variables name="iShockCount" typeName="INT">
+<comment>Shock counter</comment>
+<variableInit value="0"></variableInit>
+</variables>
+<variables name="iMapIdx" typeName="INT">
+<comment>Loop index (00_IO_Map)</comment>
+</variables>
+<variables name="xDemoEnable" typeName="BOOL">
+<comment>Bench enable / key switch. FALSE = drive never gets a run command</comment>
+<variableInit value="FALSE"></variableInit>
+</variables>
+<variables name="xDrop_Health" typeName="BOOL">
+<comment>BMECRA31210 RIO drop healthy (00_IO_Map)</comment>
+<variableInit value="FALSE"></variableInit>
+</variables>
+<variables name="xRing_Closed" typeName="BOOL">
+<comment>RIO main ring redundant: both paths OK (00_IO_Map)</comment>
+<variableInit value="FALSE"></variableInit>
+</variables>
+<variables name="xRingDiagMapped" typeName="BOOL">
+<comment>Set TRUE once xRing_Closed is mapped, so the dashboard shows ring status</comment>
+<variableInit value="FALSE"></variableInit>
+</variables>
+<variables name="xPB_Start" typeName="BOOL">
+<comment>Panel Start push-button (N/O) on the RIO drop</comment>
+<variableInit value="FALSE"></variableInit>
+</variables>
+<variables name="xPB_StopNC" typeName="BOOL">
+<comment>Panel Stop push-button (N/C): TRUE = not pressed</comment>
+<variableInit value="TRUE"></variableInit>
+</variables>
+<variables name="xPB_Reset" typeName="BOOL">
+<comment>Panel fault reset push-button</comment>
+<variableInit value="FALSE"></variableInit>
+</variables>
+<variables name="xKeySwitch" typeName="BOOL">
+<comment>Panel enable key switch</comment>
+<variableInit value="FALSE"></variableInit>
+</variables>
+<variables name="xPanelStop" typeName="BOOL">
+<comment>Panel Stop pressed (or its wire broken)</comment>
+</variables>
+<variables name="xStopAny" typeName="BOOL">
+<comment>Any stop request</comment>
+</variables>
+<variables name="rtPanelStart" typeName="R_TRIG">
+<comment>Panel Start edge</comment>
+</variables>
+<variables name="rtDashRun" typeName="R_TRIG">
+<comment>Dashboard run edge</comment>
+</variables>
+<variables name="rtLocalRun" typeName="R_TRIG">
+<comment>Animation-table run edge</comment>
+</variables>
+<variables name="iRunSource" typeName="INT">
+<comment>Who started the motor: 0 none, 1 panel, 2 dashboard, 3 animation table</comment>
+<variableInit value="0"></variableInit>
+</variables>
+<variables name="iPanelSpeed" typeName="INT">
+<comment>Speed when started from the panel, rpm</comment>
+<variableInit value="900"></variableInit>
+</variables>
+<variables name="xLampGreen" typeName="BOOL">
+<comment>Stack light green: running</comment>
+</variables>
+<variables name="xLampAmber" typeName="BOOL">
+<comment>Stack light amber: warning</comment>
+</variables>
+<variables name="xLampRed" typeName="BOOL">
+<comment>Stack light red: alarm / fault, blinking = no sensor data</comment>
+</variables>
+<variables name="wDashPanel" typeName="WORD">
+<comment>Panel / RIO bits for the dashboard (aDash[29])</comment>
+</variables>
+<variables name="xDashboardAllowed" typeName="BOOL">
+<comment>PLC-side permission for the dashboard to run the motor</comment>
+<variableInit value="FALSE"></variableInit>
+</variables>
+<variables name="iDashHbLast" typeName="INT">
+<comment>Last dashboard heartbeat</comment>
+</variables>
+<variables name="xDashHbChanged" typeName="BOOL">
+<comment>Heartbeat changed this scan</comment>
+</variables>
+<variables name="tonDashWd" typeName="TON">
+<comment>Dashboard watchdog, 1 s</comment>
+</variables>
+<variables name="xDashOK" typeName="BOOL">
+<comment>Dashboard allowed and alive</comment>
+</variables>
+<variables name="wDashCmd" typeName="WORD">
+<comment>Dashboard command bits</comment>
+</variables>
+<variables name="xDashRun" typeName="BOOL">
+<comment>Dashboard run request</comment>
+</variables>
+<variables name="xDashStop" typeName="BOOL">
+<comment>Dashboard stop request</comment>
+</variables>
+<variables name="xDashReset" typeName="BOOL">
+<comment>Dashboard fault reset request</comment>
+</variables>
+<variables name="xDashReverse" typeName="BOOL">
+<comment>Dashboard reverse request</comment>
+</variables>
+<variables name="iDashSpeed" typeName="INT">
+<comment>Dashboard speed request, rpm</comment>
+</variables>
+<variables name="xDashJog" typeName="BOOL">
+<comment>Dashboard jog (hold-to-run) request</comment>
+</variables>
+<variables name="iDashAcc" typeName="INT">
+<comment>Dashboard accel ramp, s x10</comment>
+</variables>
+<variables name="iDashDec" typeName="INT">
+<comment>Dashboard decel ramp, s x10</comment>
+</variables>
+<variables name="iJogSpeedMax" typeName="INT">
+<comment>Jog speed limit, rpm</comment>
+<variableInit value="300"></variableInit>
+</variables>
+<variables name="iAccDefault" typeName="INT">
+<comment>Accel ramp when the dashboard is not in control, s x10</comment>
+<variableInit value="50"></variableInit>
+</variables>
+<variables name="iDecDefault" typeName="INT">
+<comment>Decel ramp when the dashboard is not in control, s x10</comment>
+<variableInit value="50"></variableInit>
+</variables>
+<variables name="iATV_Acc" typeName="INT">
+<comment>Accel ramp sent to the drive (ACC), s x10</comment>
+</variables>
+<variables name="iATV_Dec" typeName="INT">
+<comment>Decel ramp sent to the drive (DEC), s x10</comment>
+</variables>
+<variables name="xLocalRun" typeName="BOOL">
+<comment>Commissioning: run from the animation table</comment>
+<variableInit value="FALSE"></variableInit>
+</variables>
+<variables name="xLocalStop" typeName="BOOL">
+<comment>Commissioning: stop</comment>
+<variableInit value="FALSE"></variableInit>
+</variables>
+<variables name="xLocalReset" typeName="BOOL">
+<comment>Commissioning: fault reset</comment>
+<variableInit value="FALSE"></variableInit>
+</variables>
+<variables name="xLocalReverse" typeName="BOOL">
+<comment>Commissioning: reverse</comment>
+<variableInit value="FALSE"></variableInit>
+</variables>
+<variables name="iLocalSpeed" typeName="INT">
+<comment>Commissioning: speed, rpm</comment>
+<variableInit value="300"></variableInit>
+</variables>
+<variables name="iMaxSpeed" typeName="INT">
+<comment>Bench speed limit, rpm</comment>
+<variableInit value="1500"></variableInit>
+</variables>
+<variables name="xRunReq" typeName="BOOL">
+<comment>A start is latched (iRunSource &lt;&gt; 0)</comment>
+</variables>
+<variables name="xRunCmd" typeName="BOOL">
+<comment>Run request with all permissives</comment>
+</variables>
+<variables name="xResetReq" typeName="BOOL">
+<comment>Fault reset request</comment>
+</variables>
+<variables name="xReverse" typeName="BOOL">
+<comment>Reverse request</comment>
+</variables>
+<variables name="iSpeedReq" typeName="INT">
+<comment>Speed request after limits, rpm</comment>
+</variables>
+<variables name="xATV_Health" typeName="BOOL">
+<comment>ATV930 EtherNet/IP connection healthy</comment>
+<variableInit value="FALSE"></variableInit>
+</variables>
+<variables name="wATV_ETA" typeName="WORD">
+<comment>ATV930 status word</comment>
+</variables>
+<variables name="wATV_State" typeName="WORD">
+<comment>ETA masked with 16#006F</comment>
+</variables>
+<variables name="iATV_Speed" typeName="INT">
+<comment>Output speed, rpm (RFRD)</comment>
+</variables>
+<variables name="iATV_Current" typeName="INT">
+<comment>Motor current, 0.1 A (LCR)</comment>
+</variables>
+<variables name="iATV_Torque" typeName="INT">
+<comment>Motor torque, % (OTR)</comment>
+</variables>
+<variables name="iATV_Thermal" typeName="INT">
+<comment>Motor thermal state, % (THR)</comment>
+</variables>
+<variables name="iATV_LastFault" typeName="INT">
+<comment>Last fault code (LFT)</comment>
+</variables>
+<variables name="xSimBridge" typeName="BOOL">
+<comment>Testing only: drive values from drive_bridge.py (PLC simulator). FALSE on the real M580</comment>
+<variableInit value="FALSE"></variableInit>
+</variables>
+<variables name="aBridge" typeName="ARRAY[0..9] OF INT" topologicalAddress="%MW1200">
+<comment>Drive bridge block (drive_bridge.py writes 0-7, the PLC writes 8)</comment>
+</variables>
+<variables name="iBridgeHbLast" typeName="INT">
+<comment>Last bridge heartbeat</comment>
+</variables>
+<variables name="xBridgeHbChanged" typeName="BOOL">
+<comment>Bridge heartbeat changed this scan</comment>
+</variables>
+<variables name="tonBridgeWd" typeName="TON">
+<comment>Bridge watchdog, 1 s</comment>
+</variables>
+<variables name="wBridgeStat" typeName="WORD">
+<comment>Bridge status bits (aBridge[1])</comment>
+</variables>
+<variables name="xATV_Fault" typeName="BOOL">
+<comment>Drive in fault</comment>
+</variables>
+<variables name="xATV_Running" typeName="BOOL">
+<comment>Operation enabled</comment>
+</variables>
+<variables name="xATV_Ready" typeName="BOOL">
+<comment>Ready / switched on / running</comment>
+</variables>
+<variables name="wATV_CMD" typeName="WORD">
+<comment>Command word to the drive</comment>
+</variables>
+<variables name="iATV_SpeedRef" typeName="INT">
+<comment>Speed reference to the drive (LFRD), rpm</comment>
+</variables>
+<variables name="iHeartbeat" typeName="INT">
+<comment>PLC heartbeat for the dashboard</comment>
+<variableInit value="0"></variableInit>
+</variables>
+<variables name="wDashStatus" typeName="WORD">
+<comment>Sensor status bits for the dashboard</comment>
+</variables>
+<variables name="wDashDrive" typeName="WORD">
+<comment>Drive status bits for the dashboard</comment>
+</variables>
+<variables name="iDashIdx" typeName="INT">
+<comment>Loop index (04_Dashboard_Out)</comment>
+</variables>
+</dataBlock>
+</VariablesExchangeFile>

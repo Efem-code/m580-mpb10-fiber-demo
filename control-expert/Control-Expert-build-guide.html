@@ -148,7 +148,8 @@
 <h2><span class="n">5</span>Variables and sections</h2>
 <p>Set <code>iPanelSpeed</code> (speed when started from the panel Start button) and leave <code>xPB_StopNC</code> at its initial value TRUE.</p>
 <ol class="steps">
-  <li>Data Editor → Variables: create every row in <code>variables.csv</code>. Give <code>aDash</code> the address <code>%MW1000</code> and <code>aCmd</code> <code>%MW1100</code>, and set the initial values shown (limits, <code>iMaxSpeed</code>, the placeholders).</li>
+  <li>Variables: import <code>variables.xsy</code> (Data Editor → right-click → <b>Import</b>, or File → Import), which holds every row of <code>variables.csv</code>. If our version refuses it, create them by hand from <code>variables.csv</code>; after editing the CSV, <code>python make_xsy.py</code> rebuilds the import file.</li>
+  <li>Check every row of <code>variables.csv</code> is there. Give <code>aDash</code> the address <code>%MW1000</code> and <code>aCmd</code> <code>%MW1100</code>, and set the initial values shown (limits, <code>iMaxSpeed</code>, the placeholders).</li>
   <li>Program → Tasks → MAST → Sections: create six <b>ST</b> sections with the file names, in order <code>00</code> to <code>05</code>.</li>
   <li>Paste each file’s text into its section. Build → Analyze. It should compile with zero errors before we map anything.</li>
 </ol>
