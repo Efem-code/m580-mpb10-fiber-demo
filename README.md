@@ -1,6 +1,6 @@
 # M580 + ATV930 + SICK MPB10 fiber demo
 
-A hands-on condition-monitoring demo rig: a Schneider Electric **M580** PLC reads a **SICK MPB10** vibration/temperature sensor through a **SICK SIG200** IO-Link master over a fiber link, and runs an **ATV930** drive on the motor. A customer-facing dashboard shows machine health, controls the drive through the PLC and plays forward/reverse/speed demo sequences.
+A hands-on condition-monitoring demo rig: a Schneider Electric **M580** PLC reads a **SICK MPB10** vibration/temperature sensor through a **SICK SIG300** IO-Link master over a fiber link, and runs an **ATV930** drive on the motor. A customer-facing dashboard shows machine health, controls the drive through the PLC and plays forward/reverse/speed demo sequences.
 
 The dashboard also runs **without any hardware**, in simulation mode, so anyone can try it on any laptop.
 

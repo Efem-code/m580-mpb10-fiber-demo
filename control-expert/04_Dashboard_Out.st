@@ -11,7 +11,7 @@ aDash[0] := iHeartbeat;
 
 (* ---- sensor ---- *)
 wDashStatus := 0;
-wDashStatus.0 := xSIG200_Health;
+wDashStatus.0 := xSIG300_Health;
 wDashStatus.1 := xMPB_DataOK;
 wDashStatus.2 := xVibWarning;
 wDashStatus.3 := xVibAlarm;
@@ -28,8 +28,8 @@ aDash[7] := iShockCount;
 aDash[8] := WORD_TO_INT(wMPB_Alarm);
 
 FOR iDashIdx := 0 TO 9 DO                        (* raw 20 bytes, high byte first *)
-    aDash[9 + iDashIdx] := WORD_TO_INT(SHL(BYTE_TO_WORD(aSIG200_In[iPD_Ofs + 2 * iDashIdx]), 8)
-                                       OR BYTE_TO_WORD(aSIG200_In[iPD_Ofs + 2 * iDashIdx + 1]));
+    aDash[9 + iDashIdx] := WORD_TO_INT(SHL(BYTE_TO_WORD(aSIG300_In[iPD_Ofs + 2 * iDashIdx]), 8)
+                                       OR BYTE_TO_WORD(aSIG300_In[iPD_Ofs + 2 * iDashIdx + 1]));
 END_FOR;
 aDash[19] := 0;
 

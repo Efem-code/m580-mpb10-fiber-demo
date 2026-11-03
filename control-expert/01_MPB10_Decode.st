@@ -2,7 +2,7 @@
    Section 01_MPB10_Decode   (MAST task)
    Turns the MPB10's 20-byte IO-Link process data into engineering values.
 
-   iPD_Ofs   : where port S1's process data starts inside aSIG200_In (SIG200 manual / web UI)
+   iPD_Ofs   : where port S1's process data starts inside aSIG300_In (SIG300 manual / web UI)
    iVal1_Ofs, iVal2_Ofs, rVal1_Gain, rVal2_Gain :
                PLACEHOLDERS. Take the offsets and scaling from the MPB10 IODD / operating
                instructions for the measurement mode we configured. IO-Link data is
@@ -10,14 +10,14 @@
    ===================================================================================== *)
 
 (* 16-bit values, high byte first *)
-wMPB_Alarm := SHL(BYTE_TO_WORD(aSIG200_In[iPD_Ofs]), 8)
-              OR BYTE_TO_WORD(aSIG200_In[iPD_Ofs + 1]);
-wMPB_Val1  := SHL(BYTE_TO_WORD(aSIG200_In[iPD_Ofs + iVal1_Ofs]), 8)
-              OR BYTE_TO_WORD(aSIG200_In[iPD_Ofs + iVal1_Ofs + 1]);
-wMPB_Val2  := SHL(BYTE_TO_WORD(aSIG200_In[iPD_Ofs + iVal2_Ofs]), 8)
-              OR BYTE_TO_WORD(aSIG200_In[iPD_Ofs + iVal2_Ofs + 1]);
+wMPB_Alarm := SHL(BYTE_TO_WORD(aSIG300_In[iPD_Ofs]), 8)
+              OR BYTE_TO_WORD(aSIG300_In[iPD_Ofs + 1]);
+wMPB_Val1  := SHL(BYTE_TO_WORD(aSIG300_In[iPD_Ofs + iVal1_Ofs]), 8)
+              OR BYTE_TO_WORD(aSIG300_In[iPD_Ofs + iVal1_Ofs + 1]);
+wMPB_Val2  := SHL(BYTE_TO_WORD(aSIG300_In[iPD_Ofs + iVal2_Ofs]), 8)
+              OR BYTE_TO_WORD(aSIG300_In[iPD_Ofs + iVal2_Ofs + 1]);
 
-xMPB_DataOK := xSIG200_Health AND xMPB_PortActive;
+xMPB_DataOK := xSIG300_Health AND xMPB_PortActive;
 
 IF xMPB_DataOK THEN
     rVibVelocity := INT_TO_REAL(WORD_TO_INT(wMPB_Val1)) * rVal1_Gain;   (* mm/s RMS *)
@@ -39,7 +39,7 @@ END_IF;
 xVibWarning  := xVibWarning OR (xMPB_DataOK AND rVibVelocity >= rVibWarnLimit);
 xVibAlarm    := xVibAlarm   OR (xMPB_DataOK AND rVibVelocity >= rVibAlarmLimit);
 xTempWarning := xMPB_DataOK AND rTemperature >= rTempWarnLimit;
-xSensorCommAlarm := NOT xMPB_DataOK;             (* fiber pulled, SIG200 off, sensor unplugged *)
+xSensorCommAlarm := NOT xMPB_DataOK;             (* fiber pulled, SIG300 off, sensor unplugged *)
 
 rtShock(CLK := xShock);
 IF rtShock.Q THEN

@@ -14,7 +14,7 @@ OPC UA from the BMENUA0100 control port (a second network, e.g. a USB Ethernet a
 
 STATUS MAP  (read, offset from the status base, default %MW1000)
   +0   heartbeat          PLC counts up every scan; frozen = PLC data stale
-  +1   status bits        b0 SIG200 EtherNet/IP healthy   b1 IO-Link device on S1
+  +1   status bits        b0 SIG300 EtherNet/IP healthy   b1 IO-Link device on S1
                           b2 vibration warning   b3 vibration alarm   b4 shock   b5 temperature warning
   +2   velocity RMS       mm/s x100 (overall)
   +3   velocity X         mm/s x100   (-32768 = not available)
@@ -75,10 +75,10 @@ DEFAULTS = {
     "mode": "sim",
     # IP plan (the IP addresses tab): three networks.
     # Control 192.168.10.x: the CPU, the NUA's backplane side, the RIO drop and the laptop on CPU ETH1.
-    # Devices 192.168.20.x: the BMENOC0301 (backplane port disabled) with the SIG200 and ATV930 on its front ports.
+    # Devices 192.168.20.x: the BMENOC0301 (backplane port disabled) with the SIG300 and ATV930 on its front ports.
     "laptop_ip": "192.168.10.100", "plc_host": "192.168.10.10", "noc_host": "192.168.20.10",
     "nua_host": "192.168.10.12", "cra_host": "192.168.10.15", "cra_drop": 1,
-    "sig200_host": "192.168.20.20", "atv_host": "192.168.20.30", "netmask": "255.255.255.0",
+    "sig300_host": "192.168.20.20", "atv_host": "192.168.20.30", "netmask": "255.255.255.0",
     "gateway": "",                        # none: the rig is isolated
     # BMENUA0100 control port: its own network (SCADA / OPC UA side), never the device network.
     # 192.168.30.x so it can't clash with the lab networks (192.168.10.x, 192.168.20.x) or office Wi-Fi.
@@ -103,11 +103,11 @@ DEFAULTS = {
     ],
     "seq_loop": True,
 }
-DEVICE_KEYS = ("laptop_ip", "plc_host", "noc_host", "nua_host", "cra_host", "sig200_host", "atv_host")
+DEVICE_KEYS = ("laptop_ip", "plc_host", "noc_host", "nua_host", "cra_host", "sig300_host", "atv_host")
 CONTROL_KEYS = ("laptop_ip", "plc_host", "nua_host", "cra_host")      # on the CPU's network
-FIELD_KEYS = ("noc_host", "sig200_host", "atv_host")                  # on the NOC's network
+FIELD_KEYS = ("noc_host", "sig300_host", "atv_host")                  # on the NOC's network
 # what the IP tab checks from this laptop, and on which TCP port
-REACH = {"plc_host": 502, "noc_host": 502, "cra_host": 502, "sig200_host": 80, "atv_host": 502,
+REACH = {"plc_host": 502, "noc_host": 502, "cra_host": 502, "sig300_host": 80, "atv_host": 502,
          "nua_ctrl_host": 4840}
 
 
@@ -115,7 +115,10 @@ def load_settings():
     cfg = dict(DEFAULTS)
     try:
         with open(SETTINGS) as f:
-            cfg.update({k: v for k, v in json.load(f).items() if k in DEFAULTS})
+            saved = json.load(f)
+        if "sig200_host" in saved and "sig300_host" not in saved:     # the rig moved from a SIG200 to a SIG300
+            saved["sig300_host"] = saved["sig200_host"]
+        cfg.update({k: v for k, v in saved.items() if k in DEFAULTS})
     except (OSError, ValueError):
         pass
     return cfg
@@ -213,13 +216,11 @@ def check_ip_plan(cfg):
         if a in seen:
             errors.append(f"{LABELS[k]} and {LABELS[seen[a]]} both use {a}")
         seen[a] = k
-    if str(addrs["sig200_host"]) == "192.168.0.1":
-        warns.append("The SIG200 ships at 192.168.0.1: give it its own address so a new unit can’t clash")
     return errors, warns
 
 
 LABELS = {"laptop_ip": "Laptop", "plc_host": "M580 CPU", "noc_host": "BMENOC0301", "nua_host": "BMENUA0100",
-          "cra_host": "RIO drop (BMECRA31210)", "sig200_host": "SIG200", "atv_host": "ATV930",
+          "cra_host": "RIO drop (BMECRA31210)", "sig300_host": "SIG300", "atv_host": "ATV930",
           "gateway": "Gateway", "nua_ctrl_host": "BMENUA0100 control port",
           "laptop_it_ip": "Laptop USB adapter (IT side)"}
 
@@ -738,9 +739,9 @@ class Engine:
             if PL["fresh"] and L["plc"] and not L["fresh"]:
                 self.event("bad", "PLC heartbeat stopped: data is stale")
             if PL["eip"] and not L["eip"] and L["fresh"]:
-                self.event("bad", "SIG200 lost: EtherNet/IP connection down (fiber or switch?)")
+                self.event("bad", "SIG300 lost: EtherNet/IP connection down (fiber or switch?)")
             if not PL["eip"] and L["eip"]:
-                self.event("ok", "SIG200 back online over the fiber link")
+                self.event("ok", "SIG300 back online over the fiber link")
             if PL["iolink"] and not L["iolink"] and L["eip"]:
                 self.event("bad", "MPB10 disconnected from port S1")
             if not PL["iolink"] and L["iolink"] and PL["eip"]:

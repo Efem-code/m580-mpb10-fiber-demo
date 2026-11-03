@@ -1,28 +1,28 @@
 (* =====================================================================================
    Section 00_IO_Map   (MAST task, FIRST section)
-   The ONLY section that reads the device DDTs Control Expert created for the SIG200 and
+   The ONLY section that reads the device DDTs Control Expert created for the SIG300 and
    the ATV930 (both scanned by the BMENOC0301) and the X80 I/O on the BMECRA31210 RIO drop. Everything else works on the plain variables filled in here, so if a device
    alias or DDT element name differs on our project, we fix it in this one place.
 
    As shipped it compiles with the devices "not mapped": health bits FALSE, so nothing runs.
    For each line marked EDIT, replace the right-hand side with the element from the Data
-   Editor (Data Editor > Variables > expand the device alias, e.g. SIG200 / ATV930):
+   Editor (Data Editor > Variables > expand the device alias, e.g. SIG300 / ATV930):
      - health      : the connection "Freshness" bit of the device's input connection
-     - input bytes : the input assembly of the SIG200 (array of bytes / words)
+     - input bytes : the input assembly of the SIG300 (array of bytes / words)
      - drive words : the ETA, RFRD, LCR, OTR, THR, LFT elements we set up for I/O scanning
    ===================================================================================== *)
 
-(* ---------------- SICK SIG200 (EtherNet/IP, IO-Link master) ---------------- *)
-xSIG200_Health := FALSE;                         (* EDIT: e.g. SIG200.Freshness *)
+(* ---------------- SICK SIG300 (EtherNet/IP, IO-Link master) ---------------- *)
+xSIG300_Health := FALSE;                         (* EDIT: e.g. SIG300.Freshness *)
 
-(* Copy the SIG200 input assembly into aSIG200_In (ARRAY[0..63] OF BYTE).
+(* Copy the SIG300 input assembly into aSIG300_In (ARRAY[0..63] OF BYTE).
    If the DDT gives BYTEs, copy straight across. If it gives INT/WORDs, split each word:
    low byte first is the usual EtherNet/IP order, so check with an animation table
    that the MPB10 bytes land where the IODD says. *)
 FOR iMapIdx := 0 TO 63 DO
-    aSIG200_In[iMapIdx] := 0;                    (* EDIT: e.g. SIG200.Inputs.Data[iMapIdx] *)
+    aSIG300_In[iMapIdx] := 0;                    (* EDIT: e.g. SIG300.Inputs.Data[iMapIdx] *)
 END_FOR;
-xMPB_PortActive := xSIG200_Health;               (* EDIT: AND the SIG200 "port S1 device present / PD valid" bit *)
+xMPB_PortActive := xSIG300_Health;               (* EDIT: AND the SIG300 "port S1 device present / PD valid" bit *)
 
 (* ---------------- Altivar ATV930 (EtherNet/IP, embedded port) ---------------- *)
 xATV_Health    := FALSE;                         (* EDIT: e.g. ATV930.Freshness *)

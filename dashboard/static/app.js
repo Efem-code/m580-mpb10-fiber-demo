@@ -40,9 +40,9 @@ function drawBands() {
 }
 
 // ------------------------------------------------------------ config: IP + setup tabs
-const IPS = ["laptop_ip", "plc_host", "noc_host", "nua_host", "nua_ctrl_host", "laptop_it_ip", "cra_host", "sig200_host", "atv_host", "netmask", "gateway"];
+const IPS = ["laptop_ip", "plc_host", "noc_host", "nua_host", "nua_ctrl_host", "laptop_it_ip", "cra_host", "sig300_host", "atv_host", "netmask", "gateway"];
 const IP_DEFAULTS = { laptop_ip: "192.168.10.100", plc_host: "192.168.10.10", noc_host: "192.168.20.10", nua_host: "192.168.10.12",
-  nua_ctrl_host: "192.168.30.10", laptop_it_ip: "192.168.30.100", cra_host: "192.168.10.15", sig200_host: "192.168.20.20", atv_host: "192.168.20.30",
+  nua_ctrl_host: "192.168.30.10", laptop_it_ip: "192.168.30.100", cra_host: "192.168.10.15", sig300_host: "192.168.20.20", atv_host: "192.168.20.30",
   netmask: "255.255.255.0", gateway: "", cra_drop: 1 };
 // true when two addresses share a subnet under the rig's mask
 const ip32 = s => String(s || "").split(".").reduce((v, o) => v * 256 + (+o || 0), 0);
@@ -53,7 +53,7 @@ const FIELDS = { "c-mode": "mode", "c-port": "plc_port", "c-unit": "unit_id", "c
   "c-opcport": "nua_ctrl_port", "c-opcsec": "opcua_security", "c-opcuser": "opcua_user" };
 const MAP = [
   [0, "Heartbeat (PLC counts up; frozen = stale)"],
-  [1, "Sensor bits: b0 SIG200 OK · b1 MPB10 on S1 · b2 vib warning · b3 vib alarm · b4 shock · b5 temp warning"],
+  [1, "Sensor bits: b0 SIG300 OK · b1 MPB10 on S1 · b2 vib warning · b3 vib alarm · b4 shock · b5 temp warning"],
   [2, "Velocity RMS overall, mm/s × 100"], [3, "Velocity X, mm/s × 100 (−32768 = n/a)"], [4, "Velocity Y, mm/s × 100"],
   [5, "Velocity Z, mm/s × 100"], [6, "Temperature, °C × 10"], [7, "Shock counter"], [8, "MPB10 alarm word"],
   ["9–18", "Raw IO-Link process data, 20 bytes, high byte first"],
@@ -82,9 +82,9 @@ function applyCfg(c) {
   $("nuaUrl").textContent = c.nua_ctrl_host;
   $("assetName").textContent = c.asset;
   $("plcIp").textContent = $("plcIp2").textContent = c.plc_host;
-  $("sigIp").textContent = c.sig200_host;
+  $("sigIp").textContent = c.sig300_host;
   $("atvIp").textContent = c.atv_host;
-  $("lnkSig").href = "http://" + c.sig200_host;
+  $("lnkSig").href = "http://" + c.sig300_host;
   $("lnkAtv").href = "http://" + c.atv_host;
   $("tText").textContent = `Warning at ${c.temp_warn} °C`;
   $("spSlider").max = c.max_rpm;
@@ -137,7 +137,7 @@ $("ipCopy").onclick = () => {
     `  RIO drop BMECRA31210 ${cfg.cra_host}   (drop ${cfg.cra_drop}, rotary switches)`, "",
     "Device network",
     `  BMENOC0301           ${cfg.noc_host}   (backplane port ${sameNet(cfg.noc_host, cfg.plc_host, cfg.netmask) ? "enabled" : "disabled"})`,
-    `  SICK SIG200          ${cfg.sig200_host}   (NOC ETH3, over the fiber)`,
+    `  SICK SIG300          ${cfg.sig300_host}   (NOC ETH3, over the fiber)`,
     `  Altivar ATV930       ${cfg.atv_host}   (NOC ETH2)`, "",
     `Subnet mask          ${cfg.netmask}`, `Gateway              ${cfg.gateway || "none"}`, "",
     `BMENUA0100 control port ${cfg.nua_ctrl_host}   (separate network, OPC UA opc.tcp://${cfg.nua_ctrl_host}:${cfg.nua_ctrl_port})`,
@@ -279,7 +279,7 @@ function render(s) {
   $("healthCard").className = "card health " + s.health;
   $("healthState").textContent = label;
   let why = text;
-  if (s.health === "offline") why = !L.plc ? "Can’t reach the M580" : !L.fresh ? "PLC data is stale" : !L.eip ? "SIG200 not reachable: check the fiber link" : "MPB10 not on port S1";
+  if (s.health === "offline") why = !L.plc ? "Can’t reach the M580" : !L.fresh ? "PLC data is stale" : !L.eip ? "SIG300 not reachable: check the fiber link" : "MPB10 not on port S1";
   else if (m.temp_warn && s.health !== "alarm") why = "Temperature high";
   $("healthText").textContent = why;
   $("vVal").textContent = fmt(m.v);
@@ -463,7 +463,7 @@ function setLink(id, up) { $(id).classList.toggle("down", !up); }
 
 function renderNetwork(s) {
   const L = s.links, m = s.mpb, d = s.drive;
-  // the NRP -> fiber -> converter path is proven only by the SIG200's EtherNet/IP connection;
+  // the NRP -> fiber -> converter path is proven only by the SIG300's EtherNet/IP connection;
   // when it drops the PLC can't tell which piece failed, so those boxes say "check" rather than guess
   const path = L.eip, known = L.fresh;
   const plcState = L.plc ? (L.fresh ? "ok" : "bad") : "bad", plcText = L.plc ? (L.fresh ? "Running" : "Heartbeat stopped") : "No response";
@@ -495,10 +495,10 @@ function renderNetwork(s) {
   setLink("l-io", !known || L.drop);
   setNode("n-io", !L.drop ? "" : "ok", !L.drop ? "–" : [P.red && "red", P.amber && "amber", P.green && "green"].filter(Boolean).join(" + ") || "lamps off");
   setNode("n-mot", !L.atv ? "" : d.running ? "ok" : "", !L.atv ? "–" : d.running ? `${Math.round(d.speed)} rpm` : "Stopped");
-  // SIG200 card + raw bytes
+  // SIG300 card + raw bytes
   $("p1led").className = "led " + (L.iolink ? "g" : path ? "r" : "");
   $("p1dev").textContent = L.iolink ? "SICK MPB10" : path ? "No device" : "–";
-  $("p1sub").textContent = L.iolink ? `IO-Link · ${fmt(m.v)} mm/s · ${fmt(m.temp, 1)} °C` : path ? "Plug in a sensor" : "SIG200 unreachable";
+  $("p1sub").textContent = L.iolink ? `IO-Link · ${fmt(m.v)} mm/s · ${fmt(m.temp, 1)} °C` : path ? "Plug in a sensor" : "SIG300 unreachable";
   $("kvEip").innerHTML = known ? (path ? `<span class="led g"></span>Connected` : `<span class="led r"></span>Lost`) : "–";
   $("kvIol").innerHTML = path ? (L.iolink ? `<span class="led g"></span>Operate` : `<span class="led r"></span>No device`) : "–";
   const raw = m.raw, groups = [0, 0, 3, 3, 1, 1, 1, 1, 1, 1, 1, 1, 2, 2, 3, 3, 3, 3, 3, 3];
@@ -512,8 +512,8 @@ function renderNetwork(s) {
   $("dRate").textContent = s.plc.rate;
   $("dErr").textContent = s.plc.errors + (s.plc.error ? ` · ${s.plc.error}` : "");
   $("rawNote").textContent = s.mode === "sim"
-    ? "Simulation: byte layout is illustrative. Live mode shows the real bytes the M580 received from the SIG200."
-    : "Live bytes as copied by the M580 from the SIG200 input assembly.";
+    ? "Simulation: byte layout is illustrative. Live mode shows the real bytes the M580 received from the SIG300."
+    : "Live bytes as copied by the M580 from the SIG300 input assembly.";
 }
 
 function renderRacks(s) {   // the board drawing at the top of the network tab
@@ -609,10 +609,10 @@ $("itWrite").onclick = async () => {
 };
 
 function renderReach(r) {
-  for (const k of ["plc_host", "noc_host", "cra_host", "sig200_host", "atv_host", "nua_ctrl_host"]) {
+  for (const k of ["plc_host", "noc_host", "cra_host", "sig300_host", "atv_host", "nua_ctrl_host"]) {
     const x = r[k];
     if (k === "nua_ctrl_host" && x && !x.ok) { $("r-" + k).innerHTML = `<span class="led"></span>Not from here (separate network)`; continue; }
-    const field = ["noc_host", "sig200_host", "atv_host"].includes(k);
+    const field = ["noc_host", "sig300_host", "atv_host"].includes(k);
     if (field && x && !x.ok && !sameNet(cfg[k], cfg.laptop_ip, cfg.netmask)) {
       $("r-" + k).innerHTML = `<span class="led"></span>Not from here (device network: the PLC’s health bits show it)`; continue;
     }
