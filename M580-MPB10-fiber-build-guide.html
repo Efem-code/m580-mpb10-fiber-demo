@@ -196,13 +196,14 @@
 <tr><td>E-stop</td><td>Wired to the ATV930 <b>STO</b> inputs per its safety manual. The key switch on the RIO drop is the demo enable, not a safety device.</td></tr>
 <tr><td>Also on the demo board</td><td>A Magelis HMI and a small knob with a digital display. The demo doesn’t use them yet.</td></tr>
 <tr><td>USB Ethernet adapter</td><td>A second wired port for the dashboard laptop, to the BMENUA0100 control port: the IT side of the demo, over OPC UA. Any USB 3 / USB-C gigabit adapter.</td></tr>
+<tr><td>D-Link Wi-Fi router</td><td>Ours, already serving the cobot. Used as a Wi-Fi access point on the device network, so a laptop or iPad can reach the drive, the SIG300 and the cobot without a cable.</td></tr>
 <tr><td>Second laptop (optional)</td><td>UaExpert on the NUA network as well, through a small unmanaged switch.</td></tr>
 <tr><td>Laptop</td><td>EcoStruxure Control Expert with the SICK SIG300 EDS file and the Altivar DTM library, SOPAS ET (optional), USB cable for the CPU’s first connection.</td></tr>
 </table></div>
 
 <h2><span class="n">3</span>IP plan</h2>
 <p>Three networks, all mask <code>255.255.255.0</code> and none with a gateway. Give the SIG300 its new address <b>first</b> (section 5).</p>
-<div class="warn">The rig reuses <code>192.168.10.x</code> and <code>192.168.20.x</code>, which the lab network uses too. Keep the rig on its own cables and switches and never patch it into the lab network, or addresses like <code>.10</code> will clash.</div>
+<div class="warn">The rig reuses <code>192.168.10.x</code> and <code>192.168.20.x</code>, which the lab network uses too. Keep the rig on its own cables and switches and never patch it into the lab network, or addresses like <code>.10</code> will clash. The cobot’s D-Link router is the exception: it joins the device network on purpose (section 4).</div>
 <div class="wrap"><table>
 <tr><th style="width:32%">Device</th><th style="width:22%">IP address</th><th>Set from</th></tr>
 <tr><th colspan="3">Control network · 192.168.10.x</th></tr>
@@ -214,6 +215,9 @@
 <tr><td>BMENOC0301</td><td><code>192.168.20.10</code></td><td>Control Expert → NOC DTM → TCP/IP, <b>backplane port disabled</b></td></tr>
 <tr><td>SICK SIG300</td><td><code>192.168.20.20</code></td><td>SIG300 web UI (from its factory address)</td></tr>
 <tr><td>Altivar ATV930</td><td><code>192.168.20.30</code></td><td>Drive keypad → Communication → Embedded Ethernet (fixed IP)</td></tr>
+<tr><td>D-Link router (Wi-Fi access point)</td><td><code>192.168.20.1</code></td><td>Its web page. LAN port to the NOC’s ETH1, WAN port empty, DHCP pool <code>.150</code>–<code>.199</code></td></tr>
+<tr><td>Lexium cobot</td><td><code>192.168.20.94</code></td><td>Cobot Expert network settings (or a DHCP reservation in the D-Link). Shares the network; the M580 doesn’t control it</td></tr>
+<tr><td>Laptops and iPads on the Wi-Fi</td><td><code>.150</code>–<code>.199</code></td><td>From the D-Link’s DHCP</td></tr>
 <tr><th colspan="3">IT network · 192.168.30.x</th></tr>
 <tr><td>BMENUA0100, control port</td><td><code>192.168.30.10</code></td><td>Same module configuration. Serves OPC UA only</td></tr>
 <tr><td>Laptop, USB adapter</td><td><code>192.168.30.100</code></td><td>Windows adapter settings, mask 255.255.255.0, <b>no gateway, no DNS</b></td></tr>
@@ -234,6 +238,13 @@
   <li>Mount the ATV930 in the PLC panel. Run the motor cable (shielded, 360° bonded at both ends) to the motor.</li>
   <li>Patch the ATV930’s embedded Ethernet port to BMENOC0301 <b>ETH2</b>. It stays on the PLC side of the fiber, so pulling the fiber cuts only the sensor data.</li>
   <li>Wire the E-stop to the STO inputs. Set up the drive on its keypad as in the Control Expert guide, section 2.</li>
+</ol>
+<h3>Wi-Fi and the cobot</h3>
+<ol class="steps">
+  <li>On the D-Link’s web page (<code>http://192.168.20.1</code>): LAN address <code>192.168.20.1</code> / 24, DHCP pool <code>192.168.20.150</code> to <code>.199</code>. Give the cobot a reservation at <code>192.168.20.94</code>, or a fixed address in Cobot Expert.</li>
+  <li>Patch one of the D-Link’s <b>LAN</b> ports to the BMENOC0301’s <b>ETH1</b> service port. Leave its WAN port empty: it must not route the rig onto another network. The cobot stays cabled to the D-Link.</li>
+  <li>A laptop on the D-Link’s Wi-Fi now reaches the SIG300, the ATV930 and the cobot web pages. If its internet stops working, the D-Link has become its default route: set a fixed address in the pool with no gateway on that Wi-Fi adapter.</li>
+  <li>In the SIG300’s DTM, set the input connection to <b>Point to Point</b> like the ATV930’s, so multicast I/O doesn’t flood the Wi-Fi.</li>
 </ol>
 <h3>IT side (OPC UA)</h3>
 <ol class="steps">

@@ -79,6 +79,8 @@ DEFAULTS = {
     "laptop_ip": "192.168.10.100", "plc_host": "192.168.10.10", "noc_host": "192.168.20.10",
     "nua_host": "192.168.10.12", "cra_host": "192.168.10.15", "cra_drop": 1,
     "sig300_host": "192.168.20.20", "atv_host": "192.168.20.30", "netmask": "255.255.255.0",
+    # also on the device network: the D-Link router as a Wi-Fi access point (DHCP pool .150-.199) and the cobot
+    "ap_host": "192.168.20.1", "cobot_host": "192.168.20.94",
     "gateway": "",                        # none: the rig is isolated
     # BMENUA0100 control port: its own network (SCADA / OPC UA side), never the device network.
     # 192.168.30.x so it can't clash with the lab networks (192.168.10.x, 192.168.20.x) or office Wi-Fi.
@@ -103,12 +105,12 @@ DEFAULTS = {
     ],
     "seq_loop": True,
 }
-DEVICE_KEYS = ("laptop_ip", "plc_host", "noc_host", "nua_host", "cra_host", "sig300_host", "atv_host")
+DEVICE_KEYS = ("laptop_ip", "plc_host", "noc_host", "nua_host", "cra_host", "sig300_host", "atv_host", "ap_host", "cobot_host")
 CONTROL_KEYS = ("laptop_ip", "plc_host", "nua_host", "cra_host")      # on the CPU's network
-FIELD_KEYS = ("noc_host", "sig300_host", "atv_host")                  # on the NOC's network
+FIELD_KEYS = ("noc_host", "sig300_host", "atv_host", "ap_host", "cobot_host")   # on the NOC's network
 # what the IP tab checks from this laptop, and on which TCP port
 REACH = {"plc_host": 502, "noc_host": 502, "cra_host": 502, "sig300_host": 80, "atv_host": 502,
-         "nua_ctrl_host": 4840}
+         "nua_ctrl_host": 4840, "ap_host": 80}      # not the cobot: its controller limits connections
 
 
 def load_settings():
@@ -222,7 +224,8 @@ def check_ip_plan(cfg):
 LABELS = {"laptop_ip": "Laptop", "plc_host": "M580 CPU", "noc_host": "BMENOC0301", "nua_host": "BMENUA0100",
           "cra_host": "RIO drop (BMECRA31210)", "sig300_host": "SIG300", "atv_host": "ATV930",
           "gateway": "Gateway", "nua_ctrl_host": "BMENUA0100 control port",
-          "laptop_it_ip": "Laptop USB adapter (IT side)"}
+          "laptop_it_ip": "Laptop USB adapter (IT side)", "ap_host": "D-Link Wi-Fi access point",
+          "cobot_host": "Lexium cobot"}
 
 
 def local_ips():

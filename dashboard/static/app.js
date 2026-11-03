@@ -40,10 +40,10 @@ function drawBands() {
 }
 
 // ------------------------------------------------------------ config: IP + setup tabs
-const IPS = ["laptop_ip", "plc_host", "noc_host", "nua_host", "nua_ctrl_host", "laptop_it_ip", "cra_host", "sig300_host", "atv_host", "netmask", "gateway"];
+const IPS = ["laptop_ip", "plc_host", "noc_host", "nua_host", "nua_ctrl_host", "laptop_it_ip", "cra_host", "sig300_host", "atv_host", "ap_host", "cobot_host", "netmask", "gateway"];
 const IP_DEFAULTS = { laptop_ip: "192.168.10.100", plc_host: "192.168.10.10", noc_host: "192.168.20.10", nua_host: "192.168.10.12",
   nua_ctrl_host: "192.168.30.10", laptop_it_ip: "192.168.30.100", cra_host: "192.168.10.15", sig300_host: "192.168.20.20", atv_host: "192.168.20.30",
-  netmask: "255.255.255.0", gateway: "", cra_drop: 1 };
+  ap_host: "192.168.20.1", cobot_host: "192.168.20.94", netmask: "255.255.255.0", gateway: "", cra_drop: 1 };
 // true when two addresses share a subnet under the rig's mask
 const ip32 = s => String(s || "").split(".").reduce((v, o) => v * 256 + (+o || 0), 0);
 const sameNet = (a, b, mask) => ((ip32(a) & ip32(mask)) >>> 0) === ((ip32(b) & ip32(mask)) >>> 0);
@@ -138,7 +138,9 @@ $("ipCopy").onclick = () => {
     "Device network",
     `  BMENOC0301           ${cfg.noc_host}   (backplane port ${sameNet(cfg.noc_host, cfg.plc_host, cfg.netmask) ? "enabled" : "disabled"})`,
     `  SICK SIG300          ${cfg.sig300_host}   (NOC ETH3, over the fiber)`,
-    `  Altivar ATV930       ${cfg.atv_host}   (NOC ETH2)`, "",
+    `  Altivar ATV930       ${cfg.atv_host}   (NOC ETH2)`,
+    `  D-Link Wi-Fi AP      ${cfg.ap_host}   (LAN port to NOC ETH1, DHCP pool .150-.199)`,
+    `  Lexium cobot         ${cfg.cobot_host}   (on the D-Link)`, "",
     `Subnet mask          ${cfg.netmask}`, `Gateway              ${cfg.gateway || "none"}`, "",
     `BMENUA0100 control port ${cfg.nua_ctrl_host}   (separate network, OPC UA opc.tcp://${cfg.nua_ctrl_host}:${cfg.nua_ctrl_port})`,
     `Laptop USB adapter      ${cfg.laptop_it_ip}   (IT side: no gateway, no DNS)`, "",
@@ -611,10 +613,10 @@ $("itWrite").onclick = async () => {
 };
 
 function renderReach(r) {
-  for (const k of ["plc_host", "noc_host", "cra_host", "sig300_host", "atv_host", "nua_ctrl_host"]) {
+  for (const k of ["plc_host", "noc_host", "cra_host", "sig300_host", "atv_host", "ap_host", "nua_ctrl_host"]) {
     const x = r[k];
     if (k === "nua_ctrl_host" && x && !x.ok) { $("r-" + k).innerHTML = `<span class="led"></span>Not from here (separate network)`; continue; }
-    const field = ["noc_host", "sig300_host", "atv_host"].includes(k);
+    const field = ["noc_host", "sig300_host", "atv_host", "ap_host"].includes(k);
     if (field && x && !x.ok && !sameNet(cfg[k], cfg.laptop_ip, cfg.netmask)) {
       $("r-" + k).innerHTML = `<span class="led"></span>Not from here (device network: the PLC’s health bits show it)`; continue;
     }

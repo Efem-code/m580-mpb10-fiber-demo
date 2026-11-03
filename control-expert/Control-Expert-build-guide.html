@@ -95,11 +95,11 @@
 <div class="wrap"><table>
 <tr><th style="width:24%">Network</th><th style="width:22%">Subnet</th><th>On it</th></tr>
 <tr><td><b>Control</b></td><td><code>192.168.10.x</code></td><td>CPU <code>.10</code>, BMENUA0100 backplane side <code>.12</code>, RIO drop <code>.15</code>, dashboard laptop on CPU ETH1 <code>.100</code></td></tr>
-<tr><td><b>Devices</b></td><td><code>192.168.20.x</code></td><td>BMENOC0301 <code>.10</code>, SIG300 <code>.20</code> (over the fiber), ATV930 <code>.30</code></td></tr>
+<tr><td><b>Devices</b></td><td><code>192.168.20.x</code></td><td>BMENOC0301 <code>.10</code>, SIG300 <code>.20</code> (over the fiber), ATV930 <code>.30</code>; the D-Link Wi-Fi access point <code>.1</code> on the NOC’s ETH1 with the Lexium cobot <code>.94</code>; Wi-Fi clients <code>.150</code>–<code>.199</code></td></tr>
 <tr><td><b>IT</b></td><td><code>192.168.30.x</code></td><td>BMENUA0100 control port <code>.10</code>, laptop USB adapter <code>.100</code> (section 7)</td></tr>
 </table></div>
 <p>The PLC is the only thing joining them: the NOC hands the drive and sensor data to the CPU across the rack, and the NUA serves it to IT. Nothing routes between the networks. The dashboard’s IP addresses tab holds the same plan; change it there and here together.</p>
-<div class="warn">The rig reuses <code>192.168.10.x</code> and <code>192.168.20.x</code>, which the lab network uses too. Keep the rig on its own cables and switches and never patch it into the lab network, or addresses like <code>.10</code> will clash.</div>
+<div class="warn">The rig reuses <code>192.168.10.x</code> and <code>192.168.20.x</code>, which the lab network uses too. Keep the rig on its own cables and switches and never patch it into the lab network, or addresses like <code>.10</code> will clash. The cobot’s D-Link router is the exception: it joins the device network on purpose.</div>
 <ol class="steps">
   <li>New project: <b>BMEP584040</b>. On the main rack add the power supply, <b>BMENOC0301</b> and <b>BMENUA0100</b> in their real slots.</li>
   <li>CPU → <b>IPConfig</b>: main IP <code>192.168.10.10</code>, mask <code>255.255.255.0</code>, no gateway. Leave the service port (ETH1) enabled in access mode: that’s where the dashboard laptop plugs in.</li>
@@ -118,6 +118,7 @@
   <li>DTM Browser → right-click the BMENOC0301 → <b>Add EDS to library</b> (or Tools → Hardware Catalog → EDS wizard) → browse to the <code>.eds</code> and finish.</li>
   <li>DTM Browser → right-click the <b>BMENOC0301</b> → Add → SIG300. Alias <code>SIG300</code>. (Both devices hang off the NOC, not the CPU’s embedded scanner.)</li>
   <li>Address Setting: IP <code>192.168.20.20</code>, mask <code>255.255.255.0</code> (static, matches the SIG300 web UI). RPI <b>50 ms</b>.</li>
+  <li>Set the input connection to <b>Point to Point</b> (as for the ATV930), so its I/O isn’t multicast onto the D-Link’s Wi-Fi.</li>
   <li>Pick the connection that carries the IO-Link port data. Note which input bytes hold port S1: that becomes <code>iPD_Ofs</code>.</li>
 </ol>
 <h3>Altivar ATV930</h3>
