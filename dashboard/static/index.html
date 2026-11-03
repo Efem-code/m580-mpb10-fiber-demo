@@ -427,7 +427,7 @@
         <rect x="96" y="40" width="96" height="92" rx="4" fill="#fff" stroke="#9AA0A6"/><text x="144" y="60" font-size="13" font-weight="600">CPU</text><text x="144" y="75" font-size="10" fill="#5F646A">BMEP584040</text>
         <rect x="198" y="40" width="80" height="92" rx="4" fill="#3A3B39" stroke="#3A3B39"/><text x="238" y="60" font-size="12" font-weight="600" fill="#fff">BMENUA</text><text x="238" y="75" font-size="10" fill="#C9CCC8">0100 · OPC UA</text>
         <rect x="284" y="40" width="96" height="92" rx="4" fill="#fff" stroke="#9AA0A6"/><text x="332" y="60" font-size="12" font-weight="600">BMENOC0301</text><text x="332" y="75" font-size="10" fill="#5F646A">EtherNet/IP</text>
-        <rect x="386" y="40" width="60" height="92" rx="4" fill="none" stroke="#9AA0A6" stroke-dasharray="4 3"/><text x="416" y="90" font-size="11" fill="#8A8F94">spare</text>
+        <rect x="386" y="40" width="60" height="92" rx="4" fill="none" stroke="#9AA0A6" stroke-dasharray="4 3"/><text x="416" y="84" font-size="10" fill="#8A8F94">expansion</text><text x="416" y="98" font-size="10" fill="#8A8F94">port</text>
         <g font-size="9" fill="#5F646A"><text x="114" y="100">ETH1</text><text x="144" y="100">ETH2</text><text x="174" y="100">ETH3</text>
           <text x="238" y="100" fill="#C9CCC8">control</text><text x="302" y="100">ETH1</text><text x="332" y="100">ETH2</text><text x="362" y="100">ETH3</text></g>
       </g>
@@ -436,9 +436,10 @@
 
       <!-- NOC to the drive and to the fiber -->
       <path id="rk-atv" d="M332 116 V160 H600" fill="none" stroke="#3A3B39" stroke-width="3"/>
-      <path id="rk-fib" d="M362 116 V178 H600" fill="none" stroke="#3A3B39" stroke-width="3"/>
+      <path id="rk-fib" d="M362 116 V178 H424 V210" fill="none" stroke="#3A3B39" stroke-width="3"/>
+      <path id="rk-fib2" d="M440 210 V194 H600" fill="none" stroke="#1F9CAD" stroke-width="5"/>
       <text x="608" y="164" font-family="Segoe UI, Arial" font-size="12" fill="#24262A"><tspan font-weight="600">NOC ETH2 → ATV930</tspan> <tspan id="rk-atvt" fill="#5F646A"></tspan></text>
-      <text x="608" y="182" font-family="Segoe UI, Arial" font-size="12" fill="#24262A"><tspan font-weight="600">NOC ETH3 → converter → fiber → SIG300</tspan> <tspan id="rk-fibt" fill="#5F646A"></tspan></text>
+      <text x="608" y="198" font-family="Segoe UI, Arial" font-size="12" fill="#24262A"><tspan font-weight="600">NOC ETH3 → BMXNRP0200 → fiber → SIG300</tspan> <tspan id="rk-fibt" fill="#5F646A"></tspan></text>
 
       <!-- RIO ring: CPU ETH2 / ETH3 straight down to the CRA -->
       <path id="rk-r2" d="M144 116 V220" fill="none" stroke="#F06A2A" stroke-width="5"/>
@@ -453,8 +454,8 @@
         <text x="144" y="266" font-size="12" font-weight="600">BMECRA31210</text><text id="rk-dropn" x="144" y="282" font-size="10" fill="#5F646A">drop 1</text>
         <rect x="198" y="210" width="80" height="92" rx="4" fill="#fff" stroke="#F06A2A" stroke-dasharray="4 3"/><text x="238" y="250" font-size="11" font-weight="600">2nd module</text><text x="238" y="265" font-size="10" fill="#5F646A">rotary sw.</text><text x="238" y="279" font-size="10" fill="#B84A14">P/N to confirm</text>
         <rect x="284" y="210" width="120" height="92" rx="4" fill="#fff" stroke="#9AA0A6"/><text x="344" y="226" font-size="11" font-weight="600">Discrete I/O</text>
-        <rect x="410" y="210" width="40" height="92" rx="4" fill="#F7F8FA" stroke="#9AA0A6"/><text x="430" y="260" font-size="10" fill="#8A8F94">blank</text>
-        <rect x="456" y="210" width="46" height="92" rx="4" fill="none" stroke="#9AA0A6" stroke-dasharray="4 3"/><text x="479" y="260" font-size="10" fill="#8A8F94">spare</text>
+        <rect x="410" y="210" width="40" height="92" rx="4" fill="#fff" stroke="#1F9CAD" stroke-width="2"/><text x="430" y="250" font-size="10" font-weight="600">NRP</text><text x="430" y="264" font-size="9" fill="#5F646A">0200</text><text x="430" y="278" font-size="9" fill="#146F7C">fiber</text>
+        <rect x="456" y="210" width="46" height="92" rx="4" fill="none" stroke="#9AA0A6" stroke-dasharray="4 3"/><text x="479" y="254" font-size="9" fill="#8A8F94">expan-</text><text x="479" y="266" font-size="9" fill="#8A8F94">sion</text>
       </g>
       <g font-family="Segoe UI, Arial" font-size="10" fill="#24262A">
         <circle id="io-start" cx="296" cy="240" r="4.5" fill="#8A8F94"/><text x="304" y="244">Start</text>
@@ -487,7 +488,7 @@
       <div class="link" id="l-bp"><div class="wire"></div><small>Ethernet<br>backplane</small></div>
       <div class="node" id="n-noc"><div class="ic">EtherNet/IP scanner</div><div class="nm">BMENOC0301</div><div class="sub" id="nocIp">–</div><div class="st">–</div></div>
       <div class="link" id="l-nrp"><div class="wire"></div><small>Cat6 · NOC ETH3</small></div>
-      <div class="node" id="n-nrp"><div class="ic">Control panel</div><div class="nm">Media converter</div><div class="sub">copper → fiber</div><div class="st">–</div></div>
+      <div class="node" id="n-nrp"><div class="ic">RIO drop rack</div><div class="nm">BMXNRP0200</div><div class="sub">copper → fiber</div><div class="st">–</div></div>
       <div class="link fiber" id="l-fiber"><div class="wire"></div><small>Multimode fiber<br>100BASE-FX</small></div>
       <div class="node" id="n-conv"><div class="ic">Field box</div><div class="nm">Media converter</div><div class="sub">fiber → copper</div><div class="st">–</div></div>
       <div class="link" id="l-sig"><div class="wire"></div><small>EtherNet/IP</small></div>
@@ -633,7 +634,7 @@
       <tr><td>Altivar ATV930</td><td><input id="ip-atv_host"></td><td>Drive keypad → Communication → Embedded Ethernet → IP (fixed)</td><td>DTM Browser → BMENOC0301 → ATV930 → Address Setting</td><td id="r-atv_host">–</td></tr>
       <tr><td>Subnet mask</td><td><input id="ip-netmask"></td><td>Same on every device</td><td>CPU IPConfig</td><td>–</td></tr>
       <tr><td>Gateway</td><td><input id="ip-gateway" placeholder="none"></td><td>Leave blank on an isolated rig. If the control network needs one, the same on every control device.</td><td>CPU IPConfig</td><td>–</td></tr>
-      <tr><td>Media converters</td><td class="sub">no IP</td><td colspan="3" class="sub">Two, one at each end of the fiber. Unmanaged and transparent. A managed switch would need its own address here. (A BMXNRP0200 in the rack can replace the panel-end converter.)</td></tr>
+      <tr><td>Media converters</td><td class="sub">no IP</td><td colspan="3" class="sub">The BMXNRP0200 in the RIO drop rack at the panel end, an unmanaged media converter at the field end. Both transparent, no address. A managed switch would need its own address here.</td></tr>
     </table>
     </div>
     <div style="margin-top:14px;display:flex;gap:10px;flex-wrap:wrap;align-items:center">

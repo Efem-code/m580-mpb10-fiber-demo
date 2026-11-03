@@ -532,6 +532,8 @@ function renderRacks(s) {   // the board drawing at the top of the network tab
   $("rk-ringt").setAttribute("fill", !known ? "#B84A14" : !L.drop ? R : ringOpen ? "#9A6100" : G);
   cable("rk-atv", !known || L.atv);
   cable("rk-fib", !known || L.eip);
+  $("rk-fib2").setAttribute("stroke", !known || L.eip ? "#1F9CAD" : R);
+  $("rk-fib2").setAttribute("stroke-dasharray", !known || L.eip ? "" : "7 5");
   $("rk-atvt").textContent = !known ? "" : L.atv ? "· connected" : "· no connection";
   $("rk-fibt").textContent = !known ? "" : L.eip ? "· connected" : "· no data";
   $("rk-dropn").textContent = `drop ${cfg.cra_drop ?? 1}`;
