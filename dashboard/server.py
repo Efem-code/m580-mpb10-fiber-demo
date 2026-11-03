@@ -73,11 +73,13 @@ TYPES = {".html": "text/html; charset=utf-8", ".js": "text/javascript; charset=u
 
 DEFAULTS = {
     "mode": "sim",
-    # IP plan (the IP addresses tab)
-    "laptop_ip": "192.168.0.100", "plc_host": "192.168.0.10", "noc_host": "192.168.0.11",
-    "nua_host": "192.168.0.12", "cra_host": "192.168.0.15", "cra_drop": 1,
-    "sig200_host": "192.168.0.20", "atv_host": "192.168.0.30", "netmask": "255.255.255.0",
-    "gateway": "192.168.0.10",
+    # IP plan (the IP addresses tab): three networks.
+    # Control 192.168.10.x: the CPU, the NUA's backplane side, the RIO drop and the laptop on CPU ETH1.
+    # Devices 192.168.20.x: the BMENOC0301 (backplane port disabled) with the SIG200 and ATV930 on its front ports.
+    "laptop_ip": "192.168.10.100", "plc_host": "192.168.10.10", "noc_host": "192.168.20.10",
+    "nua_host": "192.168.10.12", "cra_host": "192.168.10.15", "cra_drop": 1,
+    "sig200_host": "192.168.20.20", "atv_host": "192.168.20.30", "netmask": "255.255.255.0",
+    "gateway": "",                        # none: the rig is isolated
     # BMENUA0100 control port: its own network (SCADA / OPC UA side), never the device network.
     # 192.168.30.x so it can't clash with the lab networks (192.168.10.x, 192.168.20.x) or office Wi-Fi.
     "nua_ctrl_host": "192.168.30.10", "laptop_it_ip": "192.168.30.100",
@@ -102,7 +104,8 @@ DEFAULTS = {
     "seq_loop": True,
 }
 DEVICE_KEYS = ("laptop_ip", "plc_host", "noc_host", "nua_host", "cra_host", "sig200_host", "atv_host")
-IP_KEYS = DEVICE_KEYS + ("gateway",)
+CONTROL_KEYS = ("laptop_ip", "plc_host", "nua_host", "cra_host")      # on the CPU's network
+FIELD_KEYS = ("noc_host", "sig200_host", "atv_host")                  # on the NOC's network
 # what the IP tab checks from this laptop, and on which TCP port
 REACH = {"plc_host": 502, "noc_host": 502, "cra_host": 502, "sig200_host": 80, "atv_host": 502,
          "nua_ctrl_host": 4840}
@@ -164,12 +167,12 @@ def check_ip_plan(cfg):
     except ValueError:
         return ["Subnet mask is not an IPv4 address"], []
     addrs = {}
-    for k in IP_KEYS:
+    for k in DEVICE_KEYS:
         try:
             addrs[k] = ipaddress.IPv4Address(cfg[k])
         except ValueError:
             errors.append(f"{LABELS[k]}: “{cfg[k]}” is not an IPv4 address")
-    for k in ("nua_ctrl_host", "laptop_it_ip"):
+    for k in ("nua_ctrl_host", "laptop_it_ip") + (("gateway",) if cfg["gateway"] else ()):   # no gateway is fine
         try:
             ipaddress.IPv4Address(cfg[k])
         except ValueError:
@@ -181,24 +184,30 @@ def check_ip_plan(cfg):
     if errors:
         return errors, warns
     net = ipaddress.IPv4Network(f"{cfg['plc_host']}/{net_bits}", strict=False)
-    for k, a in addrs.items():
-        if a not in net:
-            warns.append(f"{LABELS[k]} {a} is not in the M580’s subnet {net}")
-        elif a in (net.network_address, net.broadcast_address):
-            errors.append(f"{LABELS[k]} {a} is the network or broadcast address")
+    dev = ipaddress.IPv4Network(f"{cfg['noc_host']}/{net_bits}", strict=False)
+    for keys, n, what in ((CONTROL_KEYS, net, "the M580’s control network"), (FIELD_KEYS, dev, "the NOC’s device network")):
+        for k in keys:
+            a = addrs[k]
+            if a not in n:
+                warns.append(f"{LABELS[k]} {a} is not in {what} {n}")
+            elif a in (n.network_address, n.broadcast_address):
+                errors.append(f"{LABELS[k]} {a} is the network or broadcast address")
+    if cfg["gateway"] and ipaddress.IPv4Address(cfg["gateway"]) not in net:
+        warns.append(f"Gateway {cfg['gateway']} is not in the control network {net}")
     seen = {}
     ctrl, it = ipaddress.IPv4Address(cfg["nua_ctrl_host"]), ipaddress.IPv4Address(cfg["laptop_it_ip"])
     it_net = ipaddress.IPv4Network(f"{ctrl}/24", strict=False)
-    if ctrl in net:
-        warns.append(f"{LABELS['nua_ctrl_host']} {ctrl} is inside the device network {net}: "
-                     "the BMENUA0100 control port should be on a separate network")
+    if ctrl in net or ctrl in dev:
+        warns.append(f"{LABELS['nua_ctrl_host']} {ctrl} is inside the {'control' if ctrl in net else 'device'} network: "
+                     "the BMENUA0100 control port should be on a network of its own")
     if it == ctrl:
         errors.append(f"{LABELS['laptop_it_ip']} and {LABELS['nua_ctrl_host']} both use {it}")
     elif it not in it_net and not ctrl.is_loopback:      # 127.0.0.1 = the stand-in NUA on this laptop
         warns.append(f"{LABELS['laptop_it_ip']} {it} is not in the NUA control port’s network {it_net}: "
                      "OPC UA won’t reach the module")
-    if it in net:
-        warns.append(f"{LABELS['laptop_it_ip']} {it} is inside the device network {net}: use the NUA’s separate network")
+    if it in net or it in dev:
+        warns.append(f"{LABELS['laptop_it_ip']} {it} is inside the {'control' if it in net else 'device'} network: "
+                     "use the NUA’s separate network")
     for k in DEVICE_KEYS:
         a = str(addrs[k])
         if a in seen:

@@ -4,6 +4,8 @@ A hands-on condition-monitoring demo rig: a Schneider Electric **M580** PLC read
 
 The dashboard also runs **without any hardware**, in simulation mode, so anyone can try it on any laptop.
 
+**Read the guides online:** <https://efem-code.github.io/m580-mpb10-fiber-demo/>
+
 ## What's in here
 
 | Folder / file | What it is |
@@ -53,7 +55,7 @@ Our demo board has a BMEP584040 CPU, BMENOC0301, BMENUA0100 and a BMECRA31210 RI
 
 1. Build the rig with `M580-MPB10-fiber-build-guide.html` (open it in a browser).
 2. Build and download the PLC program with `control-expert/Control-Expert-build-guide.html`.
-3. Plug the laptop into the M580 CPU service port (ETH1), set it to `192.168.0.100 / 255.255.255.0`, and start the dashboard with `--live`.
+3. Plug the laptop into the M580 CPU service port (ETH1), set it to `192.168.10.100 / 255.255.255.0` (no gateway), and start the dashboard with `--live`.
 4. For the IT side: a USB Ethernet adapter at `192.168.30.100 / 255.255.255.0` (no gateway) into the BMENUA0100 control port at `192.168.30.10`. Setup is in section 7 of the Control Expert guide.
 
 Drive control from the dashboard is **off by default**. It needs **Allow drive control** ticked in Setup *and* `xDashboardAllowed` set in the PLC. The E-stop must be hard-wired to the ATV930 STO inputs; it is not in software. Commission with the motor uncoupled and a low `iMaxSpeed` first.

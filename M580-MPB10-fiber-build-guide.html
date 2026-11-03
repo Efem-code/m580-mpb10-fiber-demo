@@ -178,7 +178,7 @@
   <span style="--c:#C0392B">24 VDC</span>
 </div>
 </div>
-<div class="note">Three networks in one rig. The <b>RIO ring</b> (CPU ETH2 → drop → ETH3) carries the operator panel I/O and keeps running if one cable is pulled. The <b>BMENOC0301</b> scans the ATV930 and, over the fiber, the SIG200. The NOC’s backplane port is enabled, so the laptop on the CPU service port sees every device. The <b>BMENUA0100</b> control port is a separate network that only serves OPC UA. The drive is on the PLC side of the fiber, so pulling the fiber cuts the sensor data and the motor keeps running.</div>
+<div class="note">Three networks in one rig. The <b>RIO ring</b> (CPU ETH2 → drop → ETH3) carries the operator panel I/O and keeps running if one cable is pulled. The <b>BMENOC0301</b> scans the ATV930 and, over the fiber, the SIG200. Each sits on its own IP network: <b>control</b> 192.168.10.x (CPU, drop, laptop), <b>devices</b> 192.168.20.x (the NOC, drive and sensor; the NOC’s backplane port is disabled) and <b>IT</b> 192.168.30.x (the <b>BMENUA0100</b> control port, which only serves OPC UA). The PLC is the only thing that joins them. The drive is on the PLC side of the fiber, so pulling the fiber cuts the sensor data and the motor keeps running.</div>
 
 <h2><span class="n">2</span>Parts on the bench</h2>
 <div class="wrap"><table>
@@ -201,17 +201,21 @@
 </table></div>
 
 <h2><span class="n">3</span>IP plan</h2>
-<p>The SIG200 ships at <code>192.168.0.1</code>, so the bench uses that subnet. Change the SIG200 <b>first</b> so it doesn’t clash with anything.</p>
+<p>Three networks, all mask <code>255.255.255.0</code> and none with a gateway. The SIG200 ships at <code>192.168.0.1</code>: give it its new address <b>first</b> (section 5).</p>
+<div class="warn">The rig reuses <code>192.168.10.x</code> and <code>192.168.20.x</code>, which the lab network uses too. Keep the rig on its own cables and switches and never patch it into the lab network, or addresses like <code>.10</code> will clash.</div>
 <div class="wrap"><table>
 <tr><th style="width:32%">Device</th><th style="width:22%">IP address</th><th>Set from</th></tr>
-<tr><td>M580 CPU BMEP584040</td><td><code>192.168.0.10</code></td><td>Control Expert → CPU → IPConfig</td></tr>
-<tr><td>BMENOC0301</td><td><code>192.168.0.11</code></td><td>Control Expert → NOC DTM → TCP/IP (backplane port enabled)</td></tr>
-<tr><td>BMENUA0100, backplane side</td><td><code>192.168.0.12</code></td><td>Control Expert → BMENUA0100 configuration</td></tr>
-<tr><td>RIO drop BMECRA31210</td><td><code>192.168.0.15</code></td><td>Control Expert → drop IPConfig; drop 1 on the CRA rotary switches</td></tr>
-<tr><td>SICK SIG200</td><td><code>192.168.0.20</code></td><td>SIG200 web UI (from its default 192.168.0.1)</td></tr>
-<tr><td>Laptop</td><td><code>192.168.0.100</code></td><td>Windows adapter settings, mask 255.255.255.0</td></tr>
-<tr><td>Altivar ATV930</td><td><code>192.168.0.30</code></td><td>Drive keypad → Communication → Embedded Ethernet (fixed IP)</td></tr>
-<tr><td>BMENUA0100, control port</td><td><code>192.168.30.10</code></td><td>Same module configuration. Separate network for OPC UA, clear of the lab’s 192.168.10.x and 192.168.20.x</td></tr>
+<tr><th colspan="3">Control network · 192.168.10.x</th></tr>
+<tr><td>M580 CPU BMEP584040</td><td><code>192.168.10.10</code></td><td>Control Expert → CPU → IPConfig</td></tr>
+<tr><td>BMENUA0100, backplane side</td><td><code>192.168.10.12</code></td><td>Control Expert → BMENUA0100 configuration</td></tr>
+<tr><td>RIO drop BMECRA31210</td><td><code>192.168.10.15</code></td><td>Control Expert → drop IPConfig; drop 1 on the CRA rotary switches</td></tr>
+<tr><td>Laptop, built-in Ethernet</td><td><code>192.168.10.100</code></td><td>Windows adapter settings, no gateway. Plugs into the CPU service port ETH1</td></tr>
+<tr><th colspan="3">Device network · 192.168.20.x</th></tr>
+<tr><td>BMENOC0301</td><td><code>192.168.20.10</code></td><td>Control Expert → NOC DTM → TCP/IP, <b>backplane port disabled</b></td></tr>
+<tr><td>SICK SIG200</td><td><code>192.168.20.20</code></td><td>SIG200 web UI (from its default 192.168.0.1)</td></tr>
+<tr><td>Altivar ATV930</td><td><code>192.168.20.30</code></td><td>Drive keypad → Communication → Embedded Ethernet (fixed IP)</td></tr>
+<tr><th colspan="3">IT network · 192.168.30.x</th></tr>
+<tr><td>BMENUA0100, control port</td><td><code>192.168.30.10</code></td><td>Same module configuration. Serves OPC UA only</td></tr>
 <tr><td>Laptop, USB adapter</td><td><code>192.168.30.100</code></td><td>Windows adapter settings, mask 255.255.255.0, <b>no gateway, no DNS</b></td></tr>
 <tr><td>Media converters</td><td>none</td><td>Unmanaged, transparent</td></tr>
 </table></div>
@@ -221,7 +225,7 @@
 <ol class="steps">
   <li>With the power <b>off</b>, fit the PSU, CPU, BMENOC0301 and BMENUA0100 on the backplane. Torque the module screws.</li>
   <li><b>RIO ring:</b> CPU <b>ETH2</b> to one device port on the BMECRA31210, the CRA’s other device port back to CPU <b>ETH3</b>. Set the CRA rotary switches to drop 1 with its power off. Wire Start, Stop (N/C contact), Reset and the key switch to the drop’s inputs, the stack light to its outputs.</li>
-  <li>Patch BMENOC0301 <b>ETH3</b> to media converter A in the panel. Keep the CPU service port (ETH1) for the laptop. The NOC’s own top port (ETH1) is also a service port: fine for the HMI or a second laptop, but not for the drive or the fiber.</li>
+  <li>Patch BMENOC0301 <b>ETH3</b> to media converter A in the panel. Keep the CPU service port (ETH1) for the laptop. The NOC’s own top port (ETH1) is a service port on the device network: plug a laptop in there (on a <code>192.168.20.x</code> address) to reach the SIG200 and ATV930 web pages. Not for the drive or the fiber.</li>
   <li>Leave the rack powered off until the CPU is configured (section 6).</li>
 </ol>
 <h3>Drive</h3>
@@ -254,8 +258,8 @@
 
 <h2><span class="n">5</span>Set up the SIG200 and MPB10</h2>
 <ol class="steps">
-  <li>Connect the laptop directly to the SIG200 (or through the converter with the rack off). Set the laptop to <code>192.168.0.100</code> and browse to <code>http://192.168.0.1</code>.</li>
-  <li>Change the SIG200 IP to <code>192.168.0.20</code> / 255.255.255.0, gateway <code>192.168.0.10</code>. Save and reconnect at the new address.</li>
+  <li>Connect the laptop directly to the SIG200 (or through the converter with the rack off). Set the laptop to <code>192.168.0.100</code> for now and browse to <code>http://192.168.0.1</code>.</li>
+  <li>Change the SIG200 IP to <code>192.168.20.20</code> / 255.255.255.0, no gateway. Save, set the laptop to <code>192.168.20.100</code> and reconnect at the new address. (Later, with the rack running, reach it through the NOC’s ETH1 service port.)</li>
   <li>Set port <b>S1</b> to <b>IO-Link</b> mode. The MPB10 should be listed with its vendor and device ID, and the port LED should show IO-Link communication.</li>
   <li>Load the MPB10 IODD into the SIG200 (if it isn’t built in) so its values show by name. Set the measurement mode and warning/alarm thresholds here or in SOPAS ET.</li>
   <li>Turn on <b>Data Storage</b> on port S1 so a replacement MPB10 gets the same settings (demo step 5).</li>
@@ -273,13 +277,13 @@
   <li>RIO drop healthy; pull one ring cable and it stays healthy (ring status goes open), reconnect</li>
   <li>Panel buttons and key switch show in the animation table; each lamp lights when forced</li>
   <li>FX link LED on at both media converters</li>
-  <li>Laptop on ETH1 pings <code>.10</code>, <code>.11</code>, <code>.15</code>, <code>.20</code> and <code>.30</code></li>
+  <li>Laptop on CPU ETH1 pings <code>192.168.10.10</code> and <code>.15</code>; on the NOC’s ETH1 (as <code>192.168.20.100</code>) it pings <code>192.168.20.10</code>, <code>.20</code> and <code>.30</code></li>
   <li>SIG200 NS LED solid green; port S1 shows IO-Link communication</li>
   <li>Device health bit TRUE in the animation table</li>
   <li>Values change when we tap the motor; temperature reads close to room temperature at rest</li>
   <li>Pull the fiber: <code>xSensorCommAlarm</code> goes TRUE within a few RPIs. Reconnect and it clears</li>
   <li>Clip on the weight: vibration rises and the warning bit trips</li>
-  <li>Dashboard in Live mode: heartbeat counting, every box on the SIG200 &amp; network tab green, every device reachable on the IP addresses tab</li>
+  <li>Dashboard in Live mode: heartbeat counting, every box on the SIG200 &amp; network tab green, the CPU and drop reachable on the IP addresses tab (the device network shows “not from here”)</li>
   <li>Drive runs from the animation table, then from the panel Start button, then from the dashboard; panel Stop stops a dashboard run; the E-stop stops it regardless</li>
   <li>Dashboard IT side · OPC UA tab connects to <code>192.168.30.10</code>: 14 of 14 variables, both value columns match, and the write test is refused</li>
 </ul></div>
@@ -289,7 +293,7 @@
 <tr><th style="width:32%">Symptom</th><th>Check</th></tr>
 <tr><td>No fiber link light at either end</td><td>Tx/Rx swapped: flip one end. Dirty ferrule: clean it. Wrong converter: it must be <b>100BASE-FX at 1310 nm</b>. A 1 Gb SFP or an 850 nm part will never link.</td></tr>
 <tr><td>Link light on one end only</td><td>One strand broken or not seated. Swap strands to see if the fault follows the strand.</td></tr>
-<tr><td>Fiber link up, no ping to SIG200</td><td>SIG200 IP still at 192.168.0.1, wrong mask, or the BMENOC0301 backplane port is disabled (the laptop on ETH1 then can’t see the NOC’s devices).</td></tr>
+<tr><td>Fiber link up, no ping to SIG200</td><td>The SIG200 is on the device network: ping it from the NOC’s ETH1 service port with the laptop on <code>192.168.20.x</code>, not from the CPU port. Then check the SIG200 isn’t still at 192.168.0.1, and the mask.</td></tr>
 <tr><td>RIO drop not healthy</td><td>Rotary switches don’t match the drop number in the project (set them with the power off), ring cables in the wrong CPU ports, or the drop’s IP clashes with another device.</td></tr>
 <tr><td>Ping OK, health bit FALSE</td><td>Wrong EDS or SIG200 variant (PROFINET model), assembly mismatch, or IP in the DTM doesn’t match the device.</td></tr>
 <tr><td>Data arrives but values look wrong</td><td>Byte order (swap high/low), wrong <code>PD_OFS</code>, or the MPB10 measurement mode doesn’t match the offsets we used.</td></tr>

@@ -560,7 +560,7 @@
   <div class="grid it2">
     <div class="card">
       <h2>Two networks, one laptop</h2>
-      <svg class="itnet" viewBox="0 0 640 300" role="img" aria-label="The laptop's built-in port reads the M580 over Modbus on the device network; its USB adapter reads the BMENUA0100 over OPC UA on a separate network">
+      <svg class="itnet" viewBox="0 0 640 300" role="img" aria-label="The laptop's built-in port reads the M580 over Modbus on the control network; its USB adapter reads the BMENUA0100 over OPC UA on a separate network">
         <rect x="225" y="16" width="190" height="64" rx="10" fill="#fff" stroke="#3A3B39" stroke-width="2"/>
         <text x="320" y="44" font-family="Segoe UI, Arial" font-size="15" font-weight="600" text-anchor="middle" fill="#24262A">Dashboard laptop</text>
         <text x="320" y="64" font-family="Segoe UI, Arial" font-size="11" text-anchor="middle" fill="#5F646A">no routing between its ports</text>
@@ -574,13 +574,13 @@
         <text x="530" y="182" font-family="Segoe UI, Arial" font-size="11" fill="#5F646A" dx="8">OPC UA 4840</text>
         <rect x="20" y="200" width="180" height="62" rx="8" fill="#fff" stroke="#9AA0A6"/>
         <text x="110" y="224" font-family="Segoe UI, Arial" font-size="13" font-weight="600" text-anchor="middle" fill="#24262A">M580 CPU ETH1</text>
-        <text id="itOtT" x="110" y="244" font-family="Segoe UI, Arial" font-size="11" text-anchor="middle" fill="#5F646A">OT side · device network</text>
+        <text id="itOtT" x="110" y="244" font-family="Segoe UI, Arial" font-size="11" text-anchor="middle" fill="#5F646A">OT side · control network</text>
         <rect x="440" y="200" width="180" height="62" rx="8" fill="#fff" stroke="#9AA0A6"/>
         <text x="530" y="224" font-family="Segoe UI, Arial" font-size="13" font-weight="600" text-anchor="middle" fill="#24262A">BMENUA0100 control port</text>
         <text id="itItT" x="530" y="244" font-family="Segoe UI, Arial" font-size="11" text-anchor="middle" fill="#5F646A">IT side · its own network</text>
         <path d="M200 231 H440" fill="none" stroke="#9AA0A6" stroke-width="2" stroke-dasharray="5 5"/>
         <text x="320" y="224" font-family="Segoe UI, Arial" font-size="11" text-anchor="middle" fill="#5F646A">same M580 rack, same data</text>
-        <text x="320" y="286" font-family="Segoe UI, Arial" font-size="11" text-anchor="middle" fill="#5F646A">The NUA serves data to IT; it never routes IT traffic into the device network.</text>
+        <text x="320" y="286" font-family="Segoe UI, Arial" font-size="11" text-anchor="middle" fill="#5F646A">The NUA serves data to IT; it never routes IT traffic into the plant networks.</text>
       </svg>
     </div>
     <div class="card">
@@ -617,22 +617,22 @@
 <section class="tab" id="tab-ips">
   <div class="card">
     <h2>IP plan for the demo rig</h2>
-    <p class="sub" style="margin-top:0">One place for every address. Changing a value here updates the dashboard and this sheet. It does <b>not</b> reprogram the device: set the new address where the “Set it in” column says, then save here. The reachability check runs from this laptop every 3 s.</p>
+    <p class="sub" style="margin-top:0">Three networks: <b>control</b> (the CPU, the RIO drop, the NUA’s backplane side and this laptop), <b>devices</b> (the BMENOC0301 with the drive and the sensor) and <b>IT</b> (the NUA control port and the USB adapter). One place for every address. Changing a value here updates the dashboard and this sheet. It does <b>not</b> reprogram the device: set the new address where the “Set it in” column says, then save here. The reachability check runs from this laptop every 3 s.</p>
     <div id="ipMsgs"></div>
     <div style="overflow-x:auto">
     <table class="ips">
       <tr><th>Device</th><th>Address</th><th>Set it in</th><th>Must match in Control Expert</th><th>Reachable from this laptop</th></tr>
       <tr><td>Laptop</td><td><input id="ip-laptop_ip"></td><td>Windows network adapter → IPv4, static. Plug into the M580 <b>CPU service port (ETH1)</b>.</td><td>–</td><td id="r-laptop">–</td></tr>
       <tr><td>M580 CPU<br><span class="sub">BMEP584040</span></td><td><input id="ip-plc_host"></td><td>Control Expert → PLC bus → CPU → <b>IPConfig</b> (main IP), then download</td><td>This is the project itself</td><td id="r-plc_host">–</td></tr>
-      <tr><td>BMENOC0301</td><td><input id="ip-noc_host"></td><td>Control Expert → DTM Browser → BMENOC0301 → Channel Properties → TCP/IP. Backplane port <b>enabled</b>.</td><td>This is the project itself</td><td id="r-noc_host">–</td></tr>
+      <tr><td>BMENOC0301</td><td><input id="ip-noc_host"></td><td>Control Expert → DTM Browser → BMENOC0301 → Channel Properties → TCP/IP. Backplane port <b>disabled</b>, so the drive and sensor are on their own network (enable it only if the NOC shares the CPU’s subnet).</td><td>This is the project itself</td><td id="r-noc_host">–</td></tr>
       <tr><td>BMENUA0100<br><span class="sub">backplane side</span></td><td><input id="ip-nua_host"></td><td>Control Expert → PLC bus → BMENUA0100 → IP configuration</td><td>This is the project itself</td><td class="sub">not checked</td></tr>
       <tr><td>BMENUA0100<br><span class="sub">control port</span></td><td><input id="ip-nua_ctrl_host"></td><td>Same place. Its <b>own network</b> (SCADA / OPC UA side), not the device subnet. OPC UA on TCP 4840.</td><td>UaExpert: <code>opc.tcp://<span id="nuaUrl">–</span>:4840</code></td><td id="r-nua_ctrl_host">–</td></tr>
       <tr><td>Laptop<br><span class="sub">USB adapter (IT side)</span></td><td><input id="ip-laptop_it_ip"></td><td>Windows → Network connections → the USB adapter → IPv4: this address, mask 255.255.255.0, <b>no gateway, no DNS</b></td><td>Same network as the NUA control port</td><td class="sub">this laptop</td></tr>
       <tr><td>RIO drop<br><span class="sub">BMECRA31210</span></td><td><input id="ip-cra_host"><div style="margin-top:6px" class="sub">Drop no. <input id="ip-cra_drop" type="number" min="1" max="159" style="width:70px"></div></td><td>Control Expert → the drop → <b>IPConfig</b>. The CPU hands this address to the CRA at power-up; set the drop number on the CRA’s <b>rotary switches</b> to match.</td><td>This is the project itself</td><td id="r-cra_host">–</td></tr>
-      <tr><td>SICK SIG200</td><td><input id="ip-sig200_host"></td><td>SIG200 web UI (ships at 192.168.0.1) → Ethernet settings</td><td>DTM Browser → BMENOC0301 → SIG200 → Address Setting</td><td id="r-sig200_host">–</td></tr>
+      <tr><td>SICK SIG200</td><td><input id="ip-sig200_host"></td><td>SIG200 web UI (ships at 192.168.0.1) → Ethernet settings. To reach it, plug a laptop into the NOC’s ETH1 service port on a 192.168.20.x address.</td><td>DTM Browser → BMENOC0301 → SIG200 → Address Setting</td><td id="r-sig200_host">–</td></tr>
       <tr><td>Altivar ATV930</td><td><input id="ip-atv_host"></td><td>Drive keypad → Communication → Embedded Ethernet → IP (fixed)</td><td>DTM Browser → BMENOC0301 → ATV930 → Address Setting</td><td id="r-atv_host">–</td></tr>
       <tr><td>Subnet mask</td><td><input id="ip-netmask"></td><td>Same on every device</td><td>CPU IPConfig</td><td>–</td></tr>
-      <tr><td>Gateway</td><td><input id="ip-gateway"></td><td>Same on every device (the M580 is fine on an isolated rig)</td><td>CPU IPConfig</td><td>–</td></tr>
+      <tr><td>Gateway</td><td><input id="ip-gateway" placeholder="none"></td><td>Leave blank on an isolated rig. If the control network needs one, the same on every control device.</td><td>CPU IPConfig</td><td>–</td></tr>
       <tr><td>Media converters</td><td class="sub">no IP</td><td colspan="3" class="sub">Two, one at each end of the fiber. Unmanaged and transparent. A managed switch would need its own address here. (A BMXNRP0200 in the rack can replace the panel-end converter.)</td></tr>
     </table>
     </div>
@@ -643,7 +643,7 @@
       <button class="btn" id="ipPrint">Print IP sheet</button>
       <span class="note" id="ipSaved"></span>
     </div>
-    <p class="note">Web pages: <a id="lnkSig" target="_blank" rel="noopener">SIG200</a> · <a id="lnkAtv" target="_blank" rel="noopener">ATV930</a> (open from this laptop when it is on the rig network).</p>
+    <p class="note">Web pages: <a id="lnkSig" target="_blank" rel="noopener">SIG200</a> · <a id="lnkAtv" target="_blank" rel="noopener">ATV930</a> (open from a laptop on the device network: the NOC’s ETH1 service port).</p>
   </div>
 </section>
 

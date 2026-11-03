@@ -74,7 +74,7 @@
 <ol class="steps">
   <li><b>Supply:</b> 200–240 V three-phase on L1/L2/L3. It won’t run from a 120 V outlet.</li>
   <li><b>Motor:</b> enter the nameplate data (power, voltage, current, frequency, speed), then run <b>autotune</b>. The motor’s full-load current must be 4.6 A or less. In North America that’s usually 60 Hz and about 1750 rpm for a 4-pole motor. Jog the motor from the keypad to prove the power side.</li>
-  <li><b>Embedded Ethernet:</b> Communication → Embedded Ethernet: IP mode <b>Fixed</b>, IP <code>192.168.0.30</code>, mask <code>255.255.255.0</code>, gateway <code>192.168.0.10</code>. Power-cycle the drive so the address takes.</li>
+  <li><b>Embedded Ethernet:</b> Communication → Embedded Ethernet: IP mode <b>Fixed</b>, IP <code>192.168.20.30</code>, mask <code>255.255.255.0</code>, no gateway (or <code>192.168.20.10</code>, the NOC). Power-cycle the drive so the address takes.</li>
   <li><b>Command and reference:</b> Ref Freq 1 Config [Fr1] = <b>Embedded Ethernet</b>; Control mode [CHCF] = <b>Not separate</b>. That gives the CiA402 (Drivecom) profile this program uses.</li>
   <li><b>Local / Remote:</b> the keypad’s <b>LOCAL/REMOTE</b> key must be on <b>Remote</b>. In Local the keypad owns the drive and the M580 can’t run it, which is the usual “it won’t start” on the day.</li>
   <li><b>Comms-loss response:</b> set the Embedded Ethernet fault response to <b>ramp stop</b> or <b>freewheel</b>, so a cut cable stops the motor.</li>
@@ -84,42 +84,63 @@
 <h2><span class="n">3</span>Project and hardware</h2>
 <div class="wrap"><table>
 <tr><th style="width:26%">Where</th><th>What</th><th style="width:22%">IP</th></tr>
-<tr><td>Main rack (BMEXBP, Ethernet backplane)</td><td>Power supply, <b>BMEP584040</b> CPU, <b>BMENOC0301</b>, <b>BMENUA0100</b>. The NOC and NUA must sit in Ethernet-capable slots. Our board, left to right: power supply, CPU, NUA, NOC, spare slot. Put them in the same slots in the project.</td><td>CPU <code>.10</code>, NOC <code>.11</code>, NUA <code>.12</code></td></tr>
+<tr><td>Main rack (BMEXBP, Ethernet backplane)</td><td>Power supply, <b>BMEP584040</b> CPU, <b>BMENOC0301</b>, <b>BMENUA0100</b>. The NOC and NUA must sit in Ethernet-capable slots. Our board, left to right: power supply, CPU, NUA, NOC, spare slot. Put them in the same slots in the project.</td><td>CPU <code>192.168.10.10</code>, NUA <code>192.168.10.12</code>, NOC <code>192.168.20.10</code></td></tr>
 <tr><td>RIO main ring</td><td>CPU <b>ETH2</b> → CRA port A, CRA port B → CPU <b>ETH3</b>. Copper, closes the ring.</td><td>–</td></tr>
-<tr><td>RIO drop 1</td><td><b>BMECRA31210</b> plus the X80 discrete I/O: Start, Stop (N/C), Reset, key switch, three-lamp stack light. Our board, left to right: power supply, CRA, a second module with rotary switches (part number to confirm), the wired I/O module (part number to confirm), a blank module, spare slot.</td><td>CRA <code>.15</code></td></tr>
-<tr><td>BMENOC0301 front ports</td><td><b>ETH2</b> → ATV930. <b>ETH3</b> → media converter → fiber → media converter → SIG200.</td><td>ATV <code>.30</code>, SIG <code>.20</code></td></tr>
-<tr><td>CPU service port ETH1</td><td>The dashboard laptop. (The NOC’s top port, ETH1, is a service port too: fine for the Magelis HMI or a second laptop.)</td><td>Laptop <code>.100</code></td></tr>
+<tr><td>RIO drop 1</td><td><b>BMECRA31210</b> plus the X80 discrete I/O: Start, Stop (N/C), Reset, key switch, three-lamp stack light. Our board, left to right: power supply, CRA, a second module with rotary switches (part number to confirm), the wired I/O module (part number to confirm), a blank module, spare slot.</td><td>CRA <code>192.168.10.15</code></td></tr>
+<tr><td>BMENOC0301 front ports</td><td><b>ETH2</b> → ATV930. <b>ETH3</b> → media converter → fiber → media converter → SIG200.</td><td>ATV <code>192.168.20.30</code>, SIG <code>192.168.20.20</code></td></tr>
+<tr><td>CPU service port ETH1</td><td>The dashboard laptop. (The NOC’s top port, ETH1, is a service port on the device network: use it to reach the SIG200 and ATV930 web pages, or for the Magelis HMI.)</td><td>Laptop <code>192.168.10.100</code></td></tr>
 <tr><td>BMENUA0100 control port</td><td>Its own network for OPC UA: the laptop’s USB Ethernet adapter (the dashboard’s IT side), UaExpert or SCADA.</td><td><code>192.168.30.10</code>, laptop adapter <code>.30.100</code></td></tr>
 </table></div>
-<p>All device-side addresses are <code>192.168.0.x</code> / <code>255.255.255.0</code>. The dashboard’s IP addresses tab holds the same plan; change it there and here together.</p>
+<p>Three networks, all <code>255.255.255.0</code>, none with a gateway:</p>
+<div class="wrap"><table>
+<tr><th style="width:24%">Network</th><th style="width:22%">Subnet</th><th>On it</th></tr>
+<tr><td><b>Control</b></td><td><code>192.168.10.x</code></td><td>CPU <code>.10</code>, BMENUA0100 backplane side <code>.12</code>, RIO drop <code>.15</code>, dashboard laptop on CPU ETH1 <code>.100</code></td></tr>
+<tr><td><b>Devices</b></td><td><code>192.168.20.x</code></td><td>BMENOC0301 <code>.10</code>, SIG200 <code>.20</code> (over the fiber), ATV930 <code>.30</code></td></tr>
+<tr><td><b>IT</b></td><td><code>192.168.30.x</code></td><td>BMENUA0100 control port <code>.10</code>, laptop USB adapter <code>.100</code> (section 7)</td></tr>
+</table></div>
+<p>The PLC is the only thing joining them: the NOC hands the drive and sensor data to the CPU across the rack, and the NUA serves it to IT. Nothing routes between the networks. The dashboard’s IP addresses tab holds the same plan; change it there and here together.</p>
+<div class="warn">The rig reuses <code>192.168.10.x</code> and <code>192.168.20.x</code>, which the lab network uses too. Keep the rig on its own cables and switches and never patch it into the lab network, or addresses like <code>.10</code> will clash.</div>
 <ol class="steps">
   <li>New project: <b>BMEP584040</b>. On the main rack add the power supply, <b>BMENOC0301</b> and <b>BMENUA0100</b> in their real slots.</li>
-  <li>CPU → <b>IPConfig</b>: main IP <code>192.168.0.10</code>, mask <code>255.255.255.0</code>. Leave the service port (ETH1) in access mode so the laptop reaches the device network through it.</li>
-  <li>Add the <b>RIO drop</b> to the PLC bus (EIO bus): a BME (Ethernet) or BMX rack matching yours, the <b>BMECRA31210</b>, then each X80 I/O module in its real slot. Drop number <b>1</b>, IP <code>192.168.0.15</code> on the drop’s IPConfig. Set the CRA’s <b>rotary switches</b> to drop 1 (tens 0, ones 1) with the power off. The CPU hands the CRA its address at power-up.</li>
+  <li>CPU → <b>IPConfig</b>: main IP <code>192.168.10.10</code>, mask <code>255.255.255.0</code>, no gateway. Leave the service port (ETH1) enabled in access mode: that’s where the dashboard laptop plugs in.</li>
+  <li>Add the <b>RIO drop</b> to the PLC bus (EIO bus): a BME (Ethernet) or BMX rack matching yours, the <b>BMECRA31210</b>, then each X80 I/O module in its real slot. Drop number <b>1</b>, IP <code>192.168.10.15</code> on the drop’s IPConfig (the drop is on the CPU’s control network). Set the CRA’s <b>rotary switches</b> to drop 1 (tens 0, ones 1) with the power off. The CPU hands the CRA its address at power-up.</li>
   <li>Assign the drop to the <b>MAST</b> task (the default), so its I/O is read and written in the same scan as the sections.</li>
-  <li><b>BMENOC0301</b> → open its DTM: IP <code>192.168.0.11</code>, and <b>enable the backplane port</b> so the NOC, the CPU and the laptop on ETH1 share one device network. (Disable it only if a customer wants the drive and sensor network isolated; the laptop then can’t reach the SIG200 or ATV930 through the CPU.)</li>
-  <li><b>BMENUA0100</b>: backplane address <code>192.168.0.12</code>, control port <code>192.168.30.10</code>. Section 7 covers the OPC UA side.</li>
+  <li><b>BMENOC0301</b> → open its DTM: IP <code>192.168.20.10</code>, mask <code>255.255.255.0</code>, and <b>disable the backplane port</b>. With it enabled the NOC must share the CPU’s subnet, so Control Expert rejects <code>.20.10</code>. The drive and sensor still work: the NOC passes their I/O to the CPU across the rack, not over Ethernet. The laptop on CPU ETH1 can’t reach the SIG200 or ATV930 web pages any more; plug into the NOC’s ETH1 service port with a <code>192.168.20.x</code> address for that.</li>
+  <li><b>BMENUA0100</b>: backplane address <code>192.168.10.12</code>, control port <code>192.168.30.10</code>. Section 7 covers the OPC UA side.</li>
   <li>Check the project allows located <code>%MW</code> memory with at least %MW1000–%MW1104 free (CPU configuration / project settings).</li>
 </ol>
 
 <h2><span class="n">4</span>Add the devices in the DTM Browser</h2>
 <h3>SICK SIG200</h3>
 <ol class="steps">
-  <li>Tools → <b>Hardware Catalog</b> → add the SIG200 <b>EDS</b> file with the EDS wizard (download it from the SIG200 product page).</li>
+  <li>Check the SIG200’s type label: we need the <b>EtherNet/IP</b> variant, which has an EDS file. (A PROFINET variant has a GSDML file instead and the M580 can’t scan it.)</li>
+  <li>Get the EDS: <b>sick.com</b> → search the part number on the label → product page → <b>Downloads</b> → device description files → the EtherNet/IP EDS (a .zip with an <code>.eds</code> and an <code>.ico</code>). The SICK Support Portal has the same files. Unzip it into a folder of its own.</li>
+  <li>DTM Browser → right-click the BMENOC0301 → <b>Add EDS to library</b> (or Tools → Hardware Catalog → EDS wizard) → browse to the <code>.eds</code> and finish.</li>
   <li>DTM Browser → right-click the <b>BMENOC0301</b> → Add → SIG200. Alias <code>SIG200</code>. (Both devices hang off the NOC, not the CPU’s embedded scanner.)</li>
-  <li>Address Setting: IP <code>192.168.0.20</code> (static, matches the SIG200 web UI). RPI <b>50 ms</b>.</li>
+  <li>Address Setting: IP <code>192.168.20.20</code>, mask <code>255.255.255.0</code> (static, matches the SIG200 web UI). RPI <b>50 ms</b>.</li>
   <li>Pick the connection that carries the IO-Link port data. Note which input bytes hold port S1: that becomes <code>iPD_Ofs</code>.</li>
 </ol>
 <h3>Altivar ATV930</h3>
 <ol class="steps">
-  <li>Add the ATV930 under the same BMENOC0301, using the Altivar DTM from the Schneider DTM library (or the ATV930 EDS). Alias <code>ATV930</code>, IP <code>192.168.0.30</code>, RPI <b>20 ms</b>.</li>
-  <li>In the drive’s I/O scanning set-up, exchange these parameters:
+  <li>Add the ATV930 under the same BMENOC0301, using the Altivar DTM from the Schneider DTM library (or the ATV930 EDS). Alias <code>ATV930</code>, IP <code>192.168.20.30</code>, mask <code>255.255.255.0</code>.</li>
+  <li>Open the drive’s <b>Protocols &amp; Drive Profiles</b> page:
+    <ul>
+      <li>EtherNet Protocol: <b>EtherNet/IP</b>.</li>
+      <li>IO Connection Profile: <b>100/101 Generic Altivar</b>. It lets us choose the channels. (The 106/107 ATV9xx Solution profile has a fixed list without THR, LFT or ACC/DEC, and it writes torque, logic-output and analog-output values our program never sets.)</li>
+      <li>Fallback Mode: <b>Freewheel stop</b>, so the motor coasts to a stop if the PLC connection drops.</li>
+      <li>RPI 10 ms for both directions. Input Mode: <b>Point to Point</b>. Multicast drive data would be copied out of the NOC’s built-in switch and down the fiber as well.</li>
+    </ul></li>
+  <li>Drive I/O Profile: click the <b>Code</b> cell of each row and pick the parameter.
     <div class="wrap"><table>
-      <tr><th>Direction</th><th>Parameters</th></tr>
-      <tr><td>PLC → drive</td><td><code>CMD</code> command word, <code>LFRD</code> speed reference (rpm). Optional: <code>ACC</code> and <code>DEC</code> ramp times, so the VFD control tab can change them (units follow the drive’s ramp increment <code>Inr</code>, 0.1 s by default).</td></tr>
-      <tr><td>Drive → PLC</td><td><code>ETA</code> status word, <code>RFRD</code> output speed, <code>LCR</code> motor current, <code>OTR</code> torque, <code>THR</code> motor thermal state, <code>LFT</code> last fault</td></tr>
+      <tr><th style="width:12%">Channel</th><th>Inputs (drive to controller)</th><th>Outputs (controller to drive)</th></tr>
+      <tr><td>1</td><td><code>ETA</code> status word (3201)</td><td><code>CMD</code> command word (8501)</td></tr>
+      <tr><td>2</td><td><code>RFRD</code> output speed, rpm (8604)</td><td><code>LFRD</code> speed reference, rpm (8602)</td></tr>
+      <tr><td>3</td><td><code>LCR</code> motor current, 0.1 A (3204)</td><td><code>ACC</code> acceleration, 0.1 s (9001), optional</td></tr>
+      <tr><td>4</td><td><code>OTR</code> motor torque, % (3205)</td><td><code>DEC</code> deceleration, 0.1 s (9002), optional</td></tr>
+      <tr><td>5</td><td><code>THR</code> motor thermal state, % (3209)</td><td></td></tr>
+      <tr><td>6</td><td><code>LFT</code> last fault (7121)</td><td></td></tr>
     </table></div>
-    If the drive’s scanner can’t carry all six inputs, keep ETA and RFRD cyclic and leave the others at 0. The dashboard shows “–” for them.</li>
+    The numbers in brackets are the Altivar logical addresses; if the drop-down shows different ones, use those. Without ACC/DEC the drive keeps the ramps set on its keypad and the VFD control tab can’t change them. Worth adding as inputs 7 and 8 later: <code>EPRW</code> (active electrical power, for an energy talking point) and <code>CCC</code> (active command channel, which shows a drive stuck in Local).</li>
   <li><b>Build → Analyze</b>. Control Expert generates a device DDT for each device. Open the Data Editor and expand <code>SIG200</code> and <code>ATV930</code> to see the element names we need in section 6.</li>
 </ol>
 
@@ -156,15 +177,15 @@ xDemoEnable  := xKeySwitch AND xDrop_Health;  (* uncomment once the key switch i
 <h3>Network</h3>
 <div class="wrap"><table>
 <tr><th style="width:30%">Port</th><th style="width:24%">Address</th><th>Notes</th></tr>
-<tr><td>BMENUA0100 control port</td><td><code>192.168.30.10</code> / 24</td><td>No gateway. 192.168.30.x clashes with neither the lab networks (192.168.10.x, 192.168.20.x) nor typical office Wi-Fi (192.168.1.x).</td></tr>
+<tr><td>BMENUA0100 control port</td><td><code>192.168.30.10</code> / 24</td><td>No gateway. Kept apart from the rig’s control (192.168.10.x) and device (192.168.20.x) networks, and from typical office Wi-Fi (192.168.1.x).</td></tr>
 <tr><td>Laptop USB Ethernet adapter</td><td><code>192.168.30.100</code> / 24</td><td><b>No gateway, no DNS</b>, so internet traffic stays on the Wi-Fi. Rename the adapter “NUA OPC UA”. Mark the network Private. Never bridge it or share a connection across it.</td></tr>
-<tr><td>Laptop built-in Ethernet</td><td><code>192.168.0.100</code> / 24</td><td>The OT side, to the CPU service port ETH1, as before. Also no gateway.</td></tr>
+<tr><td>Laptop built-in Ethernet</td><td><code>192.168.10.100</code> / 24</td><td>The OT side, to the CPU service port ETH1 on the control network. Also no gateway.</td></tr>
 </table></div>
 <p>Plug the USB adapter into the NUA control port directly, or through a small unmanaged switch if a second client (UaExpert on another laptop) joins in.</p>
 
 <h3>In Control Expert</h3>
 <ol class="steps">
-  <li>BMENUA0100 in its real slot. IP configuration: backplane side <code>192.168.0.12</code>; control port <code>192.168.30.10</code>, mask <code>255.255.255.0</code>, no gateway.</li>
+  <li>BMENUA0100 in its real slot. IP configuration: backplane side <code>192.168.10.12</code>; control port <code>192.168.30.10</code>, mask <code>255.255.255.0</code>, no gateway.</li>
   <li>Project Settings → General → PLC embedded data: tick <b>Data dictionary</b>, so the module can browse the PLC variables.</li>
   <li>In the Data Editor, tick the <b>HMI</b> column for the variables the dashboard looks for: <code>iHeartbeat</code>, <code>rVibVelocity</code>, <code>rTemperature</code>, <code>xVibWarning</code>, <code>xVibAlarm</code>, <code>xTempWarning</code>, <code>iShockCount</code>, <code>iATV_Speed</code>, <code>iATV_SpeedRef</code>, <code>iATV_Current</code>, <code>xATV_Running</code>, <code>xATV_Fault</code>, <code>xDrop_Health</code>, <code>iRunSource</code>. Also tick <code>xDemoEnable</code>: the dashboard’s write test tries it (it writes back the value it already holds, so nothing changes).</li>
   <li>Don’t expose the dashboard command block (<code>aCmd</code>) or anything that starts the motor. The IT side is for reading.</li>
@@ -226,7 +247,7 @@ xDemoEnable  := xKeySwitch AND xDrop_Health;  (* uncomment once the key switch i
 </ol>
 <h3>Dashboard</h3>
 <ol class="steps">
-  <li>Dashboard → IP addresses tab: check every device shows reachable. Setup → Mode <b>Live</b>. The heartbeat counts and all boxes on the network tab go green.</li>
+  <li>Dashboard → IP addresses tab: the CPU and RIO drop show reachable; the NOC, SIG200 and ATV930 show “not from here” (they’re on the device network) and their health bits on the network tab show whether they’re talking to the PLC. Setup → Mode <b>Live</b>. The heartbeat counts and all boxes on the network tab go green.</li>
   <li>To let the dashboard run the motor: tick <b>Allow drive control</b> in Setup, then set <code>xDashboardAllowed</code> TRUE in the PLC. The <b>VFD control</b> tab lists every permissive and shows which one is blocking.</li>
   <li>On the VFD control tab: Start forward, Stop, Start reverse, then hold Jog (the PLC caps it at <code>iJogSpeedMax</code>). Change the ramps and watch the reference-vs-actual chart.</li>
   <li>Run the <b>demo sequence</b> once with the motor uncoupled and a low <code>iMaxSpeed</code>. It uses the same command block as the buttons, so the PLC needs nothing extra. Check that STOP, the panel Stop and the E-stop each end it.</li>
@@ -238,7 +259,7 @@ xDemoEnable  := xKeySwitch AND xDrop_Health;  (* uncomment once the key switch i
   <li>Which X80 I/O modules are on the drop, their instance names, and which channel each button and lamp is wired to. On our board: the second module with rotary switches next to the CRA, and the wired I/O module.</li>
   <li>ATV930U07M3 supply is 200–240 V three-phase, the keypad is on Remote, and the motor nameplate suits a 4.6 A drive.</li>
   <li>The drop’s health bit and the CPU’s RIO main-ring status bit (element names in the Data Editor).</li>
-  <li>BMENOC0301 backplane port enabled, and the laptop on ETH1 can reach the SIG200 and ATV930.</li>
+  <li>BMENOC0301 at 192.168.20.10 with its backplane port disabled builds without errors, and the drive and SIG200 health bits go TRUE.</li>
   <li>BMENUA0100: firmware and Control Expert version, the mode selector, and how the HMI flag exposes variables on our version.</li>
   <li>BMENUA0100 Secured mode on our firmware: where users, roles and certificate trust are managed, and how to make the dashboard’s user read-only so the write test is refused.</li>
   <li>Device-DDT element names for the SIG200 and ATV930 (health/Freshness bits, input and output elements).</li>

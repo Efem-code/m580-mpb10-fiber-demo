@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>M580 Fiber Demo</title>
+<style>
+  :root {
+    --orange: #F06A2A; --orange-ink: #B84A14; --char: #3A3B39; --ink: #282A2E;
+    --muted: #5F646A; --bg: #F7F8FA; --card: #FFFFFF; --rule: #DDE0E4;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 16px/1.5 "Segoe UI", Arial, sans-serif; }
+  .bar { height: 8px; background: var(--orange); }
+  main { max-width: 960px; margin: 0 auto; padding: 32px 16px 64px; }
+  header img { height: 40px; }
+  .tag { font: 600 13px/1 "Segoe UI Semibold", "Segoe UI", sans-serif; letter-spacing: .08em; text-transform: uppercase; color: var(--orange-ink); margin-top: 24px; }
+  h1 { font: 600 32px/1.15 "Segoe UI Semibold", "Segoe UI", sans-serif; margin: 10px 0 8px; }
+  h2 { font: 600 20px/1.2 "Segoe UI Semibold", "Segoe UI", sans-serif; margin: 36px 0 12px; }
+  .lede { font-size: 18px; color: var(--muted); max-width: 760px; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px; }
+  a.card { display: block; background: var(--card); border: 1px solid var(--rule); border-left: 5px solid var(--orange); border-radius: 10px; padding: 18px 20px; color: inherit; text-decoration: none; }
+  a.card:hover { border-color: var(--orange); }
+  a.card b { display: block; font-size: 18px; margin-bottom: 4px; }
+  a.card span { color: var(--muted); font-size: 15px; }
+  table { width: 100%; border-collapse: collapse; background: var(--card); font-size: 15px; }
+  th { background: var(--char); color: #F7F8FA; text-align: left; font-weight: 600; padding: 8px 10px; }
+  td { border-bottom: 1px solid var(--rule); padding: 8px 10px; vertical-align: top; }
+  .wrap { overflow-x: auto; }
+  code { font-family: Consolas, "Courier New", monospace; background: #ECEEF1; padding: 1px 5px; border-radius: 4px; font-size: 14px; }
+  ol li { margin-bottom: 6px; }
+  footer { margin-top: 48px; font-size: 13px; color: var(--muted); }
+</style>
+</head>
+<body>
+<div class="bar"></div>
+<main>
+<header><img src="guillevin-logo.png" alt="Guillevin"></header>
+<div class="tag">Demo rig · build pack</div>
+<h1>M580 + ATV930 + SICK MPB10 over fiber</h1>
+<p class="lede">A Modicon M580 reads a SICK MPB10 vibration and temperature sensor through a SIG200 IO-Link master over fiber, runs an ATV930 drive, and serves the same data to IT over OPC UA. Everything we need to build it is here.</p>
+
+<h2>Guides</h2>
+<div class="grid">
+  <a class="card" href="M580-MPB10-fiber-build-guide.html"><b>Bench build guide</b><span>Parts, wiring diagram, IP plan, build steps, checklist and troubleshooting.</span></a>
+  <a class="card" href="control-expert/Control-Expert-build-guide.html"><b>Control Expert build guide</b><span>Drive set-up, project and hardware, DTMs for the SIG200 and ATV930, variables, mapping, OPC UA and commissioning.</span></a>
+</div>
+
+<h2>Download</h2>
+<div class="grid">
+  <a class="card" href="https://github.com/Efem-code/m580-mpb10-fiber-demo/archive/refs/heads/main.zip"><b>Everything as a .zip</b><span>The dashboard, the PLC program sections and both guides.</span></a>
+  <a class="card" href="https://github.com/Efem-code/m580-mpb10-fiber-demo"><b>The repository on GitHub</b><span>Browse the files, or follow the install steps in the README.</span></a>
+</div>
+
+<h2>IP plan</h2>
+<div class="wrap"><table>
+<tr><th>Network</th><th>Subnet</th><th>On it</th></tr>
+<tr><td><b>Control</b></td><td><code>192.168.10.x</code></td><td>CPU <code>.10</code>, BMENUA0100 backplane side <code>.12</code>, RIO drop <code>.15</code>, laptop on CPU ETH1 <code>.100</code></td></tr>
+<tr><td><b>Devices</b></td><td><code>192.168.20.x</code></td><td>BMENOC0301 <code>.10</code> (backplane port disabled), SIG200 <code>.20</code>, ATV930 <code>.30</code></td></tr>
+<tr><td><b>IT</b></td><td><code>192.168.30.x</code></td><td>BMENUA0100 control port <code>.10</code>, laptop USB adapter <code>.100</code></td></tr>
+</table></div>
+<p>All masks <code>255.255.255.0</code>, no gateways. Keep the rig on its own cables and switches, never on the lab network.</p>
+
+<h2>Run the dashboard</h2>
+<ol>
+  <li>Install Python 3.8 or newer from python.org (tick <b>Add python.exe to PATH</b>).</li>
+  <li>Download the .zip above and unzip it.</li>
+  <li>Double-click <code>dashboard\Start Dashboard.bat</code>. It opens in simulation mode, so no hardware is needed.</li>
+  <li>Optional, for the IT side tab: <code>python -m pip install asyncua</code>.</li>
+</ol>
+
+<footer>Guillevin demo rig · M580 · ATV930 · SICK SIG200 / MPB10 · BMENUA0100 OPC UA</footer>
+</main>
+</body>
+</html>

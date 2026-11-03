@@ -41,9 +41,12 @@ function drawBands() {
 
 // ------------------------------------------------------------ config: IP + setup tabs
 const IPS = ["laptop_ip", "plc_host", "noc_host", "nua_host", "nua_ctrl_host", "laptop_it_ip", "cra_host", "sig200_host", "atv_host", "netmask", "gateway"];
-const IP_DEFAULTS = { laptop_ip: "192.168.0.100", plc_host: "192.168.0.10", noc_host: "192.168.0.11", nua_host: "192.168.0.12",
-  nua_ctrl_host: "192.168.30.10", laptop_it_ip: "192.168.30.100", cra_host: "192.168.0.15", sig200_host: "192.168.0.20", atv_host: "192.168.0.30",
-  netmask: "255.255.255.0", gateway: "192.168.0.10", cra_drop: 1 };
+const IP_DEFAULTS = { laptop_ip: "192.168.10.100", plc_host: "192.168.10.10", noc_host: "192.168.20.10", nua_host: "192.168.10.12",
+  nua_ctrl_host: "192.168.30.10", laptop_it_ip: "192.168.30.100", cra_host: "192.168.10.15", sig200_host: "192.168.20.20", atv_host: "192.168.20.30",
+  netmask: "255.255.255.0", gateway: "", cra_drop: 1 };
+// true when two addresses share a subnet under the rig's mask
+const ip32 = s => String(s || "").split(".").reduce((v, o) => v * 256 + (+o || 0), 0);
+const sameNet = (a, b, mask) => ((ip32(a) & ip32(mask)) >>> 0) === ((ip32(b) & ip32(mask)) >>> 0);
 const FIELDS = { "c-mode": "mode", "c-port": "plc_port", "c-unit": "unit_id", "c-base": "base", "c-cmd": "cmd_base",
   "c-asset": "asset", "c-ab": "zone_ab", "c-bc": "zone_bc", "c-cd": "zone_cd", "c-tw": "temp_warn",
   "c-max": "max_rpm", "c-nom": "nominal_rpm", "c-jog": "jog_rpm",
@@ -127,21 +130,23 @@ $("ipReset").onclick = () => {
 $("ipPrint").onclick = () => window.print();
 $("ipCopy").onclick = () => {
   const lines = ["IP plan: M580 + SICK MPB10 + ATV930 demo", "",
-    `Laptop               ${cfg.laptop_ip}   (CPU service port ETH1)`,
-    `M580 CPU BMEP584040  ${cfg.plc_host}`,
-    `BMENOC0301           ${cfg.noc_host}   (backplane port enabled)`,
-    `BMENUA0100           ${cfg.nua_host}   (backplane side)`,
-    `RIO drop BMECRA31210 ${cfg.cra_host}   (drop ${cfg.cra_drop}, rotary switches)`,
-    `SICK SIG200          ${cfg.sig200_host}   (on the NOC, over the fiber)`,
-    `Altivar ATV930       ${cfg.atv_host}   (on the NOC)`,
-    `Subnet mask          ${cfg.netmask}`, `Gateway              ${cfg.gateway}`, "",
+    "Control network",
+    `  Laptop               ${cfg.laptop_ip}   (CPU service port ETH1)`,
+    `  M580 CPU BMEP584040  ${cfg.plc_host}`,
+    `  BMENUA0100           ${cfg.nua_host}   (backplane side)`,
+    `  RIO drop BMECRA31210 ${cfg.cra_host}   (drop ${cfg.cra_drop}, rotary switches)`, "",
+    "Device network",
+    `  BMENOC0301           ${cfg.noc_host}   (backplane port ${sameNet(cfg.noc_host, cfg.plc_host, cfg.netmask) ? "enabled" : "disabled"})`,
+    `  SICK SIG200          ${cfg.sig200_host}   (NOC ETH3, over the fiber)`,
+    `  Altivar ATV930       ${cfg.atv_host}   (NOC ETH2)`, "",
+    `Subnet mask          ${cfg.netmask}`, `Gateway              ${cfg.gateway || "none"}`, "",
     `BMENUA0100 control port ${cfg.nua_ctrl_host}   (separate network, OPC UA opc.tcp://${cfg.nua_ctrl_host}:${cfg.nua_ctrl_port})`,
     `Laptop USB adapter      ${cfg.laptop_it_ip}   (IT side: no gateway, no DNS)`, "",
     `Modbus: status %MW${cfg.base}-${cfg.base + 31}, commands %MW${cfg.cmd_base}-${cfg.cmd_base + 4}, unit ID ${cfg.unit_id}`];
   navigator.clipboard.writeText(lines.join("\n")).then(() => { $("ipSaved").textContent = "Copied"; setTimeout(() => $("ipSaved").textContent = "", 2000); });
 };
 IPS.forEach(k => $("ip-" + k).addEventListener("input", e => {
-  e.target.classList.toggle("bad", !/^(25[0-5]|2[0-4]\d|1?\d?\d)(\.(25[0-5]|2[0-4]\d|1?\d?\d)){3}$/.test(e.target.value.trim()));
+  e.target.classList.toggle("bad", !(k === "gateway" && !e.target.value.trim()) && !/^(25[0-5]|2[0-4]\d|1?\d?\d)(\.(25[0-5]|2[0-4]\d|1?\d?\d)){3}$/.test(e.target.value.trim()));
 }));
 
 // ------------------------------------------------------------ sim + drive controls
@@ -607,6 +612,10 @@ function renderReach(r) {
   for (const k of ["plc_host", "noc_host", "cra_host", "sig200_host", "atv_host", "nua_ctrl_host"]) {
     const x = r[k];
     if (k === "nua_ctrl_host" && x && !x.ok) { $("r-" + k).innerHTML = `<span class="led"></span>Not from here (separate network)`; continue; }
+    const field = ["noc_host", "sig200_host", "atv_host"].includes(k);
+    if (field && x && !x.ok && !sameNet(cfg[k], cfg.laptop_ip, cfg.netmask)) {
+      $("r-" + k).innerHTML = `<span class="led"></span>Not from here (device network: the PLC’s health bits show it)`; continue;
+    }
     $("r-" + k).innerHTML = !x ? "checking…" : x.ok ? `<span class="led g"></span>Yes · ${x.ms} ms (TCP ${x.port})`
       : `<span class="led r"></span>No answer on TCP ${x.port}`;
   }
