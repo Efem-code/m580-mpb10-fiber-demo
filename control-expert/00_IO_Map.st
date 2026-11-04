@@ -22,7 +22,9 @@ xSIG300_Health := FALSE;                         (* EDIT: e.g. SIG300.Freshness 
 FOR iMapIdx := 0 TO 63 DO
     aSIG300_In[iMapIdx] := 0;                    (* EDIT: e.g. SIG300.Inputs.Data[iMapIdx] *)
 END_FOR;
-xMPB_PortActive := xSIG300_Health;               (* EDIT: AND the SIG300 "port S1 device present / PD valid" bit *)
+(* From the SIG300 EDS, input assembly 101 (404 bytes): byte 4 = S1 PQI (port qualifier),
+   byte 5 reserved, bytes 6-37 = S1 process data. PQI bit 7 = process data valid. *)
+xMPB_PortActive := xSIG300_Health AND ((aSIG300_In[4] AND 16#80) <> 0);
 
 (* ---------------- Altivar ATV930 (EtherNet/IP, embedded port) ---------------- *)
 xATV_Health    := FALSE;                         (* EDIT: e.g. ATV930.Freshness *)

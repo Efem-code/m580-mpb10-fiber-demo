@@ -118,7 +118,7 @@
   <li>DTM Browser → right-click the <b>BMENOC0311</b> → Add → SIG300. Alias <code>SIG300</code>. (Both devices hang off the NOC, not the CPU’s embedded scanner.)</li>
   <li>Address Setting: IP <code>192.168.20.20</code>, mask <code>255.255.255.0</code> (static, matches the SIG300 web UI). RPI <b>50 ms</b>.</li>
   <li>Set the input connection to <b>Point to Point</b> (as for the ATV930), so its I/O isn’t multicast onto the D-Link’s Wi-Fi.</li>
-  <li>Pick the connection that carries the IO-Link port data. Note which input bytes hold port S1: that becomes <code>iPD_Ofs</code>.</li>
+  <li>Pick the <b>Input Only</b> connection: we only read the sensor, and the SIG300 keeps the port settings from its web page. (<b>Exclusive Owner</b> also works, but it writes the DTM’s 138-byte configuration to the SIG300 each time it connects, replacing those settings, and adds a 404-byte output block.) The input block is 404 bytes: byte 4 is port S1’s qualifier (PQI), byte 5 is reserved and bytes 6–37 are S1’s process data, so <code>iPD_Ofs</code> is <b>6</b>.</li>
 </ol>
 <h3>Altivar ATV930</h3>
 <ol class="steps">
@@ -224,7 +224,7 @@ xRing_Closed := ...;                          (* CPU DDT: RIO main ring redundan
   <li>ATV930U07M3 supply is 200–240 V three-phase, the keypad is on Remote, and the motor nameplate suits a 4.6 A drive.</li>
   <li>BMENOC0311 at 192.168.20.10 with its backplane port disabled builds without errors, and the drive and SIG300 health bits go TRUE.</li>
   <li>Device-DDT element names for the SIG300 and ATV930 (health/Freshness bits, input and output elements).</li>
-  <li>Which SIG300 bit means “device present / process data valid on S1”, and the S1 byte offset.</li>
+  <li>That PQI bit 7 (byte 4 of the SIG300 input block) means “process data valid” on port S1. The IO-Link standard says so; the EDS doesn’t list the bits.</li>
   <li>MPB10 IODD: value offsets, scaling, and alarm-bit meanings.</li>
   <li>ATV930 keypad menu names, the comms-fault parameter, and whether LCR/OTR/THR/LFT (and ACC/DEC on the output side) fit in the drive’s cyclic exchange.</li>
   <li>Drive bridge (simulator testing): the ATV930’s Modbus unit ID, that it accepts CMD and LFRD over Modbus TCP with the channel set to embedded Ethernet, and that the PLC simulator answers on 127.0.0.1:502.</li>

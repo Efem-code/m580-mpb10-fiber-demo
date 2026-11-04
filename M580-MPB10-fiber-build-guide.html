@@ -254,7 +254,6 @@
   <li>Set port <b>S1</b> to <b>IO-Link</b> mode. The MPB10 should be listed with its vendor and device ID, and the port LED should show IO-Link communication.</li>
   <li>Load the MPB10 IODD into the SIG300 (if it isn’t built in) so its values show by name. Set the measurement mode and warning/alarm thresholds here or in SOPAS ET.</li>
   <li>Turn on <b>Data Storage</b> on port S1 so a replacement MPB10 gets the same settings.</li>
-  <li>Note the SIG300’s EtherNet/IP assembly instances and where port S1’s process data starts in the input assembly. We need that byte offset in the Control Expert guide.</li>
 </ol>
 
 <h2><span class="n">6</span>Program the M580 and run the dashboard</h2>
@@ -300,7 +299,7 @@ These came from photos, datasheets and distributor listings; check them against 
   <li>SIG300 order code really is the EtherNet/IP variant, its power pin-out, factory IP address and connectors, and where port S1’s process data sits in its EtherNet/IP input assembly.</li>
   <li>MPB10 process-data layout, scaling and alarm-bit meanings (IODD / operating instructions).</li>
   <li>The supply to the ATV930U07M3 is 200–240 V three-phase, and the motor nameplate (voltage, current 4.6 A or less, speed) suits it.</li>
-  <li>Which SIG300 input-assembly bit means “device present on S1”, and the Modbus unit ID the M580 answers on (255 or 0).</li>
+  <li>That PQI bit 7 means “process data valid” on port S1, and the Modbus unit ID the M580 answers on (255 or 0).</li>
 </ul>
 </div>
 
