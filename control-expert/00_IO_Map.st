@@ -4,36 +4,50 @@
    the ATV930 (both scanned by the BMENOC0311) and the status of the BMECRA31210 RIO drop. Everything else works on the plain variables filled in here, so if a device
    alias or DDT element name differs on our project, we fix it in this one place.
 
-   As shipped it compiles with the devices "not mapped": health bits FALSE, so nothing runs.
-   For each line marked EDIT, replace the right-hand side with the element from the Data
-   Editor (Data Editor > Variables > expand the device alias, e.g. SIG300 / ATV930):
-     - health      : the connection "Freshness" bit of the device's input connection
-     - input bytes : the input assembly of the SIG300 (array of bytes / words)
-     - drive words : the ETA, RFRD, LCR, OTR, THR, LFT elements we set up for I/O scanning
+   Mapped to the device DDTs in our project (aliases ATV9xx and SIG300_Revision_1_1_from_EDS).
+   The ATV9xx connection currently carries ETA and RFRD only: add LCR, OTR, THR and LFT as
+   channels in its DTM, then remove the comment marks on their lines below.
    ===================================================================================== *)
 
 (* ---------------- SICK SIG300 (EtherNet/IP, IO-Link master) ---------------- *)
-xSIG300_Health := FALSE;                         (* EDIT: e.g. SIG300.Freshness *)
+xSIG300_Health := SIG300_Revision_1_1_from_EDS.Freshness;
 
-(* Copy the SIG300 input assembly into aSIG300_In (ARRAY[0..63] OF BYTE).
-   If the DDT gives BYTEs, copy straight across. If it gives INT/WORDs, split each word:
-   low byte first is the usual EtherNet/IP order, so check with an animation table
-   that the MPB10 bytes land where the IODD says. *)
-FOR iMapIdx := 0 TO 63 DO
-    aSIG300_In[iMapIdx] := 0;                    (* EDIT: e.g. SIG300.Inputs.Data[iMapIdx] *)
-END_FOR;
+(* The DDT names each byte instead of giving an array, so we copy the bytes we use into
+   aSIG300_In at their offsets in the SIG300 input assembly: 4 = S1 PQI, 6-25 = the first
+   20 bytes of S1 process data (the MPB10). *)
+aSIG300_In[4] := SIG300_Revision_1_1_from_EDS.Inputs.S1_PQI;
+aSIG300_In[6] := SIG300_Revision_1_1_from_EDS.Inputs.IOL_Process_Data;
+aSIG300_In[7] := SIG300_Revision_1_1_from_EDS.Inputs.IOL_Process_DataD;
+aSIG300_In[8] := SIG300_Revision_1_1_from_EDS.Inputs.IOL_Process_DataE;
+aSIG300_In[9] := SIG300_Revision_1_1_from_EDS.Inputs.IOL_Process_DataF;
+aSIG300_In[10] := SIG300_Revision_1_1_from_EDS.Inputs.IOL_Process_DataG;
+aSIG300_In[11] := SIG300_Revision_1_1_from_EDS.Inputs.IOL_Process_DataH;
+aSIG300_In[12] := SIG300_Revision_1_1_from_EDS.Inputs.IOL_Process_DataI;
+aSIG300_In[13] := SIG300_Revision_1_1_from_EDS.Inputs.IOL_Process_DataJ;
+aSIG300_In[14] := SIG300_Revision_1_1_from_EDS.Inputs.IOL_Process_DataK;
+aSIG300_In[15] := SIG300_Revision_1_1_from_EDS.Inputs.IOL_Process_DataL;
+aSIG300_In[16] := SIG300_Revision_1_1_from_EDS.Inputs.IOL_Process_DataM;
+aSIG300_In[17] := SIG300_Revision_1_1_from_EDS.Inputs.IOL_Process_DataN;
+aSIG300_In[18] := SIG300_Revision_1_1_from_EDS.Inputs.IOL_Process_DataO;
+aSIG300_In[19] := SIG300_Revision_1_1_from_EDS.Inputs.IOL_Process_DataP;
+aSIG300_In[20] := SIG300_Revision_1_1_from_EDS.Inputs.IOL_Process_DataQ;
+aSIG300_In[21] := SIG300_Revision_1_1_from_EDS.Inputs.IOL_Process_DataR;
+aSIG300_In[22] := SIG300_Revision_1_1_from_EDS.Inputs.IOL_Process_DataS;
+aSIG300_In[23] := SIG300_Revision_1_1_from_EDS.Inputs.IOL_Process_DataT;
+aSIG300_In[24] := SIG300_Revision_1_1_from_EDS.Inputs.IOL_Process_DataU;
+aSIG300_In[25] := SIG300_Revision_1_1_from_EDS.Inputs.IOL_Process_DataV;
 (* From the SIG300 EDS, input assembly 101 (404 bytes): byte 4 = S1 PQI (port qualifier),
    byte 5 reserved, bytes 6-37 = S1 process data. PQI bit 7 = process data valid. *)
 xMPB_PortActive := xSIG300_Health AND ((aSIG300_In[4] AND 16#80) <> 0);
 
 (* ---------------- Altivar ATV930 (EtherNet/IP, embedded port) ---------------- *)
-xATV_Health    := FALSE;                         (* EDIT: e.g. ATV930.Freshness *)
-wATV_ETA       := 16#0000;                       (* EDIT: INT_TO_WORD(ATV930.Inputs.ETA)  status word *)
-iATV_Speed     := 0;                             (* EDIT: ATV930.Inputs.RFRD  output speed, rpm *)
-iATV_Current   := 0;                             (* EDIT: ATV930.Inputs.LCR   motor current, 0.1 A *)
-iATV_Torque    := 0;                             (* EDIT: ATV930.Inputs.OTR   motor torque, % *)
-iATV_Thermal   := 0;                             (* EDIT: ATV930.Inputs.THR   motor thermal state, % *)
-iATV_LastFault := 0;                             (* EDIT: ATV930.Inputs.LFT   last fault code *)
+xATV_Health    := ATV9xx.Freshness;
+wATV_ETA       := ATV9xx.Inputs.ETA;             (* status word *)
+iATV_Speed     := ATV9xx.Inputs.RFRD;            (* output speed, rpm *)
+(* iATV_Current   := ATV9xx.Inputs.LCR;             motor current, 0.1 A *)
+(* iATV_Torque    := ATV9xx.Inputs.OTR;             motor torque, % *)
+(* iATV_Thermal   := ATV9xx.Inputs.THR;             motor thermal state, % *)
+(* iATV_LastFault := ATV9xx.Inputs.LFT;             last fault code *)
 
 (* ---------------- Testing only: PLC simulator + real drive through drive_bridge.py ----------------
    The PLC simulator can't scan the ATV930, so dashboard\drive_bridge.py does it over Modbus TCP:
@@ -63,6 +77,5 @@ END_IF;
    -> CRA ETH2/ETH3. The drop only carries safety I/O, which belongs to the SAFE task, so this
    program reads just its health and the ring status. There is no operator panel on this board:
    xDemoEnable is set from an animation table. *)
-xDrop_Health := FALSE;                           (* EDIT: the drop's health bit (CRA device DDT / drop status) *)
-xRing_Closed := FALSE;                           (* EDIT: CPU device DDT, RIO main ring redundancy OK (both paths) *)
-                                                 (*       then set xRingDiagMapped := TRUE (initial value)      *)
+xDrop_Health := BMEP58_ECPU_EXT.DROP_HEALTH[3];   (* our drop is number 3 on the RIO bus *)
+xRing_Closed := BMEP58_ECPU_EXT.REDUNDANCY_STATUS;   (* RIO main ring: both paths OK *)

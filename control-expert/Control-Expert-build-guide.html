@@ -84,16 +84,16 @@
 <h2><span class="n">3</span>Project and hardware</h2>
 <div class="wrap"><table>
 <tr><th style="width:26%">Where</th><th>What</th><th style="width:22%">IP</th></tr>
-<tr><td>Main rack</td><td>Left to right on our board: power supply, <b>BMEP584040S</b> CPU, <b>BMEP58CPROS3</b> coprocessor, <b>BMENOC0311</b>, <b>BMXNRP0200</b>, <b>BMXSDI1602</b>, <b>BMXSRA0405</b>. Put them in the same slots in the project.</td><td>CPU <code>192.168.10.10</code>, NOC <code>192.168.20.10</code></td></tr>
+<tr><td>Main rack</td><td>A <b>BMEXBP0800</b> 8-slot rack. Left to right on our board: <b>BMXCPS4002S</b> power supply, <b>BMEP584040S</b> CPU, <b>BMEP58CPROS3</b> coprocessor, <b>BMENOC0311</b> (slot 4), <b>BMXNRP0200</b> (slot 5), <b>BMXSDI1602</b> (slot 6), <b>BMXSRA0405</b> (slot 7). Put them in the same slots in the project.</td><td>CPU <code>192.168.10.10</code>, NOC <code>192.168.20.10</code></td></tr>
 <tr><td>RIO main ring, over fiber</td><td>CPU <b>ETH2</b> and <b>ETH3</b> → the main rack’s BMXNRP0200 → two multimode fiber links → the drop’s BMXNRP0200 → CRA <b>ETH2</b> and <b>ETH3</b>. One ring: open it anywhere and the drop keeps running.</td><td>–</td></tr>
-<tr><td>RIO drop 1</td><td>Two power supplies (redundant pair), <b>BMECRA31210</b>, <b>BMXNRP0200</b>, <b>BMXSDI1602</b>, two more safety I/O modules (part numbers to confirm), four free slots.</td><td>CRA <code>192.168.10.15</code></td></tr>
+<tr><td>RIO drop 3</td><td>Two power supplies (redundant pair), <b>BMECRA31210</b>, <b>BMXNRP0200</b>, <b>BMXSDI1602</b>, <b>BMXSDO0802</b>, <b>BMXSRA0405</b>, free slots. A <b>BMEXBP1002</b> rack, slots 0–4 in that order.</td><td>CRA <code>192.168.10.20</code></td></tr>
 <tr><td>BMENOC0311 front ports</td><td><b>ETH2</b> → ATV930. <b>ETH3</b> → SIG300 (copper). <b>ETH1</b> (service port) → the D-Link Wi-Fi access point and the cobot.</td><td>ATV <code>192.168.20.30</code>, SIG <code>192.168.20.20</code></td></tr>
 <tr><td>CPU service port ETH1</td><td>The dashboard laptop.</td><td>Laptop <code>192.168.10.100</code></td></tr>
 </table></div>
 <p>Two networks, both <code>255.255.255.0</code>, neither with a gateway:</p>
 <div class="wrap"><table>
 <tr><th style="width:24%">Network</th><th style="width:22%">Subnet</th><th>On it</th></tr>
-<tr><td><b>Control</b></td><td><code>192.168.10.x</code></td><td>CPU <code>.10</code> (it answers on <code>.11</code> too: keep it free), RIO drop <code>.15</code>, dashboard laptop on CPU ETH1 <code>.100</code></td></tr>
+<tr><td><b>Control</b></td><td><code>192.168.10.x</code></td><td>CPU <code>.10</code> (<code>.11</code> is its IP address A in the project: keep it free), RIO drop <code>.20</code>, dashboard laptop on CPU ETH1 <code>.100</code></td></tr>
 <tr><td><b>Devices</b></td><td><code>192.168.20.x</code></td><td>BMENOC0311 <code>.10</code>, SIG300 <code>.20</code>, ATV930 <code>.30</code>; the D-Link Wi-Fi access point <code>.1</code> on the NOC’s ETH1 with the Lexium cobot <code>.94</code>; Wi-Fi clients <code>.150</code>–<code>.199</code></td></tr>
 </table></div>
 <p>The PLC is the only thing joining them: the NOC hands the drive and sensor data to the CPU across the rack. Nothing routes between the networks. The dashboard’s IP addresses tab holds the same plan; change it there and here together.</p>
@@ -102,7 +102,7 @@
   <li>Check Control Expert has the <b>Safety (XLS)</b> license (Help → About, or the license manager): only that edition offers the BMEP584040S.</li>
   <li>New project: <b>BMEP584040S</b>, firmware <b>3.10</b> (what the CPU reports). Control Expert adds the <b>BMEP58CPROS3</b> in the next slot. If we already built the project for a BMEP584040, right-click the CPU on the PLC bus → <b>Replace Processor</b> instead. On the main rack add the power supply, <b>BMENOC0311</b>, <b>BMXNRP0200</b>, <b>BMXSDI1602</b> and <b>BMXSRA0405</b> in their real slots.</li>
   <li>CPU → <b>IPConfig</b>: main IP <code>192.168.10.10</code>, mask <code>255.255.255.0</code>, no gateway. Leave the service port (ETH1) enabled in access mode: that’s where the dashboard laptop plugs in.</li>
-  <li>Add the <b>RIO drop</b> to the PLC bus (EIO bus): a rack matching ours (two power supplies, so a dual-PSU rack), the <b>BMECRA31210</b>, then each module in its real slot, including the BMXNRP0200 (it has no settings). Drop number <b>1</b>, IP <code>192.168.10.15</code> on the drop’s IPConfig. Check the CRA’s <b>rotary switches</b> read drop 1 (tens 0, ones 1), changed only with the power off. The CPU hands the CRA its address at power-up.</li>
+  <li>Add the <b>RIO drop</b> to the PLC bus (EIO bus): a <b>BMEXBP1002</b> rack (two power supplies), the <b>BMECRA31210</b>, then each module in its real slot, including the BMXNRP0200 (it has no settings). Drop number <b>3</b>, IP <code>192.168.10.20</code> on the drop’s IPConfig. Check the CRA’s <b>rotary switches</b> read drop 3 (tens 0, ones 3), changed only with the power off. The CPU hands the CRA its address at power-up.</li>
   <li>The safety modules (BMXSDI1602, BMXSRA0405 and the others) go in the configuration so the racks match. They belong to the <b>SAFE</b> task; we leave them unwired in the program. Assign the drop to the <b>MAST</b> task for the rest.</li>
   <li><b>BMENOC0311</b> → open its DTM: IP <code>192.168.20.10</code>, mask <code>255.255.255.0</code>, and <b>disable the backplane port</b>. With it enabled the NOC must share the CPU’s subnet, so Control Expert rejects <code>.20.10</code>. The drive and sensor still work: the NOC passes their I/O to the CPU across the rack, not over Ethernet. To reach the SIG300 and ATV930 web pages, use the D-Link Wi-Fi or plug into the NOC’s ETH1 with a <code>192.168.20.x</code> address.</li>
   <li>Check the project allows located <code>%MW</code> memory with at least %MW1000–%MW1104 free (and %MW1200–%MW1209 for the drive bridge).</li>
@@ -114,7 +114,7 @@
 <ol class="steps">
   <li>Check the SIG300’s type label: we need the <b>EtherNet/IP</b> model, <code>SIG300-0A05AA100</code> (part no. 1131012), which has an EDS file. (The PROFINET and EtherCAT models can’t be scanned by the M580.)</li>
   <li>Get the EDS: <b>sick.com</b> → search the part number on the label → product page → <b>Downloads</b> → device description files → the EtherNet/IP EDS (a .zip with an <code>.eds</code> and an <code>.ico</code>). The SICK Support Portal has the same files. Unzip it into a folder of its own.</li>
-  <li>DTM Browser → right-click the BMENOC0311 → <b>Add EDS to library</b> (or Tools → Hardware Catalog → EDS wizard) → browse to the <code>.eds</code> and finish.</li>
+  <li>DTM Browser → right-click the BMENOC0311 → <b>Device menu → Additional functions → Add EDS to library</b>, offline → browse to the <code>.eds</code> and finish. Then Tools → Hardware Catalog → DTM Catalog → <b>Update</b>, or the SIG300 won’t show in the Add list.</li>
   <li>DTM Browser → right-click the <b>BMENOC0311</b> → Add → SIG300. Alias <code>SIG300</code>. (Both devices hang off the NOC, not the CPU’s embedded scanner.)</li>
   <li>Address Setting: IP <code>192.168.20.20</code>, mask <code>255.255.255.0</code> (static, matches the SIG300 web UI). RPI <b>50 ms</b>.</li>
   <li>Set the input connection to <b>Point to Point</b> (as for the ATV930), so its I/O isn’t multicast onto the D-Link’s Wi-Fi.</li>
@@ -153,16 +153,15 @@
 </ol>
 
 <h2><span class="n">6</span>Map the devices</h2>
-<p>Open <code>00_IO_Map</code> and replace each right-hand side marked <b>EDIT</b> with the device-DDT element:</p>
-<pre>xSIG300_Health := SIG300.Freshness;          (* example: use the names our Data Editor shows *)
-aSIG300_In[iMapIdx] := SIG300.Inputs.Data[iMapIdx];
-xATV_Health    := ATV930.Freshness;
-wATV_ETA       := INT_TO_WORD(ATV930.Inputs.ETA);
-iATV_Speed     := ATV930.Inputs.RFRD;</pre>
-<p>The RIO drop, in the same section:</p>
-<pre>xDrop_Health := ...;                          (* the drop's health bit *)
-xRing_Closed := ...;                          (* CPU DDT: RIO main ring redundancy OK; then set xRingDiagMapped TRUE *)</pre>
-<p>There is no operator panel on this board, so <code>xDemoEnable</code> is set from an animation table. Then uncomment and edit the lines in <code>05_IO_Out</code> so CMD and LFRD reach the drive. Build, then download over USB (first time) or ETH1.</p>
+<p><code>00_IO_Map</code> and <code>05_IO_Out</code> are already mapped to the device DDTs in our project: <code>ATV9xx</code>, <code>SIG300_Revision_1_1_from_EDS</code> and <code>BMEP58_ECPU_EXT</code>. If an alias changes, change it there.</p>
+<pre>xSIG300_Health := SIG300_Revision_1_1_from_EDS.Freshness;
+aSIG300_In[4]  := SIG300_Revision_1_1_from_EDS.Inputs.S1_PQI;   (* and bytes 6-25, one line each *)
+xATV_Health    := ATV9xx.Freshness;
+wATV_ETA       := ATV9xx.Inputs.ETA;
+iATV_Speed     := ATV9xx.Inputs.RFRD;
+xDrop_Health   := BMEP58_ECPU_EXT.DROP_HEALTH[3];
+xRing_Closed   := BMEP58_ECPU_EXT.REDUNDANCY_STATUS;</pre>
+<p>Our ATV9xx connection carries ETA, RFRD, CMD and LFRD. Add the other channels from section 4 in its DTM, build, then remove the comment marks on their lines in both sections. There is no operator panel on this board, so <code>xDemoEnable</code> is set from an animation table. Build, then download over USB (first time) or ETH1.</p>
 <div class="note">The MPB10 offsets and scaling (<code>iVal1_Ofs</code>, <code>iVal2_Ofs</code>, <code>rVal1_Gain</code>, <code>rVal2_Gain</code>) are placeholders. Take them from the MPB10 IODD for the measurement mode we set on the sensor. Until then the vibration and temperature numbers are not meaningful.</div>
 
 <h2><span class="n">7</span>Commission it, in this order</h2>
@@ -219,7 +218,6 @@ xRing_Closed := ...;                          (* CPU DDT: RIO main ring redundan
 <h2><span class="n">8</span>Confirm on our hardware</h2>
 <div class="warn"><ul style="margin:0">
   <li>Control Expert has the Safety (XLS) license, and the project’s CPU firmware (3.10) matches the CPU.</li>
-  <li>Rack part numbers and slot counts, the main rack’s power supply, and the two safety I/O modules right of the BMXSDI1602 on the drop.</li>
   <li>The drop’s health bit and the CPU’s RIO main-ring status bit (element names in the Data Editor), and that pulling one fiber link leaves the drop running.</li>
   <li>ATV930U07M3 supply is 200–240 V three-phase, the keypad is on Remote, and the motor nameplate suits a 4.6 A drive.</li>
   <li>BMENOC0311 at 192.168.20.10 with its backplane port disabled builds without errors, and the drive and SIG300 health bits go TRUE.</li>

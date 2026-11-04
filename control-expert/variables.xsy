@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <VariablesExchangeFile>
-<fileHeader company="Schneider Automation" product="EcoStruxure Control Expert" dateTime="date_and_time#2026-11-04-15:13:27" content="Variable source file" DTDVersion="41"></fileHeader>
-<contentHeader name="M580 MPB10 demo" version="0.0.000" dateTime="date_and_time#2026-11-04-15:13:27"></contentHeader>
+<fileHeader company="Schneider Automation" product="EcoStruxure Control Expert" dateTime="date_and_time#2026-11-04-16:06:07" content="Variable source file" DTDVersion="41"></fileHeader>
+<contentHeader name="M580 MPB10 demo" version="0.0.000" dateTime="date_and_time#2026-11-04-16:06:07"></contentHeader>
 <dataBlock>
 <variables name="aDash" typeName="ARRAY[0..31] OF INT" topologicalAddress="%MW1000">
 <comment>Status block read by the dashboard</comment>
@@ -109,8 +109,8 @@
 <variableInit value="FALSE"></variableInit>
 </variables>
 <variables name="xRingDiagMapped" typeName="BOOL">
-<comment>Set TRUE once xRing_Closed is mapped, so the dashboard shows ring status</comment>
-<variableInit value="FALSE"></variableInit>
+<comment>TRUE: xRing_Closed is mapped, so the dashboard shows ring status</comment>
+<variableInit value="TRUE"></variableInit>
 </variables>
 <variables name="xStopAny" typeName="BOOL">
 <comment>Any stop request</comment>

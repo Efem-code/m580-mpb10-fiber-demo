@@ -29,7 +29,7 @@ iMapIdx;INT;;;Loop index (00_IO_Map)
 xDemoEnable;BOOL;;FALSE;Bench enable, set from an animation table. FALSE = drive never gets a run command
 xDrop_Health;BOOL;;FALSE;BMECRA31210 RIO drop healthy (00_IO_Map)
 xRing_Closed;BOOL;;FALSE;RIO main ring redundant: both paths OK (00_IO_Map)
-xRingDiagMapped;BOOL;;FALSE;Set TRUE once xRing_Closed is mapped, so the dashboard shows ring status
+xRingDiagMapped;BOOL;;TRUE;TRUE: xRing_Closed is mapped, so the dashboard shows ring status
 xStopAny;BOOL;;;Any stop request
 rtDashRun;R_TRIG;;;Dashboard run edge
 rtLocalRun;R_TRIG;;;Animation-table run edge

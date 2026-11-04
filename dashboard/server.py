@@ -74,7 +74,7 @@ DEFAULTS = {
     # Control 192.168.10.x: the CPU, the RIO drop and the laptop on CPU ETH1.
     # Devices 192.168.20.x: the BMENOC0311 (backplane port disabled) with the SIG300 and ATV930 on its front ports.
     "laptop_ip": "192.168.10.100", "plc_host": "192.168.10.10", "noc_host": "192.168.20.10",
-    "cra_host": "192.168.10.15", "cra_drop": 1,
+    "cra_host": "192.168.10.20", "cra_drop": 3,
     "sig300_host": "192.168.20.20", "atv_host": "192.168.20.30", "netmask": "255.255.255.0",
     # also on the device network: the D-Link router as a Wi-Fi access point (DHCP pool .150-.199) and the cobot
     "ap_host": "192.168.20.1", "cobot_host": "192.168.20.94",

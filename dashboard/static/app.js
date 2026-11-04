@@ -42,8 +42,8 @@ function drawBands() {
 // ------------------------------------------------------------ config: IP + setup tabs
 const IPS = ["laptop_ip", "plc_host", "noc_host", "cra_host", "sig300_host", "atv_host", "ap_host", "cobot_host", "netmask", "gateway"];
 const IP_DEFAULTS = { laptop_ip: "192.168.10.100", plc_host: "192.168.10.10", noc_host: "192.168.20.10",
-  cra_host: "192.168.10.15", sig300_host: "192.168.20.20", atv_host: "192.168.20.30",
-  ap_host: "192.168.20.1", cobot_host: "192.168.20.94", netmask: "255.255.255.0", gateway: "", cra_drop: 1 };
+  cra_host: "192.168.10.20", sig300_host: "192.168.20.20", atv_host: "192.168.20.30",
+  ap_host: "192.168.20.1", cobot_host: "192.168.20.94", netmask: "255.255.255.0", gateway: "", cra_drop: 3 };
 // true when two addresses share a subnet under the rig's mask
 const ip32 = s => String(s || "").split(".").reduce((v, o) => v * 256 + (+o || 0), 0);
 const sameNet = (a, b, mask) => ((ip32(a) & ip32(mask)) >>> 0) === ((ip32(b) & ip32(mask)) >>> 0);
