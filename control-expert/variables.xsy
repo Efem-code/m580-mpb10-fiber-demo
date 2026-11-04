@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <VariablesExchangeFile>
-<fileHeader company="Schneider Automation" product="EcoStruxure Control Expert" dateTime="date_and_time#2026-11-03-15:42:27" content="Variable source file" DTDVersion="41"></fileHeader>
-<contentHeader name="M580 MPB10 demo" version="0.0.000" dateTime="date_and_time#2026-11-03-15:42:27"></contentHeader>
+<fileHeader company="Schneider Automation" product="EcoStruxure Control Expert" dateTime="date_and_time#2026-11-04-12:43:34" content="Variable source file" DTDVersion="41"></fileHeader>
+<contentHeader name="M580 MPB10 demo" version="0.0.000" dateTime="date_and_time#2026-11-04-12:43:34"></contentHeader>
 <dataBlock>
 <variables name="aDash" typeName="ARRAY[0..31] OF INT" topologicalAddress="%MW1000">
 <comment>Status block read by the dashboard</comment>
@@ -97,7 +97,7 @@
 <comment>Loop index (00_IO_Map)</comment>
 </variables>
 <variables name="xDemoEnable" typeName="BOOL">
-<comment>Bench enable / key switch. FALSE = drive never gets a run command</comment>
+<comment>Bench enable, set from an animation table. FALSE = drive never gets a run command</comment>
 <variableInit value="FALSE"></variableInit>
 </variables>
 <variables name="xDrop_Health" typeName="BOOL">
@@ -112,30 +112,8 @@
 <comment>Set TRUE once xRing_Closed is mapped, so the dashboard shows ring status</comment>
 <variableInit value="FALSE"></variableInit>
 </variables>
-<variables name="xPB_Start" typeName="BOOL">
-<comment>Panel Start push-button (N/O) on the RIO drop</comment>
-<variableInit value="FALSE"></variableInit>
-</variables>
-<variables name="xPB_StopNC" typeName="BOOL">
-<comment>Panel Stop push-button (N/C): TRUE = not pressed</comment>
-<variableInit value="TRUE"></variableInit>
-</variables>
-<variables name="xPB_Reset" typeName="BOOL">
-<comment>Panel fault reset push-button</comment>
-<variableInit value="FALSE"></variableInit>
-</variables>
-<variables name="xKeySwitch" typeName="BOOL">
-<comment>Panel enable key switch</comment>
-<variableInit value="FALSE"></variableInit>
-</variables>
-<variables name="xPanelStop" typeName="BOOL">
-<comment>Panel Stop pressed (or its wire broken)</comment>
-</variables>
 <variables name="xStopAny" typeName="BOOL">
 <comment>Any stop request</comment>
-</variables>
-<variables name="rtPanelStart" typeName="R_TRIG">
-<comment>Panel Start edge</comment>
 </variables>
 <variables name="rtDashRun" typeName="R_TRIG">
 <comment>Dashboard run edge</comment>
@@ -144,24 +122,20 @@
 <comment>Animation-table run edge</comment>
 </variables>
 <variables name="iRunSource" typeName="INT">
-<comment>Who started the motor: 0 none, 1 panel, 2 dashboard, 3 animation table</comment>
+<comment>Who started the motor: 0 none, 2 dashboard, 3 animation table</comment>
 <variableInit value="0"></variableInit>
 </variables>
-<variables name="iPanelSpeed" typeName="INT">
-<comment>Speed when started from the panel, rpm</comment>
-<variableInit value="900"></variableInit>
-</variables>
 <variables name="xLampGreen" typeName="BOOL">
-<comment>Stack light green: running</comment>
+<comment>Stack light green (shown on the dashboard): running</comment>
 </variables>
 <variables name="xLampAmber" typeName="BOOL">
-<comment>Stack light amber: warning</comment>
+<comment>Stack light amber (shown on the dashboard): warning</comment>
 </variables>
 <variables name="xLampRed" typeName="BOOL">
 <comment>Stack light red: alarm / fault, blinking = no sensor data</comment>
 </variables>
 <variables name="wDashPanel" typeName="WORD">
-<comment>Panel / RIO bits for the dashboard (aDash[29])</comment>
+<comment>RIO, enable and stack-light bits for the dashboard (aDash[29])</comment>
 </variables>
 <variables name="xDashboardAllowed" typeName="BOOL">
 <comment>PLC-side permission for the dashboard to run the motor</comment>

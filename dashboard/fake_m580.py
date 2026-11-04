@@ -51,7 +51,7 @@ while True:
             round(v * 40), round((30 + 12 * s) * 10), 3, int(v >= 2.8)] + [0x1234] * 10 + [0]
     regs += [1 | 2 | 4 * running | 16 * allowed | 32 * dash_ok | 64 * rev, eta, round(speed), ref,
              round((1.1 + 2.2 * s) * 10) if running else 0, round(12 + 25 * s) if running else 0, 40, 0, cmdw]
-    # RIO drop healthy, key switch on, stack light, ring closed and mapped
+    # RIO drop healthy, xDemoEnable on, stack-light state, ring closed and mapped
     regs += [1 | 16 | running << 5 | (v >= 2.8) << 6 | (v >= 4.5) << 7 | 1 << 8 | 1 << 9]
     regs += [round(acc_s * 10), round(dec_s * 10)]
     store.write("holding", BASE, [x & 0xFFFF for x in regs])

@@ -3,4 +3,3 @@ __pycache__/
 dashboard/settings.json
 .DS_Store
 Thumbs.db
-dashboard/opcua-pki/

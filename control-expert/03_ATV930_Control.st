@@ -1,16 +1,15 @@
 (* =====================================================================================
    Section S03_ATV930_Control   (MAST task)
    Runs the ATV930 through the CiA402 (Drivecom) state machine over EtherNet/IP
-   (the drive is scanned by the BMENOC0301).
+   (the drive is scanned by the BMENOC0311).
 
    Who can start the motor (the last Start wins, iRunSource remembers who):
-     1  operator panel : Start push-button on the RIO drop, runs at iPanelSpeed
      2  dashboard      : only when xDashboardAllowed AND its watchdog is OK
      3  engineer       : xLocalRun / iLocalSpeed from an animation table (commissioning)
-   Any stop wins: panel Stop (N/C), dashboard Stop, xLocalStop, enable key off, drive fault,
-   lost drive connection. A run that was started by the panel also stops if the RIO drop is
-   lost; one started by the dashboard stops when the dashboard drops its run request or its
-   watchdog expires. Starting again always needs a fresh Start (rising edge).
+   (1 was the operator panel on the first demo board; this board has none.)
+   Any stop wins: dashboard Stop, xLocalStop, xDemoEnable off, drive fault, lost drive
+   connection. A run started by the dashboard stops when the dashboard drops its run request
+   or its watchdog expires. Starting again always needs a fresh Start (rising edge).
    The E-stop is NOT in this program: it is hard-wired to the ATV930 STO inputs.
 
    ETA (status word), masked:
@@ -32,15 +31,12 @@ xATV_Ready   := xATV_Health AND NOT xATV_Fault
                 AND ((wATV_State = 16#0021) OR (wATV_State = 16#0023) OR xATV_Running);
 
 (* ---- who asks for what ---- *)
-xPanelStop := xDrop_Health AND NOT xPB_StopNC;
-xStopAny   := xPanelStop OR xDashStop OR xLocalStop OR NOT xDemoEnable;
+xStopAny   := xDashStop OR xLocalStop OR NOT xDemoEnable;
 
-rtPanelStart(CLK := xDrop_Health AND xPB_Start);
 rtDashRun(CLK := xDashRun);
 rtLocalRun(CLK := xLocalRun);
 
 IF xStopAny OR xATV_Fault OR NOT xATV_Health
-   OR ((iRunSource = 1) AND NOT xDrop_Health)
    OR ((iRunSource = 2) AND NOT xDashRun)
    OR ((iRunSource = 3) AND NOT xLocalRun) THEN
     iRunSource := 0;
@@ -48,12 +44,9 @@ ELSIF rtLocalRun.Q THEN
     iRunSource := 3;
 ELSIF rtDashRun.Q THEN
     iRunSource := 2;
-ELSIF rtPanelStart.Q THEN
-    iRunSource := 1;
 END_IF;
 
 CASE iRunSource OF
-    1: iSpeedReq := iPanelSpeed;  xReverse := FALSE;
     2: iSpeedReq := iDashSpeed;   xReverse := xDashReverse;
        IF xDashJog THEN iSpeedReq := MIN(iSpeedReq, iJogSpeedMax); END_IF;   (* hold-to-run jog *)
     3: iSpeedReq := iLocalSpeed;  xReverse := xLocalReverse;
@@ -76,7 +69,7 @@ END_IF;
 
 xRunReq   := iRunSource <> 0;
 xRunCmd   := xRunReq AND xDemoEnable AND xATV_Health;
-xResetReq := xLocalReset OR xDashReset OR (xDrop_Health AND xPB_Reset);
+xResetReq := xLocalReset OR xDashReset;
 
 (* ---- the command word ---- *)
 IF NOT xATV_Health THEN

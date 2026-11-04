@@ -49,7 +49,7 @@
 </header>
 
 <h1>Programming the M580 for the demo rig</h1>
-<p class="lede">How to build the EcoStruxure Control Expert project for the rig: a <b>BMEP584040</b> CPU with a <b>BMENOC0301</b> scanning the SIG300 and the ATV930, a <b>BMENUA0100</b> serving OPC UA, and a <b>BMECRA31210</b> eRIO drop carrying the operator panel I/O. The program reads the SICK MPB10, runs the ATV930, drives the stack light and talks to the Machine Health dashboard. The program is six Structured Text sections in this folder; this page is the order to put them together and test them.</p>
+<p class="lede">How to build the EcoStruxure Control Expert project for the rig: a <b>BMEP584040S</b> safety CPU with its <b>BMEP58CPROS3</b> coprocessor, a <b>BMENOC0311</b> scanning the SIG300 and the ATV930, and a <b>BMECRA31210</b> eRIO drop linked over fiber by two <b>BMXNRP0200</b>s. The program reads the SICK MPB10, runs the ATV930, works out a stack-light state for the dashboard and talks to the Machine Health dashboard. The program is six Structured Text sections in this folder; this page is the order to put them together and test them.</p>
 
 <div class="warn"><b>Safety first.</b> The E-stop is hard-wired to the ATV930’s <b>STO</b> inputs and never goes through the PLC or the dashboard. Guard the motor and the unbalance weight. Test every drive step with the motor uncoupled and a low speed limit (<code>iMaxSpeed</code>).</div>
 
@@ -57,15 +57,15 @@
 <div class="flow">
   <span class="edit">00_IO_Map</span><i>→</i><span>01_MPB10_Decode</span><i>→</i><span>02_Dashboard_In</span><i>→</i><span>03_ATV930_Control</span><i>→</i><span>04_Dashboard_Out</span><i>→</i><span class="edit">05_IO_Out</span>
 </div>
-<p>All six run in the <b>MAST</b> task, in that order. Only the two orange sections name the device DDTs Control Expert generates (SIG300, ATV930, and the X80 modules on the RIO drop), so they are the only ones we edit for our project. The others work on plain variables.</p>
+<p>All six run in the <b>MAST</b> task, in that order. The safety CPU’s <b>SAFE</b> task stays empty: the safety I/O on the board isn’t used by this demo. Only the two orange sections name the device DDTs Control Expert generates (SIG300, ATV930, and the RIO drop’s status), so they are the only ones we edit for our project. The others work on plain variables.</p>
 <div class="wrap"><table>
 <tr><th style="width:26%">File</th><th>Does</th></tr>
-<tr><td>00_IO_Map.st</td><td>Copies the SIG300 and ATV930 device-DDT inputs (health bits, input bytes, ETA, RFRD, LCR, OTR, THR, LFT) and the RIO drop inputs (drop health, ring status, Start, Stop, Reset, key switch) into plain variables. Ships “unmapped” (health FALSE) so it compiles and nothing runs.</td></tr>
+<tr><td>00_IO_Map.st</td><td>Copies the SIG300 and ATV930 device-DDT inputs (health bits, input bytes, ETA, RFRD, LCR, OTR, THR, LFT) and the RIO drop’s health and ring status into plain variables. Ships “unmapped” (health FALSE) so it compiles and nothing runs.</td></tr>
 <tr><td>01_MPB10_Decode.st</td><td>Turns the 20 IO-Link bytes into mm/s, °C and alarm bits. Adds PLC-side limits and a shock counter. Zeroes everything when the sensor data is lost.</td></tr>
 <tr><td>02_Dashboard_In.st</td><td>Reads the dashboard command block at %MW1100 and runs a 1 s heartbeat watchdog.</td></tr>
-<tr><td>03_ATV930_Control.st</td><td>One run latch for three sources (panel, dashboard, animation table): last Start wins, any Stop wins. CiA402 state machine builds CMD and the speed reference.</td></tr>
-<tr><td>04_Dashboard_Out.st</td><td>Works out the stack light and fills the status block at %MW1000 for the dashboard (word 29 = panel and RIO bits, words 30–31 = ramps in use).</td></tr>
-<tr><td>05_IO_Out.st</td><td>Writes CMD and LFRD into the ATV930 device DDT and the three lamps to the X80 outputs on the drop.</td></tr>
+<tr><td>03_ATV930_Control.st</td><td>One run latch for two sources (dashboard, animation table): last Start wins, any Stop wins. CiA402 state machine builds CMD and the speed reference.</td></tr>
+<tr><td>04_Dashboard_Out.st</td><td>Works out the stack-light state (shown on the dashboard; the board has no lamps) and fills the status block at %MW1000 for the dashboard (word 29 = RIO, enable and stack-light bits, words 30–31 = ramps in use).</td></tr>
+<tr><td>05_IO_Out.st</td><td>Writes CMD, LFRD and the ramps into the ATV930 device DDT.</td></tr>
 <tr><td>variables.csv</td><td>Every variable: name, type, located address, initial value, comment. Open it in Excel next to the Data Editor.</td></tr>
 </table></div>
 
@@ -84,30 +84,29 @@
 <h2><span class="n">3</span>Project and hardware</h2>
 <div class="wrap"><table>
 <tr><th style="width:26%">Where</th><th>What</th><th style="width:22%">IP</th></tr>
-<tr><td>Main rack (BMEXBP, Ethernet backplane)</td><td>Power supply, <b>BMEP584040</b> CPU, <b>BMENOC0301</b>, <b>BMENUA0100</b>. The NOC and NUA must sit in Ethernet-capable slots. Our board is a <b>4-slot</b> backplane, left to right: power supply, CPU, NUA, NOC, then the rack’s expansion port (only a BMXXBE expansion module goes there). Every slot is used. Put them in the same slots in the project.</td><td>CPU <code>192.168.10.10</code>, NUA <code>192.168.10.12</code>, NOC <code>192.168.20.10</code></td></tr>
-<tr><td>RIO main ring</td><td>CPU <b>ETH2</b> → CRA port A, CRA port B → CPU <b>ETH3</b>. Copper, closes the ring.</td><td>–</td></tr>
-<tr><td>RIO drop 1</td><td><b>BMECRA31210</b> plus the X80 discrete I/O: Start, Stop (N/C), Reset, key switch, three-lamp stack light. Our board, left to right: power supply, CRA, a second module with rotary switches (part number to confirm), the wired I/O module (part number to confirm), the BMXNRP0200 fiber converter in the free slot (it was blank), then the expansion port. Also a 4-slot rack.</td><td>CRA <code>192.168.10.15</code></td></tr>
-<tr><td>BMENOC0301 front ports</td><td><b>ETH2</b> → ATV930. <b>ETH3</b> → media converter → fiber → media converter → SIG300.</td><td>ATV <code>192.168.20.30</code>, SIG <code>192.168.20.20</code></td></tr>
-<tr><td>CPU service port ETH1</td><td>The dashboard laptop. (The NOC’s top port, ETH1, is a service port on the device network: use it to reach the SIG300 and ATV930 web pages, or for the Magelis HMI.)</td><td>Laptop <code>192.168.10.100</code></td></tr>
-<tr><td>BMENUA0100 control port</td><td>Its own network for OPC UA: the laptop’s USB Ethernet adapter (the dashboard’s IT side), UaExpert or SCADA.</td><td><code>192.168.30.10</code>, laptop adapter <code>.30.100</code></td></tr>
+<tr><td>Main rack</td><td>Left to right on our board: power supply, <b>BMEP584040S</b> CPU, <b>BMEP58CPROS3</b> coprocessor, <b>BMENOC0311</b>, <b>BMXNRP0200</b>, <b>BMXSDI1602</b>, <b>BMXSRA0405</b>. Put them in the same slots in the project.</td><td>CPU <code>192.168.10.10</code>, NOC <code>192.168.20.10</code></td></tr>
+<tr><td>RIO main ring, over fiber</td><td>CPU <b>ETH2</b> and <b>ETH3</b> → the main rack’s BMXNRP0200 → two multimode fiber links → the drop’s BMXNRP0200 → CRA <b>ETH2</b> and <b>ETH3</b>. One ring: open it anywhere and the drop keeps running.</td><td>–</td></tr>
+<tr><td>RIO drop 1</td><td>Two power supplies (redundant pair), <b>BMECRA31210</b>, <b>BMXNRP0200</b>, <b>BMXSDI1602</b>, two more safety I/O modules (part numbers to confirm), four free slots.</td><td>CRA <code>192.168.10.15</code></td></tr>
+<tr><td>BMENOC0311 front ports</td><td><b>ETH2</b> → ATV930. <b>ETH3</b> → SIG300 (copper). <b>ETH1</b> (service port) → the D-Link Wi-Fi access point and the cobot.</td><td>ATV <code>192.168.20.30</code>, SIG <code>192.168.20.20</code></td></tr>
+<tr><td>CPU service port ETH1</td><td>The dashboard laptop.</td><td>Laptop <code>192.168.10.100</code></td></tr>
 </table></div>
-<p>Three networks, all <code>255.255.255.0</code>, none with a gateway:</p>
+<p>Two networks, both <code>255.255.255.0</code>, neither with a gateway:</p>
 <div class="wrap"><table>
 <tr><th style="width:24%">Network</th><th style="width:22%">Subnet</th><th>On it</th></tr>
-<tr><td><b>Control</b></td><td><code>192.168.10.x</code></td><td>CPU <code>.10</code>, BMENUA0100 backplane side <code>.12</code>, RIO drop <code>.15</code>, dashboard laptop on CPU ETH1 <code>.100</code></td></tr>
-<tr><td><b>Devices</b></td><td><code>192.168.20.x</code></td><td>BMENOC0301 <code>.10</code>, SIG300 <code>.20</code> (over the fiber), ATV930 <code>.30</code>; the D-Link Wi-Fi access point <code>.1</code> on the NOC’s ETH1 with the Lexium cobot <code>.94</code>; Wi-Fi clients <code>.150</code>–<code>.199</code></td></tr>
-<tr><td><b>IT</b></td><td><code>192.168.30.x</code></td><td>BMENUA0100 control port <code>.10</code>, laptop USB adapter <code>.100</code> (section 7)</td></tr>
+<tr><td><b>Control</b></td><td><code>192.168.10.x</code></td><td>CPU <code>.10</code> (it answers on <code>.11</code> too: keep it free), RIO drop <code>.15</code>, dashboard laptop on CPU ETH1 <code>.100</code></td></tr>
+<tr><td><b>Devices</b></td><td><code>192.168.20.x</code></td><td>BMENOC0311 <code>.10</code>, SIG300 <code>.20</code>, ATV930 <code>.30</code>; the D-Link Wi-Fi access point <code>.1</code> on the NOC’s ETH1 with the Lexium cobot <code>.94</code>; Wi-Fi clients <code>.150</code>–<code>.199</code></td></tr>
 </table></div>
-<p>The PLC is the only thing joining them: the NOC hands the drive and sensor data to the CPU across the rack, and the NUA serves it to IT. Nothing routes between the networks. The dashboard’s IP addresses tab holds the same plan; change it there and here together.</p>
+<p>The PLC is the only thing joining them: the NOC hands the drive and sensor data to the CPU across the rack. Nothing routes between the networks. The dashboard’s IP addresses tab holds the same plan; change it there and here together.</p>
 <div class="warn">The rig reuses <code>192.168.10.x</code> and <code>192.168.20.x</code>, which the lab network uses too. Keep the rig on its own cables and switches and never patch it into the lab network, or addresses like <code>.10</code> will clash. The cobot’s D-Link router is the exception: it joins the device network on purpose.</div>
 <ol class="steps">
-  <li>New project: <b>BMEP584040</b>. On the main rack add the power supply, <b>BMENOC0301</b> and <b>BMENUA0100</b> in their real slots.</li>
+  <li>Check Control Expert has the <b>Safety (XLS)</b> license (Help → About, or the license manager): only that edition offers the BMEP584040S.</li>
+  <li>New project: <b>BMEP584040S</b>, firmware <b>3.10</b> (what the CPU reports). Control Expert adds the <b>BMEP58CPROS3</b> in the next slot. If we already built the project for a BMEP584040, right-click the CPU on the PLC bus → <b>Replace Processor</b> instead. On the main rack add the power supply, <b>BMENOC0311</b>, <b>BMXNRP0200</b>, <b>BMXSDI1602</b> and <b>BMXSRA0405</b> in their real slots.</li>
   <li>CPU → <b>IPConfig</b>: main IP <code>192.168.10.10</code>, mask <code>255.255.255.0</code>, no gateway. Leave the service port (ETH1) enabled in access mode: that’s where the dashboard laptop plugs in.</li>
-  <li>Add the <b>RIO drop</b> to the PLC bus (EIO bus): a BME (Ethernet) or BMX rack matching yours, the <b>BMECRA31210</b>, then each X80 module in its real slot, including the BMXNRP0200 (it has no settings). Drop number <b>1</b>, IP <code>192.168.10.15</code> on the drop’s IPConfig (the drop is on the CPU’s control network). Set the CRA’s <b>rotary switches</b> to drop 1 (tens 0, ones 1) with the power off. The CPU hands the CRA its address at power-up.</li>
-  <li>Assign the drop to the <b>MAST</b> task (the default), so its I/O is read and written in the same scan as the sections.</li>
-  <li><b>BMENOC0301</b> → open its DTM: IP <code>192.168.20.10</code>, mask <code>255.255.255.0</code>, and <b>disable the backplane port</b>. With it enabled the NOC must share the CPU’s subnet, so Control Expert rejects <code>.20.10</code>. The drive and sensor still work: the NOC passes their I/O to the CPU across the rack, not over Ethernet. The laptop on CPU ETH1 can’t reach the SIG300 or ATV930 web pages any more; plug into the NOC’s ETH1 service port with a <code>192.168.20.x</code> address for that.</li>
-  <li><b>BMENUA0100</b>: backplane address <code>192.168.10.12</code>, control port <code>192.168.30.10</code>. Section 7 covers the OPC UA side.</li>
-  <li>Check the project allows located <code>%MW</code> memory with at least %MW1000–%MW1104 free (CPU configuration / project settings).</li>
+  <li>Add the <b>RIO drop</b> to the PLC bus (EIO bus): a rack matching ours (two power supplies, so a dual-PSU rack), the <b>BMECRA31210</b>, then each module in its real slot, including the BMXNRP0200 (it has no settings). Drop number <b>1</b>, IP <code>192.168.10.15</code> on the drop’s IPConfig. Check the CRA’s <b>rotary switches</b> read drop 1 (tens 0, ones 1), changed only with the power off. The CPU hands the CRA its address at power-up.</li>
+  <li>The safety modules (BMXSDI1602, BMXSRA0405 and the others) go in the configuration so the racks match. They belong to the <b>SAFE</b> task; we leave them unwired in the program. Assign the drop to the <b>MAST</b> task for the rest.</li>
+  <li><b>BMENOC0311</b> → open its DTM: IP <code>192.168.20.10</code>, mask <code>255.255.255.0</code>, and <b>disable the backplane port</b>. With it enabled the NOC must share the CPU’s subnet, so Control Expert rejects <code>.20.10</code>. The drive and sensor still work: the NOC passes their I/O to the CPU across the rack, not over Ethernet. To reach the SIG300 and ATV930 web pages, use the D-Link Wi-Fi or plug into the NOC’s ETH1 with a <code>192.168.20.x</code> address.</li>
+  <li>Check the project allows located <code>%MW</code> memory with at least %MW1000–%MW1104 free (and %MW1200–%MW1209 for the drive bridge).</li>
+  <li>Downloading to a safety CPU: it has to be in <b>maintenance</b> mode, not safety mode, to accept a modified program. Control Expert asks for the safety password we set in the project.</li>
 </ol>
 
 <h2><span class="n">4</span>Add the devices in the DTM Browser</h2>
@@ -115,21 +114,21 @@
 <ol class="steps">
   <li>Check the SIG300’s type label: we need the <b>EtherNet/IP</b> model, <code>SIG300-0A05AA100</code> (part no. 1131012), which has an EDS file. (The PROFINET and EtherCAT models can’t be scanned by the M580.)</li>
   <li>Get the EDS: <b>sick.com</b> → search the part number on the label → product page → <b>Downloads</b> → device description files → the EtherNet/IP EDS (a .zip with an <code>.eds</code> and an <code>.ico</code>). The SICK Support Portal has the same files. Unzip it into a folder of its own.</li>
-  <li>DTM Browser → right-click the BMENOC0301 → <b>Add EDS to library</b> (or Tools → Hardware Catalog → EDS wizard) → browse to the <code>.eds</code> and finish.</li>
-  <li>DTM Browser → right-click the <b>BMENOC0301</b> → Add → SIG300. Alias <code>SIG300</code>. (Both devices hang off the NOC, not the CPU’s embedded scanner.)</li>
+  <li>DTM Browser → right-click the BMENOC0311 → <b>Add EDS to library</b> (or Tools → Hardware Catalog → EDS wizard) → browse to the <code>.eds</code> and finish.</li>
+  <li>DTM Browser → right-click the <b>BMENOC0311</b> → Add → SIG300. Alias <code>SIG300</code>. (Both devices hang off the NOC, not the CPU’s embedded scanner.)</li>
   <li>Address Setting: IP <code>192.168.20.20</code>, mask <code>255.255.255.0</code> (static, matches the SIG300 web UI). RPI <b>50 ms</b>.</li>
   <li>Set the input connection to <b>Point to Point</b> (as for the ATV930), so its I/O isn’t multicast onto the D-Link’s Wi-Fi.</li>
   <li>Pick the connection that carries the IO-Link port data. Note which input bytes hold port S1: that becomes <code>iPD_Ofs</code>.</li>
 </ol>
 <h3>Altivar ATV930</h3>
 <ol class="steps">
-  <li>Add the ATV930 under the same BMENOC0301, using the Altivar DTM from the Schneider DTM library (or the ATV930 EDS). Alias <code>ATV930</code>, IP <code>192.168.20.30</code>, mask <code>255.255.255.0</code>.</li>
+  <li>Add the ATV930 under the same BMENOC0311, using the Altivar DTM from the Schneider DTM library (or the ATV930 EDS). Alias <code>ATV930</code>, IP <code>192.168.20.30</code>, mask <code>255.255.255.0</code>.</li>
   <li>Open the drive’s <b>Protocols &amp; Drive Profiles</b> page:
     <ul>
       <li>EtherNet Protocol: <b>EtherNet/IP</b>.</li>
       <li>IO Connection Profile: <b>100/101 Generic Altivar</b>. It lets us choose the channels. (The 106/107 ATV9xx Solution profile has a fixed list without THR, LFT or ACC/DEC, and it writes torque, logic-output and analog-output values our program never sets.)</li>
       <li>Fallback Mode: <b>Freewheel stop</b>, so the motor coasts to a stop if the PLC connection drops.</li>
-      <li>RPI 10 ms for both directions. Input Mode: <b>Point to Point</b>. Multicast drive data would be copied out of the NOC’s built-in switch and down the fiber as well.</li>
+      <li>RPI 10 ms for both directions. Input Mode: <b>Point to Point</b>. Multicast drive data would be copied out of the NOC’s built-in switch to the SIG300 and the Wi-Fi as well.</li>
     </ul></li>
   <li>Drive I/O Profile: click the <b>Code</b> cell of each row and pick the parameter.
     <div class="wrap"><table>
@@ -146,7 +145,6 @@
 </ol>
 
 <h2><span class="n">5</span>Variables and sections</h2>
-<p>Set <code>iPanelSpeed</code> (speed when started from the panel Start button) and leave <code>xPB_StopNC</code> at its initial value TRUE.</p>
 <ol class="steps">
   <li>Variables: import <code>variables.xsy</code> (Data Editor → right-click → <b>Import</b>, or File → Import), which holds every row of <code>variables.csv</code>. If our version refuses it, create them by hand from <code>variables.csv</code>; after editing the CSV, <code>python make_xsy.py</code> rebuilds the import file.</li>
   <li>Check every row of <code>variables.csv</code> is there. Give <code>aDash</code> the address <code>%MW1000</code> and <code>aCmd</code> <code>%MW1100</code>, and set the initial values shown (limits, <code>iMaxSpeed</code>, the placeholders).</li>
@@ -161,90 +159,30 @@ aSIG300_In[iMapIdx] := SIG300.Inputs.Data[iMapIdx];
 xATV_Health    := ATV930.Freshness;
 wATV_ETA       := INT_TO_WORD(ATV930.Inputs.ETA);
 iATV_Speed     := ATV930.Inputs.RFRD;</pre>
-<p>The RIO drop, in the same section. X80 discrete modules give device DDTs whose channels are <code>DIS_CH_IN[n].VALUE</code> and <code>DIS_CH_OUT[n].VALUE</code>:</p>
+<p>The RIO drop, in the same section:</p>
 <pre>xDrop_Health := ...;                          (* the drop's health bit *)
-xRing_Closed := ...;                          (* CPU DDT: RIO main ring redundancy OK; then set xRingDiagMapped TRUE *)
-xPB_Start    := DI_Module.DIS_CH_IN[0].VALUE;  (* use our module's instance name *)
-xPB_StopNC   := DI_Module.DIS_CH_IN[1].VALUE;  (* N/C contact *)
-xPB_Reset    := DI_Module.DIS_CH_IN[2].VALUE;
-xKeySwitch   := DI_Module.DIS_CH_IN[3].VALUE;
-xDemoEnable  := xKeySwitch AND xDrop_Health;  (* uncomment once the key switch is wired *)</pre>
-<p>Then uncomment and edit the lines in <code>05_IO_Out</code> so CMD and LFRD reach the drive and the lamps reach the stack light. Build, then download over USB (first time) or ETH1.</p>
-<div class="note">The Stop push-button is a normal control stop, not an E-stop. Use an N/C contact so a broken wire stops the motor. The E-stop stays on the ATV930 STO inputs.</div>
+xRing_Closed := ...;                          (* CPU DDT: RIO main ring redundancy OK; then set xRingDiagMapped TRUE *)</pre>
+<p>There is no operator panel on this board, so <code>xDemoEnable</code> is set from an animation table. Then uncomment and edit the lines in <code>05_IO_Out</code> so CMD and LFRD reach the drive. Build, then download over USB (first time) or ETH1.</p>
 <div class="note">The MPB10 offsets and scaling (<code>iVal1_Ofs</code>, <code>iVal2_Ofs</code>, <code>rVal1_Gain</code>, <code>rVal2_Gain</code>) are placeholders. Take them from the MPB10 IODD for the measurement mode we set on the sensor. Until then the vibration and temperature numbers are not meaningful.</div>
 
-<h2><span class="n">7</span>OPC UA on the BMENUA0100 · the IT side</h2>
-<p>This is the part of the demo for IT and management: the same live machine data reaching a separate IT network over secure OPC UA, with no route from that network back to the drive or the sensor. The dashboard laptop plays the IT client through a USB Ethernet adapter, and its <b>IT side · OPC UA</b> tab shows the values arriving both ways, side by side.</p>
-
-<h3>Network</h3>
-<div class="wrap"><table>
-<tr><th style="width:30%">Port</th><th style="width:24%">Address</th><th>Notes</th></tr>
-<tr><td>BMENUA0100 control port</td><td><code>192.168.30.10</code> / 24</td><td>No gateway. Kept apart from the rig’s control (192.168.10.x) and device (192.168.20.x) networks, and from typical office Wi-Fi (192.168.1.x).</td></tr>
-<tr><td>Laptop USB Ethernet adapter</td><td><code>192.168.30.100</code> / 24</td><td><b>No gateway, no DNS</b>, so internet traffic stays on the Wi-Fi. Rename the adapter “NUA OPC UA”. Mark the network Private. Never bridge it or share a connection across it.</td></tr>
-<tr><td>Laptop built-in Ethernet</td><td><code>192.168.10.100</code> / 24</td><td>The OT side, to the CPU service port ETH1 on the control network. Also no gateway.</td></tr>
-</table></div>
-<p>Plug the USB adapter into the NUA control port directly, or through a small unmanaged switch if a second client (UaExpert on another laptop) joins in.</p>
-
-<h3>In Control Expert</h3>
+<h2><span class="n">7</span>Commission it, in this order</h2>
+<h3>RIO drop over fiber</h3>
 <ol class="steps">
-  <li>BMENUA0100 in its real slot. IP configuration: backplane side <code>192.168.10.12</code>; control port <code>192.168.30.10</code>, mask <code>255.255.255.0</code>, no gateway.</li>
-  <li>Project Settings → General → PLC embedded data: tick <b>Data dictionary</b>, so the module can browse the PLC variables.</li>
-  <li>In the Data Editor, tick the <b>HMI</b> column for the variables the dashboard looks for: <code>iHeartbeat</code>, <code>rVibVelocity</code>, <code>rTemperature</code>, <code>xVibWarning</code>, <code>xVibAlarm</code>, <code>xTempWarning</code>, <code>iShockCount</code>, <code>iATV_Speed</code>, <code>iATV_SpeedRef</code>, <code>iATV_Current</code>, <code>xATV_Running</code>, <code>xATV_Fault</code>, <code>xDrop_Health</code>, <code>iRunSource</code>. Also tick <code>xDemoEnable</code>: the dashboard’s write test tries it (it writes back the value it already holds, so nothing changes).</li>
-  <li>Don’t expose the dashboard command block (<code>aCmd</code>) or anything that starts the motor. The IT side is for reading.</li>
-  <li>Build, download, and check the NUA’s status LEDs.</li>
-</ol>
-
-<h3>First test: Standard mode</h3>
-<ol class="steps">
-  <li>Set the module’s mode selector to <b>Standard</b> (power-cycle after changing it).</li>
-  <li>Dashboard → <b>IP addresses</b>: BMENUA0100 control port <code>192.168.30.10</code>, laptop USB adapter <code>192.168.30.100</code>. The tab’s check column should show the control port answering on TCP 4840.</li>
-  <li>Dashboard → <b>Setup</b> → IT side: Security <b>None</b>, user blank (or the default account from FAQ FA405101). Save.</li>
-  <li><b>IT side · OPC UA</b> tab → <b>Connect</b>. Expect “14 of 14” variables found and the two value columns matching.</li>
-</ol>
-
-<h3>For the customer: Secured mode</h3>
-<ol class="steps">
-  <li>Set the mode selector to <b>Secured</b>. Change the default password on first login, and create an OPC UA user for the dashboard (for example <code>itviewer</code>) with <b>read-only</b> access.</li>
-  <li>Dashboard → Setup → IT side: Security <b>Basic256Sha256 · Sign &amp; encrypt</b>, that user and password. Save, then Connect.</li>
-  <li>The first attempt is rejected: the module doesn’t trust our certificate yet. On the NUA’s certificate management, move the dashboard’s certificate (<code>M580 demo dashboard</code>, <code>urn:guillevin:m580-demo:dashboard</code>) from rejected to <b>trusted</b>, then Connect again. The certificate is made on first use in <code>dashboard\opcua-pki\</code>; keep that folder, or the module will have to trust a new one.</li>
-  <li>Press <b>Try a write from the IT side</b>. It should be <b>refused</b>: that is the point to make. If it’s accepted, tighten the user’s role or the variable’s access before showing it.</li>
-</ol>
-
-<h3>Rehearse without the module</h3>
-<p>Run <code>python fake_nua.py</code> in the dashboard folder (needs <code>python -m pip install asyncua</code>): a stand-in NUA with the same variables, read-only, offering None and Sign &amp; encrypt (user <code>demo</code> / <code>demo</code>). Set the control port to <code>127.0.0.1</code> on the IP addresses tab and Connect. With <code>--plc 127.0.0.1:5020</code> it reads <code>fake_m580.py</code> over Modbus instead, so the two columns really come by two separate paths.</p>
-
-<h3>When the IT side doesn’t connect</h3>
-<div class="wrap"><table>
-<tr><th style="width:30%">What the tab says</th><th>Check</th></tr>
-<tr><td>No answer from 192.168.30.10</td><td>USB adapter address and mask, the cable into the NUA <b>control</b> port (not the backplane side), NUA powered and configured. <code>ping 192.168.30.10</code> from the laptop.</td></tr>
-<tr><td>Refused the connection</td><td>The NUA answers but its OPC UA server is off, or the port isn’t 4840.</td></tr>
-<tr><td>Rejected the security settings or our certificate</td><td>Trust the dashboard’s certificate on the module; or the mode doesn’t match (Security None needs Standard mode).</td></tr>
-<tr><td>Rejected the user name or password</td><td>The OPC UA user on the module, and the password in Setup (a blank password field keeps the saved one).</td></tr>
-<tr><td>Connected, but none of the demo variables are visible</td><td>Data dictionary not ticked, HMI column not ticked, or not rebuilt and downloaded.</td></tr>
-<tr><td>Some variables “not visible”</td><td>Their names in the project differ from the list above, or their HMI box isn’t ticked.</td></tr>
-<tr><td>Works, then drops when Wi-Fi connects</td><td>The Wi-Fi is on the same subnet as the NUA network: keep the NUA on 192.168.30.x.</td></tr>
-</table></div>
-<div class="note">Schneider’s FAQ <a href="https://www.se.com/us/en/faqs/FA409424">FA409424</a> has a video of a BMENUA0100 configured in Control Expert and read with UaExpert in Standard mode. The default account differs by mode; it’s in FAQ <a href="https://se.com/za/en/faqs/FA405101">FA405101</a>.</div>
-
-<h2><span class="n">8</span>Commission it, in this order</h2>
-<h3>RIO drop and panel</h3>
-<ol class="steps">
-  <li>Power the drop. The CRA should take its address and <code>xDrop_Health</code> go TRUE. Press each button and turn the key: watch <code>xPB_Start</code>, <code>xPB_StopNC</code> (goes FALSE when pressed), <code>xPB_Reset</code>, <code>xKeySwitch</code>.</li>
-  <li>Force each lamp from an animation table, then release the forces.</li>
-  <li>Pull one ring cable: the drop stays healthy and <code>xRing_Closed</code> goes FALSE. Reconnect. Pull both: <code>xDrop_Health</code> goes FALSE and a panel-started run stops.</li>
+  <li>Power both racks. The fiber link LEDs on both BMXNRP0200s come on, the CRA takes its address and <code>xDrop_Health</code> goes TRUE.</li>
+  <li>Pull one fiber link: the drop stays healthy and <code>xRing_Closed</code> goes FALSE. Reconnect. Pull both: <code>xDrop_Health</code> goes FALSE. This is the fiber talking point for the customer.</li>
 </ol>
 <h3>Sensor</h3>
 <ol class="steps">
   <li>Animation table: <code>xSIG300_Health</code> TRUE. Watch <code>aSIG300_In</code> and tap the motor: the bytes that move are the MPB10’s. Set <code>iPD_Ofs</code> so byte 0 of the 20 lines up with them.</li>
   <li>Fill in the IODD offsets and gains. Check <code>rTemperature</code> reads room temperature at rest and <code>rVibVelocity</code> rises when we tap.</li>
-  <li>Pull the fiber: <code>xSensorCommAlarm</code> TRUE and the values go to 0 within a second. Reconnect.</li>
+  <li>Unplug the SIG300’s Ethernet cable: <code>xSensorCommAlarm</code> TRUE and the values go to 0 within a second. Reconnect.</li>
 </ol>
 <h3>Drive (motor uncoupled, low speed)</h3>
 <ol class="steps">
   <li>Set <code>iMaxSpeed</code> to 300 for the first run. <code>xATV_Health</code> must be TRUE and <code>wATV_ETA</code> must change when we press the E-stop.</li>
   <li>Set <code>xDemoEnable</code> TRUE, <code>iLocalSpeed</code> 200, then <code>xLocalRun</code> TRUE. Watch ETA go <code>16#0040</code> → <code>16#0021</code> → <code>16#0023</code> → <code>16#0027</code> and <code>iATV_Speed</code> follow the ramp.</li>
   <li>Set <code>xLocalRun</code> FALSE: the motor stops on its ramp. Try <code>xLocalReverse</code>. Press the E-stop while running: the motor must stop no matter what the PLC says.</li>
-  <li>From the panel: key ON, press Start (runs at <code>iPanelSpeed</code>), press Stop. Turn the key OFF while running: it stops and won’t restart until Start is pressed again.</li>
+  <li>Set <code>xDemoEnable</code> FALSE while running: it stops and won’t restart until a fresh Start.</li>
   <li>Raise <code>iMaxSpeed</code> to the demo limit: the motor’s nameplate speed or lower (about 1750 rpm for a 60 Hz 4-pole motor). Set the dashboard’s Setup → speed limit and nominal speed to match.</li>
 </ol>
 <h3>Dashboard</h3>
@@ -252,7 +190,7 @@ xDemoEnable  := xKeySwitch AND xDrop_Health;  (* uncomment once the key switch i
   <li>Dashboard → IP addresses tab: the CPU and RIO drop show reachable; the NOC, SIG300 and ATV930 show “not from here” (they’re on the device network) and their health bits on the network tab show whether they’re talking to the PLC. Setup → Mode <b>Live</b>. The heartbeat counts and all boxes on the network tab go green.</li>
   <li>To let the dashboard run the motor: tick <b>Allow drive control</b> in Setup, then set <code>xDashboardAllowed</code> TRUE in the PLC. The <b>VFD control</b> tab lists every permissive and shows which one is blocking.</li>
   <li>On the VFD control tab: Start forward, Stop, Start reverse, then hold Jog (the PLC caps it at <code>iJogSpeedMax</code>). Change the ramps and watch the reference-vs-actual chart.</li>
-  <li>Run the <b>demo sequence</b> once with the motor uncoupled and a low <code>iMaxSpeed</code>. It uses the same command block as the buttons, so the PLC needs nothing extra. Check that STOP, the panel Stop and the E-stop each end it.</li>
+  <li>Run the <b>demo sequence</b> once with the motor uncoupled and a low <code>iMaxSpeed</code>. It uses the same command block as the buttons, so the PLC needs nothing extra. Check that STOP and the E-stop each end it.</li>
   <li>Close the dashboard page while the motor runs: the PLC watchdog drops the run command within about 1 s.</li>
 </ol>
 
@@ -278,14 +216,13 @@ xDemoEnable  := xKeySwitch AND xDrop_Health;  (* uncomment once the key switch i
 </table></div>
 <p>The bridge caps the speed reference at 300 rpm until we pass <code>--max-rpm</code> (for example <code>python drive_bridge.py --max-rpm 1750</code>). If the drive doesn’t answer, try <code>--drive-unit 248</code> or <code>255</code>. <code>--no-ramps</code> keeps the keypad ramps. Leave <code>xSimBridge</code>’s initial value FALSE, so the real M580 always uses the DDT.</p>
 
-<h2><span class="n">9</span>Confirm on our hardware</h2>
+<h2><span class="n">8</span>Confirm on our hardware</h2>
 <div class="warn"><ul style="margin:0">
-  <li>Which X80 I/O modules are on the drop, their instance names, and which channel each button and lamp is wired to. On our board: the second module with rotary switches next to the CRA, and the wired I/O module.</li>
+  <li>Control Expert has the Safety (XLS) license, and the project’s CPU firmware (3.10) matches the CPU.</li>
+  <li>Rack part numbers and slot counts, the main rack’s power supply, and the two safety I/O modules right of the BMXSDI1602 on the drop.</li>
+  <li>The drop’s health bit and the CPU’s RIO main-ring status bit (element names in the Data Editor), and that pulling one fiber link leaves the drop running.</li>
   <li>ATV930U07M3 supply is 200–240 V three-phase, the keypad is on Remote, and the motor nameplate suits a 4.6 A drive.</li>
-  <li>The drop’s health bit and the CPU’s RIO main-ring status bit (element names in the Data Editor).</li>
-  <li>BMENOC0301 at 192.168.20.10 with its backplane port disabled builds without errors, and the drive and SIG300 health bits go TRUE.</li>
-  <li>BMENUA0100: firmware and Control Expert version, the mode selector, and how the HMI flag exposes variables on our version.</li>
-  <li>BMENUA0100 Secured mode on our firmware: where users, roles and certificate trust are managed, and how to make the dashboard’s user read-only so the write test is refused.</li>
+  <li>BMENOC0311 at 192.168.20.10 with its backplane port disabled builds without errors, and the drive and SIG300 health bits go TRUE.</li>
   <li>Device-DDT element names for the SIG300 and ATV930 (health/Freshness bits, input and output elements).</li>
   <li>Which SIG300 bit means “device present / process data valid on S1”, and the S1 byte offset.</li>
   <li>MPB10 IODD: value offsets, scaling, and alarm-bit meanings.</li>

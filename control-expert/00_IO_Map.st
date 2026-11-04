@@ -1,7 +1,7 @@
 (* =====================================================================================
    Section S00_IO_Map   (MAST task, FIRST section)
    The ONLY section that reads the device DDTs Control Expert created for the SIG300 and
-   the ATV930 (both scanned by the BMENOC0301) and the X80 I/O on the BMECRA31210 RIO drop. Everything else works on the plain variables filled in here, so if a device
+   the ATV930 (both scanned by the BMENOC0311) and the status of the BMECRA31210 RIO drop. Everything else works on the plain variables filled in here, so if a device
    alias or DDT element name differs on our project, we fix it in this one place.
 
    As shipped it compiles with the devices "not mapped": health bits FALSE, so nothing runs.
@@ -56,19 +56,11 @@ IF xSimBridge THEN
     iATV_LastFault := aBridge[7];
 END_IF;
 
-(* ---------------- RIO drop: BMECRA31210 + X80 I/O (operator panel) ---------------- *)
-(* X80 discrete modules on the drop give device DDTs whose channels are .DIS_CH_IN[n].VALUE
-   (inputs) and .DIS_CH_OUT[n].VALUE (outputs). Check the instance names in the Data Editor. *)
+(* ---------------- RIO drop: BMECRA31210, linked to the main rack over fiber ---------------- *)
+(* The RIO main ring runs CPU ETH2/ETH3 -> BMXNRP0200 (main rack) -> fiber -> BMXNRP0200 (drop)
+   -> CRA ETH2/ETH3. The drop only carries safety I/O, which belongs to the SAFE task, so this
+   program reads just its health and the ring status. There is no operator panel on this board:
+   xDemoEnable is set from an animation table. *)
 xDrop_Health := FALSE;                           (* EDIT: the drop's health bit (CRA device DDT / drop status) *)
 xRing_Closed := FALSE;                           (* EDIT: CPU device DDT, RIO main ring redundancy OK (both paths) *)
                                                  (*       then set xRingDiagMapped := TRUE (initial value)      *)
-xPB_Start   := FALSE;                            (* EDIT: e.g. <DI module>.DIS_CH_IN[0].VALUE  Start, N/O     *)
-xPB_StopNC  := TRUE;                             (* EDIT: e.g. <DI module>.DIS_CH_IN[1].VALUE  Stop, N/C      *)
-                                                 (*       N/C: a broken wire reads as "pressed" and stops     *)
-xPB_Reset   := FALSE;                            (* EDIT: e.g. <DI module>.DIS_CH_IN[2].VALUE  Fault reset   *)
-xKeySwitch  := FALSE;                            (* EDIT: e.g. <DI module>.DIS_CH_IN[3].VALUE  Enable key    *)
-
-(* xDemoEnable: with it FALSE the drive never gets a run command from this program.
-   Until the key switch is wired, leave the next line commented and set xDemoEnable from an
-   animation table. Once it is wired, remove the comment marks. *)
-(* xDemoEnable := xKeySwitch AND xDrop_Health; *)

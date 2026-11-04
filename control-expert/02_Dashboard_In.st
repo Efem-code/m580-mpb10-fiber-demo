@@ -9,7 +9,7 @@
      [3] accel ramp, s x10 (0 = use iAccDefault)
      [4] decel ramp, s x10 (0 = use iDecDefault)
 
-   xDashboardAllowed : PLC-side permission (animation table or key switch). FALSE = the
+   xDashboardAllowed : PLC-side permission (animation table). FALSE = the
                        dashboard can watch but never start the motor.
    ===================================================================================== *)
 
@@ -23,7 +23,8 @@ wDashCmd := INT_TO_WORD(aCmd[1]);
 
 xDashRun     := xDashOK AND wDashCmd.0 AND NOT wDashCmd.1;
 xDashStop    := wDashCmd.1 AND NOT tonDashWd.Q;  (* honoured even without xDashboardAllowed, but a stale
-                                                    stop bit (dashboard gone) can't block the panel *)
+                                                    stop bit (dashboard gone) can't block a start from the
+                                                    animation table *)
 xDashReset   := xDashOK AND wDashCmd.2;
 xDashReverse := xDashOK AND wDashCmd.3;
 xDashJog     := xDashOK AND wDashCmd.4;

@@ -52,24 +52,20 @@ aDash[26] := iATV_Thermal;
 aDash[27] := iATV_LastFault;
 aDash[28] := WORD_TO_INT(wATV_CMD);
 
-(* ---- stack light on the RIO drop (05_IO_Out writes it to the outputs) ---- *)
+(* ---- stack light: no lamps on this board, the dashboard shows these three ---- *)
 xLampGreen := xATV_Running AND NOT xATV_Fault;
 xLampAmber := xMPB_DataOK AND (xVibWarning OR xTempWarning);
 xLampRed   := xATV_Fault OR (xMPB_DataOK AND xVibAlarm) OR (xSensorCommAlarm AND %S6);   (* %S6: 1 s blink *)
 
-(* ---- operator panel / RIO ---- *)
+(* ---- RIO drop and enable (bits 1-3 and 10 were the operator panel; always 0 on this board) ---- *)
 wDashPanel := 0;
 wDashPanel.0  := xDrop_Health;
-wDashPanel.1  := xDrop_Health AND xPB_Start;
-wDashPanel.2  := xPanelStop;
-wDashPanel.3  := xDrop_Health AND xPB_Reset;
 wDashPanel.4  := xDemoEnable;
 wDashPanel.5  := xLampGreen;
 wDashPanel.6  := xLampAmber;
 wDashPanel.7  := xLampRed;
 wDashPanel.8  := xRing_Closed;
 wDashPanel.9  := xRingDiagMapped;
-wDashPanel.10 := iRunSource = 1;
 aDash[29] := WORD_TO_INT(wDashPanel);
 
 (* ---- ramps in use ---- *)

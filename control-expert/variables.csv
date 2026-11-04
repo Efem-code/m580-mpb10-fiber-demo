@@ -26,25 +26,18 @@ xSensorCommAlarm;BOOL;;;Sensor data not reaching the PLC
 rtShock;R_TRIG;;;Shock edge
 iShockCount;INT;;0;Shock counter
 iMapIdx;INT;;;Loop index (00_IO_Map)
-xDemoEnable;BOOL;;FALSE;Bench enable / key switch. FALSE = drive never gets a run command
+xDemoEnable;BOOL;;FALSE;Bench enable, set from an animation table. FALSE = drive never gets a run command
 xDrop_Health;BOOL;;FALSE;BMECRA31210 RIO drop healthy (00_IO_Map)
 xRing_Closed;BOOL;;FALSE;RIO main ring redundant: both paths OK (00_IO_Map)
 xRingDiagMapped;BOOL;;FALSE;Set TRUE once xRing_Closed is mapped, so the dashboard shows ring status
-xPB_Start;BOOL;;FALSE;Panel Start push-button (N/O) on the RIO drop
-xPB_StopNC;BOOL;;TRUE;Panel Stop push-button (N/C): TRUE = not pressed
-xPB_Reset;BOOL;;FALSE;Panel fault reset push-button
-xKeySwitch;BOOL;;FALSE;Panel enable key switch
-xPanelStop;BOOL;;;Panel Stop pressed (or its wire broken)
 xStopAny;BOOL;;;Any stop request
-rtPanelStart;R_TRIG;;;Panel Start edge
 rtDashRun;R_TRIG;;;Dashboard run edge
 rtLocalRun;R_TRIG;;;Animation-table run edge
-iRunSource;INT;;0;Who started the motor: 0 none, 1 panel, 2 dashboard, 3 animation table
-iPanelSpeed;INT;;900;Speed when started from the panel, rpm
-xLampGreen;BOOL;;;Stack light green: running
-xLampAmber;BOOL;;;Stack light amber: warning
+iRunSource;INT;;0;Who started the motor: 0 none, 2 dashboard, 3 animation table
+xLampGreen;BOOL;;;Stack light green (shown on the dashboard): running
+xLampAmber;BOOL;;;Stack light amber (shown on the dashboard): warning
 xLampRed;BOOL;;;Stack light red: alarm / fault, blinking = no sensor data
-wDashPanel;WORD;;;Panel / RIO bits for the dashboard (aDash[29])
+wDashPanel;WORD;;;RIO, enable and stack-light bits for the dashboard (aDash[29])
 xDashboardAllowed;BOOL;;FALSE;PLC-side permission for the dashboard to run the motor
 iDashHbLast;INT;;;Last dashboard heartbeat
 xDashHbChanged;BOOL;;;Heartbeat changed this scan

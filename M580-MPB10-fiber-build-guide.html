@@ -59,270 +59,247 @@
   <span class="tag">Automation · Bench build guide</span>
 </header>
 
-<h1>Modicon M580 ↔ SICK MPB10 over fiber</h1>
-<p class="lede">How to wire and set up the demo rig: a SICK Multi Physics Box (MPB10) on a SICK SIG300 IO-Link master, linked to a Modicon M580 (BMEP584040 with BMENOC0301, BMENUA0100 and a BMECRA31210 RIO drop) over a multimode fiber run, with an ATV930 running the motor. We follow the sections in order and end with live vibration, shock and temperature values in Control Expert.</p>
+<h1>Modicon M580 ↔ SICK MPB10, with a fiber RIO ring</h1>
+<p class="lede">How to wire and set up the demo board: a Modicon M580 safety CPU (<b>BMEP584040S</b> with its <b>BMEP58CPROS3</b> coprocessor) and a <b>BMENOC0311</b>, with its <b>BMECRA31210</b> RIO drop linked over multimode fiber by a pair of <b>BMXNRP0200</b>s. The NOC scans a SICK SIG300 IO-Link master with a Multi Physics Box (MPB10) and an ATV930 running the motor. We follow the sections in order and end with live vibration, shock and temperature values in Control Expert and on the dashboard.</p>
 
 <h2><span class="n">1</span>What we’re building</h2>
 <div class="card">
-<svg viewBox="0 0 1000 524" role="img" aria-label="Wiring diagram: M580 rack with BMEP584040, BMENOC0301 and BMENUA0100; RIO ring to a BMECRA31210 drop; NOC to the ATV930 and through a BMXNRP0200 in the drop rack, fiber and a media converter to the SIG300 and MPB10">
-  <rect x="10" y="10" width="590" height="506" rx="12" fill="#F7F8FA" stroke="#DDE0E4"/>
-  <text x="28" y="40" font-family="Segoe UI" font-size="14" font-weight="600" fill="#5F646A">PLC END (control panel)</text>
-  <rect x="615" y="10" width="200" height="506" rx="12" fill="#F7F8FA" stroke="#DDE0E4"/>
-  <text x="630" y="40" font-family="Segoe UI" font-size="14" font-weight="600" fill="#5F646A">FIELD END</text>
-  <rect x="830" y="10" width="160" height="506" rx="12" fill="#F7F8FA" stroke="#DDE0E4"/>
+<svg viewBox="0 0 1000 560" role="img" aria-label="Wiring diagram: M580 main rack with BMEP584040S, BMEP58CPROS3, BMENOC0311, BMXNRP0200 and safety I/O; fiber RIO ring through two BMXNRP0200s to a BMECRA31210 drop with redundant power supplies; NOC ETH3 to the SIG300 and MPB10, ETH2 to the ATV930, ETH1 to the D-Link and cobot">
+  <rect x="10" y="10" width="605" height="540" rx="12" fill="#F7F8FA" stroke="#DDE0E4"/>
+  <text x="28" y="40" font-family="Segoe UI" font-size="14" font-weight="600" fill="#5F646A">DEMO BOARD</text>
+  <rect x="625" y="10" width="195" height="540" rx="12" fill="#F7F8FA" stroke="#DDE0E4"/>
+  <text x="640" y="40" font-family="Segoe UI" font-size="14" font-weight="600" fill="#5F646A">DEVICE NETWORK</text>
+  <rect x="830" y="10" width="160" height="540" rx="12" fill="#F7F8FA" stroke="#DDE0E4"/>
   <text x="848" y="40" font-family="Segoe UI" font-size="14" font-weight="600" fill="#5F646A">ASSET</text>
 
   <!-- main rack -->
-  <rect x="30" y="56" width="400" height="150" rx="8" fill="#fff" stroke="#2E9E45" stroke-width="2"/>
-  <text x="44" y="78" font-family="Segoe UI" font-size="14" font-weight="600" fill="#282A2E">M580 main rack (BMEXBP)</text>
-  <rect x="44" y="90" width="50" height="104" rx="4" fill="#ECEEF1" stroke="#9AA0A6"/><text x="69" y="146" text-anchor="middle" font-family="Segoe UI" font-size="12" fill="#282A2E">PSU</text>
-  <rect x="100" y="90" width="84" height="104" rx="4" fill="#ECEEF1" stroke="#9AA0A6"/><text x="142" y="110" text-anchor="middle" font-family="Segoe UI" font-size="12" font-weight="600" fill="#282A2E">CPU</text><text x="142" y="125" text-anchor="middle" font-family="Segoe UI" font-size="10" fill="#5F646A">BMEP584040</text>
-  <rect x="190" y="90" width="72" height="104" rx="4" fill="#3A3B39" stroke="#3A3B39"/><text x="226" y="110" text-anchor="middle" font-family="Segoe UI" font-size="11" font-weight="600" fill="#fff">BMENUA</text><text x="226" y="125" text-anchor="middle" font-family="Segoe UI" font-size="10" fill="#C9CCC8">0100 OPC UA</text>
-  <rect x="268" y="90" width="100" height="104" rx="4" fill="#ECEEF1" stroke="#9AA0A6"/><text x="318" y="110" text-anchor="middle" font-family="Segoe UI" font-size="12" font-weight="600" fill="#282A2E">BMENOC0301</text><text x="318" y="125" text-anchor="middle" font-family="Segoe UI" font-size="10" fill="#5F646A">EtherNet/IP scanner</text>
-  <rect x="374" y="90" width="44" height="104" rx="4" fill="none" stroke="#9AA0A6" stroke-dasharray="4 3"/><text x="396" y="140" text-anchor="middle" font-family="Segoe UI" font-size="9" fill="#8A8F94">expan-</text><text x="396" y="152" text-anchor="middle" font-family="Segoe UI" font-size="9" fill="#8A8F94">sion</text>
+  <rect x="30" y="56" width="570" height="150" rx="8" fill="#fff" stroke="#2E9E45" stroke-width="2"/>
+  <text x="44" y="78" font-family="Segoe UI" font-size="14" font-weight="600" fill="#282A2E">Main rack</text>
+  <g font-family="Segoe UI" text-anchor="middle" fill="#282A2E">
+    <rect x="44" y="90" width="50" height="104" rx="4" fill="#ECEEF1" stroke="#9AA0A6"/><text x="69" y="136" font-size="12">PSU</text><text x="69" y="150" font-size="8" fill="#5F646A">CPS4002S</text>
+    <rect x="100" y="90" width="82" height="104" rx="4" fill="#FBE3DF" stroke="#C0392B"/><text x="141" y="110" font-size="12" font-weight="600">CPU</text><text x="141" y="125" font-size="9.5" fill="#5F646A">BMEP584040S</text>
+    <rect x="188" y="90" width="56" height="104" rx="4" fill="#FBE3DF" stroke="#C0392B"/><text x="216" y="110" font-size="10" font-weight="600">Copro</text><text x="216" y="125" font-size="8" fill="#5F646A">CPROS3</text><text x="216" y="150" font-size="8" fill="#5F646A">SIL3</text>
+    <rect x="250" y="90" width="96" height="104" rx="4" fill="#ECEEF1" stroke="#9AA0A6"/><text x="298" y="110" font-size="11.5" font-weight="600">BMENOC0311</text><text x="298" y="125" font-size="9.5" fill="#5F646A">EtherNet/IP scanner</text>
+    <rect x="352" y="90" width="52" height="104" rx="4" fill="#fff" stroke="#1F9CAD" stroke-width="2"/><text x="378" y="110" font-size="10" font-weight="600">NRP</text><text x="378" y="124" font-size="9" fill="#5F646A">0200</text>
+    <rect x="410" y="90" width="56" height="104" rx="4" fill="#FBE3DF" stroke="#C0392B" stroke-dasharray="4 3"/><text x="438" y="128" font-size="9" font-weight="600">SDI1602</text><text x="438" y="142" font-size="8" fill="#5F646A">safety in</text>
+    <rect x="472" y="90" width="56" height="104" rx="4" fill="#FBE3DF" stroke="#C0392B" stroke-dasharray="4 3"/><text x="500" y="128" font-size="9" font-weight="600">SRA0405</text><text x="500" y="142" font-size="8" fill="#5F646A">safety relay</text>
+    <text x="564" y="132" font-size="9" fill="#8A8F94">safety I/O:</text><text x="564" y="144" font-size="9" fill="#8A8F94">not used</text><text x="564" y="156" font-size="9" fill="#8A8F94">by this demo</text>
+  </g>
   <g font-family="Segoe UI" font-size="9" fill="#5F646A" text-anchor="middle">
     <circle cx="118" cy="168" r="6" fill="#fff" stroke="#3A3B39"/><text x="118" y="154">ETH1</text>
     <circle cx="142" cy="168" r="6" fill="#3A3B39"/><text x="142" y="154">ETH2</text>
     <circle cx="166" cy="168" r="6" fill="#3A3B39"/><text x="166" y="154">ETH3</text>
-    <circle cx="226" cy="168" r="6" fill="#fff" stroke="#5B5BD6" stroke-width="2"/><text x="226" y="154" fill="#C9CCC8">control</text>
-    <circle cx="288" cy="168" r="6" fill="#fff" stroke="#3A3B39"/><text x="288" y="154">ETH1</text>
-    <circle cx="318" cy="168" r="6" fill="#3A3B39"/><text x="318" y="154">ETH2</text>
-    <circle cx="344" cy="168" r="6" fill="#3A3B39"/><text x="344" y="154">ETH3</text>
+    <circle cx="268" cy="168" r="6" fill="#fff" stroke="#3A3B39"/><text x="268" y="154">ETH1</text>
+    <circle cx="298" cy="168" r="6" fill="#3A3B39"/><text x="298" y="154">ETH2</text>
+    <circle cx="326" cy="168" r="6" fill="#3A3B39"/><text x="326" y="154">ETH3</text>
+    <circle cx="366" cy="168" r="5" fill="#3A3B39"/><circle cx="390" cy="168" r="5" fill="#3A3B39"/>
   </g>
 
-  <!-- laptop on ETH1 -->
-  <path d="M118 174 V222 H70 V246" fill="none" stroke="#3A3B39" stroke-width="2" stroke-dasharray="6 4"/>
-  <rect x="30" y="246" width="88" height="50" rx="6" fill="#fff" stroke="#9AA0A6"/>
-  <text x="74" y="267" text-anchor="middle" font-family="Segoe UI" font-size="12" font-weight="600" fill="#282A2E">Laptop</text>
-  <text x="74" y="283" text-anchor="middle" font-family="Segoe UI" font-size="10" fill="#5F646A">dashboard · CE</text>
+  <!-- laptop on CPU ETH1 -->
+  <path d="M118 174 V246 H74 V258" fill="none" stroke="#3A3B39" stroke-width="2" stroke-dasharray="6 4"/>
+  <rect x="30" y="258" width="88" height="50" rx="6" fill="#fff" stroke="#9AA0A6"/>
+  <text x="74" y="279" text-anchor="middle" font-family="Segoe UI" font-size="12" font-weight="600" fill="#282A2E">Laptop</text>
+  <text x="74" y="295" text-anchor="middle" font-family="Segoe UI" font-size="10" fill="#5F646A">dashboard · CE</text>
 
-  <!-- RIO ring to the drop -->
-  <path d="M142 174 V412" fill="none" stroke="#3A3B39" stroke-width="4"/>
-  <path d="M166 174 V412" fill="none" stroke="#3A3B39" stroke-width="4"/>
-  <text x="176" y="368" font-family="Segoe UI" font-size="11" font-weight="700" fill="#3A3B39">RIO ring to drop 1</text>
-  <text x="176" y="383" font-family="Segoe UI" font-size="10" fill="#5F646A">CPU ETH2/ETH3 → CRA ETH2/ETH3</text>
-  <rect x="30" y="396" width="470" height="104" rx="8" fill="#fff" stroke="#2E9E45" stroke-width="2"/>
+  <!-- RIO ring: CPU ETH2/ETH3 to the main-rack NRP (copper) -->
+  <path d="M166 174 V222 H366 V174" fill="none" stroke="#3A3B39" stroke-width="4"/>
+  <path d="M142 174 V232 H390 V174" fill="none" stroke="#3A3B39" stroke-width="4"/>
+  <!-- fiber between the two NRPs -->
+  <path d="M398 194 V380 H262 V404" fill="none" stroke="#1F9CAD" stroke-width="8"/>
+  <text x="408" y="396" font-family="Segoe UI" font-size="12" font-weight="700" fill="#146F7C">MULTIMODE FIBER · RIO RING</text>
+
+  <!-- NOC ports out to the device network (white halo where they pass over other cables) -->
+  <g fill="none" stroke-linejoin="round">
+    <path d="M326 174 V240 H640" stroke="#fff" stroke-width="10"/><path d="M326 174 V240 H640" stroke="#3A3B39" stroke-width="4"/>
+    <path d="M298 174 V302 H640" stroke="#fff" stroke-width="10"/><path d="M298 174 V302 H640" stroke="#3A3B39" stroke-width="4"/>
+    <path d="M268 174 V362 H640" stroke="#fff" stroke-width="10"/><path d="M268 174 V362 H640" stroke="#3A3B39" stroke-width="2" stroke-dasharray="6 4"/>
+  </g>
+  <g font-family="Segoe UI" font-size="10.5" fill="#5F646A">
+    <text x="470" y="234">NOC ETH3 · Cat6</text>
+    <text x="470" y="296">NOC ETH2 · Cat6</text>
+    <text x="470" y="356">NOC ETH1 (service)</text>
+  </g>
+
+  <!-- RIO drop -->
+  <rect x="30" y="404" width="570" height="96" rx="8" fill="#fff" stroke="#2E9E45" stroke-width="2"/>
   <g font-family="Segoe UI" text-anchor="middle" fill="#282A2E">
-    <rect x="44" y="404" width="50" height="88" rx="4" fill="#ECEEF1" stroke="#9AA0A6"/><text x="69" y="452" font-size="12">PSU</text>
-    <rect x="100" y="404" width="84" height="88" rx="4" fill="#ECEEF1" stroke="#9AA0A6"/>
-    <circle cx="118" cy="418" r="6" fill="#fff" stroke="#3A3B39"/><circle cx="142" cy="418" r="6" fill="#3A3B39"/><circle cx="166" cy="418" r="6" fill="#3A3B39"/>
-    <g font-size="9" fill="#5F646A"><text x="118" y="436">ETH1</text><text x="142" y="436">ETH2</text><text x="166" y="436">ETH3</text></g>
-    <text x="142" y="458" font-size="11" font-weight="600">BMECRA31210</text><text x="142" y="474" font-size="10" fill="#5F646A">drop 1</text>
-    <rect x="190" y="404" width="72" height="88" rx="4" fill="#fff" stroke="#F06A2A" stroke-dasharray="4 3"/><text x="226" y="440" font-size="11" font-weight="600">2nd module</text><text x="226" y="456" font-size="10" fill="#B84A14">P/N to confirm</text>
-    <rect x="268" y="404" width="112" height="88" rx="4" fill="#ECEEF1" stroke="#9AA0A6"/><text x="324" y="422" font-size="11" font-weight="600">Discrete I/O</text>
-    <g font-size="10" fill="#5F646A"><text x="324" y="440">IN: Start · Stop (N/C)</text><text x="324" y="454">Reset · key switch</text><text x="324" y="472">OUT: stack light</text><text x="324" y="485">red · amber · green</text></g>
-    <rect x="386" y="404" width="34" height="88" rx="4" fill="#fff" stroke="#1F9CAD" stroke-width="2"/><text x="403" y="444" font-size="9" font-weight="600">NRP</text><text x="403" y="456" font-size="9" fill="#5F646A">0200</text>
-    <rect x="426" y="404" width="34" height="88" rx="4" fill="none" stroke="#9AA0A6" stroke-dasharray="4 3"/><text x="443" y="446" font-size="8" fill="#8A8F94">expan-</text><text x="443" y="457" font-size="8" fill="#8A8F94">sion</text>
+    <rect x="40" y="412" width="44" height="80" rx="4" fill="#ECEEF1" stroke="#9AA0A6"/><text x="62" y="450" font-size="11">PSU</text>
+    <rect x="90" y="412" width="44" height="80" rx="4" fill="#ECEEF1" stroke="#9AA0A6"/><text x="112" y="450" font-size="11">PSU</text>
+    <text x="62" y="464" font-size="7.5" fill="#5F646A">CPS4002S</text><text x="112" y="464" font-size="7.5" fill="#5F646A">CPS4002S</text>
+    <rect x="140" y="412" width="86" height="80" rx="4" fill="#ECEEF1" stroke="#9AA0A6"/><text x="183" y="430" font-size="11" font-weight="600">BMECRA31210</text><text x="183" y="444" font-size="9.5" fill="#5F646A">drop 1</text>
+    <rect x="232" y="412" width="56" height="80" rx="4" fill="#fff" stroke="#1F9CAD" stroke-width="2"/><text x="260" y="430" font-size="10" font-weight="600">NRP</text><text x="260" y="443" font-size="9" fill="#5F646A">0200</text>
+    <rect x="294" y="412" width="52" height="80" rx="4" fill="#FBE3DF" stroke="#C0392B" stroke-dasharray="4 3"/><text x="320" y="448" font-size="9" font-weight="600">SDI1602</text>
+    <rect x="352" y="412" width="52" height="80" rx="4" fill="#FBE3DF" stroke="#C0392B" stroke-dasharray="4 3"/><text x="378" y="444" font-size="8.5" font-weight="600">safety I/O</text><text x="378" y="456" font-size="8" fill="#B84A14">to confirm</text>
+    <rect x="410" y="412" width="52" height="80" rx="4" fill="#FBE3DF" stroke="#C0392B" stroke-dasharray="4 3"/><text x="436" y="444" font-size="8.5" font-weight="600">safety I/O</text><text x="436" y="456" font-size="8" fill="#B84A14">to confirm</text>
+    <rect x="468" y="412" width="122" height="80" rx="4" fill="none" stroke="#9AA0A6" stroke-dasharray="4 3"/><text x="529" y="456" font-size="10" fill="#8A8F94">4 free slots</text>
   </g>
-  <g><rect x="466" y="414" width="26" height="62" rx="5" fill="#2E2F2D"/><circle cx="479" cy="428" r="7" fill="#E53935"/><circle cx="479" cy="445" r="7" fill="#F5A623"/><circle cx="479" cy="462" r="7" fill="#2EBD4E"/></g>
+  <g font-family="Segoe UI" font-size="8.5" fill="#5F646A" text-anchor="middle">
+    <circle cx="160" cy="476" r="5" fill="#fff" stroke="#3A3B39"/><text x="160" y="466">ETH1</text>
+    <circle cx="184" cy="476" r="5" fill="#3A3B39"/><text x="184" y="466">ETH2</text>
+    <circle cx="208" cy="476" r="5" fill="#3A3B39"/><text x="208" y="466">ETH3</text>
+    <circle cx="248" cy="476" r="5" fill="#3A3B39"/><circle cx="272" cy="476" r="5" fill="#3A3B39"/>
+  </g>
+  <!-- CRA ETH2/ETH3 to the drop NRP (copper) -->
+  <path d="M208 481 V514 H248 V481" fill="none" stroke="#3A3B39" stroke-width="3.5"/>
+  <path d="M184 481 V526 H272 V481" fill="none" stroke="#3A3B39" stroke-width="3.5"/>
+  <text x="290" y="530" font-family="Segoe UI" font-size="10.5" fill="#5F646A">CRA ETH2/ETH3 → drop NRP · CPU ETH2/ETH3 → main NRP: one ring</text>
 
-  <!-- NUA control port to its own network -->
-  <path d="M226 174 V214" fill="none" stroke="#5B5BD6" stroke-width="2" stroke-dasharray="6 4"/>
-  <rect x="180" y="214" width="110" height="40" rx="6" fill="#fff" stroke="#5B5BD6"/>
-  <text x="235" y="231" text-anchor="middle" font-family="Segoe UI" font-size="11" font-weight="600" fill="#282A2E">Laptop USB adapter</text>
-  <text x="235" y="246" text-anchor="middle" font-family="Segoe UI" font-size="10" fill="#5F646A">OPC UA · 192.168.30.x</text>
-
-  <!-- NOC ETH2 to ATV930 -->
-  <path d="M318 174 V300" fill="none" stroke="#3A3B39" stroke-width="4"/>
-  <rect x="270" y="300" width="122" height="60" rx="8" fill="#fff" stroke="#5B5BD6" stroke-width="2"/>
-  <text x="331" y="324" text-anchor="middle" font-family="Segoe UI" font-size="14" font-weight="600" fill="#282A2E">ATV930U07M3</text>
-  <text x="331" y="342" text-anchor="middle" font-family="Segoe UI" font-size="10" fill="#5F646A">E-stop → STO</text>
-  <!-- motor cable -->
-  <path d="M392 330 H520 V506 H910 V302" fill="none" stroke="#5B5BD6" stroke-width="4"/>
-  <text x="700" y="500" text-anchor="middle" font-family="Segoe UI" font-size="11" fill="#5F646A">shielded motor cable</text>
-
-  <!-- NOC ETH3 down to the BMXNRP0200 in the drop rack -->
-  <path d="M344 174 V280 H400 V404" fill="none" stroke="#3A3B39" stroke-width="4"/>
-  <text x="404" y="296" font-family="Segoe UI" font-size="11" fill="#5F646A">Cat6 · NOC ETH3</text>
-  <path d="M410 404 V380 H586 V205" fill="none" stroke="#1F9CAD" stroke-width="7"/>
-  <text x="578" y="300" text-anchor="end" font-family="Segoe UI" font-size="11" font-weight="600" fill="#146F7C">BMXNRP0200</text>
-  <text x="578" y="314" text-anchor="end" font-family="Segoe UI" font-size="10" fill="#5F646A">copper → fiber</text>
-
-  <!-- fiber -->
-  <path d="M586 205 C 600 205, 610 110, 640 110" fill="none" stroke="#1F9CAD" stroke-width="7"/>
-  <text x="520" y="120" text-anchor="middle" font-family="Segoe UI" font-size="12" font-weight="700" fill="#146F7C">MULTIMODE FIBER</text>
-  <text x="520" y="136" text-anchor="middle" font-family="Segoe UI" font-size="10" fill="#5F646A">LC duplex · 100BASE-FX · 1300 nm</text>
-
-  <!-- converter B, SIG300, PSU -->
-  <rect x="630" y="64" width="170" height="90" rx="8" fill="#fff" stroke="#1F9CAD" stroke-width="2"/>
-  <text x="644" y="88" font-family="Segoe UI" font-size="13" font-weight="600" fill="#282A2E">Media converter</text>
-  <text x="644" y="106" font-family="Segoe UI" font-size="11" fill="#5F646A">fiber → copper</text>
-  <text x="644" y="122" font-family="Segoe UI" font-size="11" fill="#5F646A">24 VDC, DIN rail</text>
-  <rect x="630" y="205" width="170" height="110" rx="8" fill="#fff" stroke="#F06A2A" stroke-width="2"/>
-  <text x="644" y="231" font-family="Segoe UI" font-size="14" font-weight="600" fill="#282A2E">SICK SIG300</text>
-  <text x="644" y="251" font-family="Segoe UI" font-size="11" fill="#5F646A">IO-Link master</text>
-  <text x="644" y="267" font-family="Segoe UI" font-size="11" fill="#5F646A">EtherNet/IP · S1–S8</text>
-  <path d="M715 154 V205" fill="none" stroke="#3A3B39" stroke-width="4"/>
-  <text x="722" y="184" font-family="Segoe UI" font-size="10" fill="#5F646A">RJ45 → M12 D</text>
-  <rect x="630" y="345" width="170" height="44" rx="6" fill="#fff" stroke="#9AA0A6"/>
-  <text x="715" y="365" text-anchor="middle" font-family="Segoe UI" font-size="13" font-weight="600" fill="#282A2E">24 VDC supply</text>
-  <text x="715" y="381" text-anchor="middle" font-family="Segoe UI" font-size="10" fill="#5F646A">converter + SIG300</text>
-  <path d="M650 345 V315" stroke="#C0392B" stroke-width="2"/><path d="M780 345 V330 H808 V130 H800" fill="none" stroke="#C0392B" stroke-width="2"/>
+  <!-- device network -->
+  <rect x="640" y="210" width="165" height="62" rx="8" fill="#fff" stroke="#F06A2A" stroke-width="2"/>
+  <text x="652" y="234" font-family="Segoe UI" font-size="14" font-weight="600" fill="#282A2E">SICK SIG300</text>
+  <text x="652" y="252" font-family="Segoe UI" font-size="10.5" fill="#5F646A">IO-Link master · S1–S8</text>
+  <text x="652" y="265" font-family="Segoe UI" font-size="10" fill="#5F646A">RJ45 → M12 D · 24 VDC</text>
+  <rect x="640" y="282" width="165" height="54" rx="8" fill="#fff" stroke="#5B5BD6" stroke-width="2"/>
+  <text x="652" y="304" font-family="Segoe UI" font-size="14" font-weight="600" fill="#282A2E">ATV930U07M3</text>
+  <text x="652" y="322" font-family="Segoe UI" font-size="10.5" fill="#5F646A">E-stop → STO</text>
+  <rect x="640" y="346" width="165" height="54" rx="8" fill="#fff" stroke="#9AA0A6"/>
+  <text x="652" y="368" font-family="Segoe UI" font-size="13" font-weight="600" fill="#282A2E">D-Link Wi-Fi AP</text>
+  <text x="652" y="386" font-family="Segoe UI" font-size="10.5" fill="#5F646A">+ Lexium cobot, iPads</text>
 
   <!-- asset -->
-  <rect x="850" y="150" width="120" height="70" rx="8" fill="#fff" stroke="#F06A2A" stroke-width="2"/>
-  <text x="910" y="180" text-anchor="middle" font-family="Segoe UI" font-size="14" font-weight="600" fill="#282A2E">MPB10</text>
-  <text x="910" y="200" text-anchor="middle" font-family="Segoe UI" font-size="11" fill="#5F646A">bolted to motor</text>
+  <rect x="850" y="150" width="120" height="66" rx="8" fill="#fff" stroke="#F06A2A" stroke-width="2"/>
+  <text x="910" y="178" text-anchor="middle" font-family="Segoe UI" font-size="14" font-weight="600" fill="#282A2E">MPB10</text>
+  <text x="910" y="198" text-anchor="middle" font-family="Segoe UI" font-size="11" fill="#5F646A">bolted to motor</text>
   <rect x="850" y="232" width="120" height="70" rx="35" fill="#ECEEF1" stroke="#9AA0A6"/>
   <text x="910" y="272" text-anchor="middle" font-family="Segoe UI" font-size="12" fill="#5F646A">motor + weight</text>
-  <path d="M800 250 C 825 250, 825 190, 850 190" fill="none" stroke="#F06A2A" stroke-width="5"/>
-  <text x="910" y="110" text-anchor="middle" font-family="Segoe UI" font-size="12" font-weight="700" fill="#B84A14">IO-Link</text>
-  <text x="910" y="126" text-anchor="middle" font-family="Segoe UI" font-size="11" fill="#5F646A">port S1, ≤ 20 m</text>
+  <path d="M805 228 C 828 228, 828 183, 850 183" fill="none" stroke="#F06A2A" stroke-width="5"/>
+  <text x="910" y="112" text-anchor="middle" font-family="Segoe UI" font-size="12" font-weight="700" fill="#B84A14">IO-Link</text>
+  <text x="910" y="128" text-anchor="middle" font-family="Segoe UI" font-size="11" fill="#5F646A">port S1, ≤ 20 m</text>
+  <path d="M805 310 H828 V280 H850" fill="none" stroke="#5B5BD6" stroke-width="4"/>
+  <text x="910" y="324" text-anchor="middle" font-family="Segoe UI" font-size="10.5" fill="#5F646A">shielded motor cable</text>
 </svg>
 <div class="legend">
   <span style="--c:#3A3B39">Copper Ethernet</span>
-  <span style="--c:#1F9CAD">Multimode fiber</span>
-  <span style="--c:#F06A2A">IO-Link (M12 A-coded, unshielded OK)</span>
+  <span style="--c:#1F9CAD">Multimode fiber (RIO ring)</span>
+  <span style="--c:#F06A2A">IO-Link (M12 A-coded)</span>
   <span style="--c:#5B5BD6">Drive / motor power</span>
-  <span style="--c:#C0392B">24 VDC</span>
+  <span style="--c:#C0392B">Safety modules (SAFE task, not used here)</span>
 </div>
 </div>
-<div class="note">Three networks in one rig. The <b>RIO ring</b> (CPU ETH2 → drop → ETH3) carries the operator panel I/O and keeps running if one cable is pulled. The <b>BMENOC0301</b> scans the ATV930 and, over the fiber, the SIG300. Each sits on its own IP network: <b>control</b> 192.168.10.x (CPU, drop, laptop), <b>devices</b> 192.168.20.x (the NOC, drive and sensor; the NOC’s backplane port is disabled) and <b>IT</b> 192.168.30.x (the <b>BMENUA0100</b> control port, which only serves OPC UA). The PLC is the only thing that joins them. The drive is on the PLC side of the fiber, so pulling the fiber cuts the sensor data and the motor keeps running.</div>
+<div class="note">Two networks and a fiber ring. The <b>RIO ring</b> leaves the CPU on ETH2 and ETH3, goes through the main rack’s <b>BMXNRP0200</b>, over two multimode fiber links to the drop’s BMXNRP0200, and on to the <b>BMECRA31210</b>. Pull one fiber and the drop keeps running on the other path. The <b>BMENOC0311</b> scans the ATV930 and the SIG300 on the <b>device network</b> (192.168.20.x, the NOC’s backplane port disabled); the CPU, the drop and the laptop are on the <b>control network</b> (192.168.10.x). The PLC is the only thing that joins them.</div>
 
 <h2><span class="n">2</span>Parts on the bench</h2>
 <div class="wrap"><table>
 <tr><th style="width:32%">Item</th><th>Notes</th></tr>
-<tr><td>M580 main rack</td><td>BMEXBP Ethernet backplane, BMXCPS power supply, <b>BMEP584040</b> CPU, <b>BMENOC0301</b> (EtherNet/IP scanner for the SIG300 and ATV930), <b>BMENUA0100</b> (OPC UA server). The NOC and NUA need Ethernet-capable slots. <i>On our demo board, a 4-slot backplane, left to right: power supply, CPU, BMENUA0100, BMENOC0301, then the expansion port (BMXXBE only). No free slot.</i></td></tr>
-<tr><td>RIO drop</td><td><b>BMECRA31210</b> eRIO adapter on its own X80 rack with power supply and a few discrete I/O: inputs for Start, Stop (N/C), Reset and a key switch; outputs for a three-lamp stack light. Two Cat6 cords for the ring. <i>On our demo board, left to right: power supply, BMECRA31210, a second module with rotary switches and three ports (part number to confirm), one wired discrete I/O module (part number to confirm), the BMXNRP0200 in the free slot, then the expansion port. Also a 4-slot rack.</i></td></tr>
-<tr><td>BMXNRP0200</td><td>X80 fiber converter module, multimode, the panel end of the fiber. It goes in the free slot of the <b>RIO drop rack</b> (the main rack has no free slot) and only takes power from the backplane. Check the label says <b>BMXNRP0200</b>: the BMXNRP0201 is single-mode.</td></tr>
-<tr><td>Media converter (field end)</td><td><b>100BASE-FX</b>, multimode, about <b>1300 nm</b>, 24 VDC DIN rail, unmanaged. It has to match the BMXNRP0200’s fiber side: same wavelength and connector. A second converter is a handy spare for the panel end.</td></tr>
-<tr><td>Fiber</td><td>Multimode duplex patch cord or spool, 50/125 (OM2/OM3) or 62.5/125, connectors to match the converters (LC–LC or LC–SC).</td></tr>
-<tr><td>SICK SIG300, EtherNet/IP</td><td>8-port IO-Link master with a web server. Check the order code: the EtherNet/IP model is <code>SIG300-0A05AA100</code> (part no. 1131012). The PROFINET and EtherCAT models <b>will not</b> work with this setup. Check the power and Ethernet connectors in its operating instructions before ordering cables.</td></tr>
+<tr><td>M580 main rack</td><td>Left to right on our board: power supply (BMXCPS4002S, to confirm), <b>BMEP584040S</b> safety CPU, <b>BMEP58CPROS3</b> safety coprocessor (always in the slot right of the CPU), <b>BMENOC0311</b> (EtherNet/IP scanner with FactoryCast web pages), <b>BMXNRP0200</b>, <b>BMXSDI1602</b> safety inputs, <b>BMXSRA0405</b> safety relay outputs. Rack part number and slot count to confirm. The CPU reports firmware <b>3.10</b>.</td></tr>
+<tr><td>RIO drop</td><td>Left to right: <b>two BMXCPS4002S</b> power supplies (a redundant pair, so a dual-PSU rack), <b>BMECRA31210</b> eRIO adapter, <b>BMXNRP0200</b>, <b>BMXSDI1602</b>, two more safety I/O modules (part numbers to confirm), four free slots.</td></tr>
+<tr><td>Two BMXNRP0200</td><td>X80 fiber converter modules, multimode, one in each rack. Together they carry the RIO main ring between the racks over fiber. They take power from the backplane and have no settings. Check both labels say <b>BMXNRP0200</b>: the BMXNRP0201 is single-mode.</td></tr>
+<tr><td>Fiber</td><td>Two multimode duplex links between the NRPs, 50/125 (OM2/OM3) or 62.5/125, connectors to match the NRP fiber ports. Already on the board.</td></tr>
+<tr><td>Safety I/O</td><td>The BMXSDI1602, the BMXSRA0405 and the two unidentified drop modules belong to the CPU’s <b>SAFE</b> task. This demo doesn’t use them; they stay in the configuration so the racks match, and are ready for a safety demo later.</td></tr>
+<tr><td>SICK SIG300, EtherNet/IP</td><td>8-port IO-Link master with a web server. Check the order code: the EtherNet/IP model is <code>SIG300-0A05AA100</code> (part no. 1131012). The PROFINET and EtherCAT models <b>will not</b> work with this setup. Check its power and Ethernet connectors in the operating instructions before ordering cables.</td></tr>
 <tr><td>SICK MPB10</td><td>IO-Link V1.1. Bolt it rigidly to the motor housing near the bearing.</td></tr>
-<tr><td>Cables</td><td>Cat6 RJ45 patches (NOC ETH3 → BMXNRP0200, NOC → ATV930, two for the RIO ring); RJ45-to-M12 Ethernet (converter → SIG300, D-coded is typical: check the manual); M12 A-coded 4/5-pin sensor cable (SIG300 → MPB10); a power cable to suit the SIG300’s power connector.</td></tr>
-<tr><td>24 VDC supplies</td><td>Field end: the media converter and the SIG300, about 2.5 A covers both. Panel end: the drop’s I/O (the BMXNRP0200 runs from the rack).</td></tr>
-<tr><td>Altivar ATV930 · <b>ATV930U07M3</b></td><td>The unit on our demo board: 0.75 kW / 1 HP, IP21, with the graphic keypad. <b>Input 200–240 V three-phase, 50/60 Hz</b> (it will not run from a 120 V outlet). Output 0–240 V, <b>4.6 A</b> max. On the PLC side (like an MCC). Embedded Ethernet port to the BMENOC0301 <b>ETH2</b> (EtherNet/IP). Shielded motor cable to the motor.</td></tr>
-<tr><td>Motor + unbalance weight</td><td>Three-phase motor that suits the ATV930U07M3: 208–230 V, <b>1 HP or less, full-load current 4.6 A or less</b>. A 4-pole motor on 60 Hz runs at about 1750 rpm. with the MPB10 bolted near the drive-end bearing and a guarded clip-on offset weight on the shaft or a disc, so we can make vibration on cue.</td></tr>
-<tr><td>E-stop</td><td>Wired to the ATV930 <b>STO</b> inputs per its safety manual. The key switch on the RIO drop is the demo enable, not a safety device.</td></tr>
-<tr><td>Also on the demo board</td><td>A Magelis HMI and a small knob with a digital display. The demo doesn’t use them yet.</td></tr>
-<tr><td>USB Ethernet adapter</td><td>A second wired port for the dashboard laptop, to the BMENUA0100 control port: the IT side of the demo, over OPC UA. Any USB 3 / USB-C gigabit adapter.</td></tr>
+<tr><td>Cables</td><td>Cat6 RJ45 patches (NOC ETH2 → ATV930, NOC ETH1 → D-Link); RJ45-to-M12 Ethernet for NOC ETH3 → SIG300 (D-coded is typical: check the manual); M12 A-coded 4/5-pin sensor cable (SIG300 → MPB10); a power cable to suit the SIG300’s power connector. The RIO ring patches are already on the board.</td></tr>
+<tr><td>24 VDC supply</td><td>For the SIG300 (it powers the MPB10 through port S1). About 2 A covers it.</td></tr>
+<tr><td>Altivar ATV930 · <b>ATV930U07M3</b></td><td>0.75 kW / 1 HP, IP21, with the graphic keypad. <b>Input 200–240 V three-phase, 50/60 Hz</b> (it will not run from a 120 V outlet). Output 0–240 V, <b>4.6 A</b> max. Embedded Ethernet port to the BMENOC0311 <b>ETH2</b> (EtherNet/IP). Shielded motor cable to the motor.</td></tr>
+<tr><td>Motor + unbalance weight</td><td>Three-phase motor that suits the ATV930U07M3: 208–230 V, <b>1 HP or less, full-load current 4.6 A or less</b>. A 4-pole motor on 60 Hz runs at about 1750 rpm. The MPB10 bolts near the drive-end bearing; a guarded clip-on offset weight on the shaft or a disc makes vibration on cue.</td></tr>
+<tr><td>E-stop</td><td>Wired to the ATV930 <b>STO</b> inputs per its safety manual. It never goes through the PLC or the dashboard.</td></tr>
 <tr><td>D-Link Wi-Fi router</td><td>Ours, already serving the cobot. Used as a Wi-Fi access point on the device network, so a laptop or iPad can reach the drive, the SIG300 and the cobot without a cable.</td></tr>
-<tr><td>Second laptop (optional)</td><td>UaExpert on the NUA network as well, through a small unmanaged switch.</td></tr>
-<tr><td>Laptop</td><td>EcoStruxure Control Expert with the SICK SIG300 EDS file and the Altivar DTM library, SOPAS ET (optional), USB cable for the CPU’s first connection.</td></tr>
+<tr><td>Laptop</td><td>EcoStruxure Control Expert with the <b>Safety (XLS)</b> license (a BMEP584040S project needs it), the SICK SIG300 EDS file and the Altivar DTM library; SOPAS ET optional; a mini-B USB cable for the CPU’s first connection.</td></tr>
 </table></div>
 
 <h2><span class="n">3</span>IP plan</h2>
-<p>Three networks, all mask <code>255.255.255.0</code> and none with a gateway. Give the SIG300 its new address <b>first</b> (section 5).</p>
+<p>Two networks, both mask <code>255.255.255.0</code> and neither with a gateway. Give the SIG300 its new address <b>first</b> (section 5).</p>
 <div class="warn">The rig reuses <code>192.168.10.x</code> and <code>192.168.20.x</code>, which the lab network uses too. Keep the rig on its own cables and switches and never patch it into the lab network, or addresses like <code>.10</code> will clash. The cobot’s D-Link router is the exception: it joins the device network on purpose (section 4).</div>
 <div class="wrap"><table>
 <tr><th style="width:32%">Device</th><th style="width:22%">IP address</th><th>Set from</th></tr>
 <tr><th colspan="3">Control network · 192.168.10.x</th></tr>
-<tr><td>M580 CPU BMEP584040</td><td><code>192.168.10.10</code></td><td>Control Expert → CPU → IPConfig</td></tr>
-<tr><td>BMENUA0100, backplane side</td><td><code>192.168.10.12</code></td><td>Control Expert → BMENUA0100 configuration</td></tr>
+<tr><td>M580 CPU BMEP584040S</td><td><code>192.168.10.10</code></td><td>Control Expert → CPU → IPConfig. It answers on <code>.11</code> as well, so keep <code>.11</code> free</td></tr>
 <tr><td>RIO drop BMECRA31210</td><td><code>192.168.10.15</code></td><td>Control Expert → drop IPConfig; drop 1 on the CRA rotary switches</td></tr>
 <tr><td>Laptop, built-in Ethernet</td><td><code>192.168.10.100</code></td><td>Windows adapter settings, no gateway. Plugs into the CPU service port ETH1</td></tr>
 <tr><th colspan="3">Device network · 192.168.20.x</th></tr>
-<tr><td>BMENOC0301</td><td><code>192.168.20.10</code></td><td>Control Expert → NOC DTM → TCP/IP, <b>backplane port disabled</b></td></tr>
+<tr><td>BMENOC0311</td><td><code>192.168.20.10</code></td><td>Control Expert → NOC DTM → TCP/IP, <b>backplane port disabled</b></td></tr>
 <tr><td>SICK SIG300</td><td><code>192.168.20.20</code></td><td>SIG300 web UI (from its factory address)</td></tr>
 <tr><td>Altivar ATV930</td><td><code>192.168.20.30</code></td><td>Drive keypad → Communication → Embedded Ethernet (fixed IP)</td></tr>
 <tr><td>D-Link router (Wi-Fi access point)</td><td><code>192.168.20.1</code></td><td>Its web page. LAN port to the NOC’s ETH1, WAN port empty, DHCP pool <code>.150</code>–<code>.199</code></td></tr>
 <tr><td>Lexium cobot</td><td><code>192.168.20.94</code></td><td>Cobot Expert network settings (or a DHCP reservation in the D-Link). Shares the network; the M580 doesn’t control it</td></tr>
 <tr><td>Laptops and iPads on the Wi-Fi</td><td><code>.150</code>–<code>.199</code></td><td>From the D-Link’s DHCP</td></tr>
-<tr><th colspan="3">IT network · 192.168.30.x</th></tr>
-<tr><td>BMENUA0100, control port</td><td><code>192.168.30.10</code></td><td>Same module configuration. Serves OPC UA only</td></tr>
-<tr><td>Laptop, USB adapter</td><td><code>192.168.30.100</code></td><td>Windows adapter settings, mask 255.255.255.0, <b>no gateway, no DNS</b></td></tr>
-<tr><td>BMXNRP0200, media converter</td><td>none</td><td>Transparent</td></tr>
+<tr><td>BMXNRP0200 pair</td><td>none</td><td>Transparent</td></tr>
 </table></div>
 
 <h2><span class="n">4</span>Hardware build</h2>
-<h3>PLC end</h3>
+<h3>Racks and RIO ring</h3>
 <ol class="steps">
-  <li>With the power <b>off</b>, fit the PSU, CPU, BMENOC0301 and BMENUA0100 on the backplane. Torque the module screws.</li>
-  <li><b>RIO ring:</b> CPU <b>ETH2</b> to one device port on the BMECRA31210, the CRA’s other device port back to CPU <b>ETH3</b>. Set the CRA rotary switches to drop 1 with its power off. Wire Start, Stop (N/C contact), Reset and the key switch to the drop’s inputs, the stack light to its outputs.</li>
-  <li>Fit the <b>BMXNRP0200</b> in the free slot of the RIO drop rack (power off). Patch BMENOC0301 <b>ETH3</b> to one of its RJ45 ports. Keep the CPU service port (ETH1) for the laptop. The NOC’s own top port (ETH1) is a service port on the device network: plug a laptop in there (on a <code>192.168.20.x</code> address) to reach the SIG300 and ATV930 web pages. Not for the drive or the fiber.</li>
-  <li>Leave the rack powered off until the CPU is configured (section 6).</li>
+  <li>With the power <b>off</b>, check every module is seated and its screws torqued. The coprocessor must stay in the slot right of the CPU.</li>
+  <li><b>Main rack:</b> CPU <b>ETH2</b> and <b>ETH3</b> to the two copper ports of the main rack’s BMXNRP0200. Keep the CPU service port (ETH1) for the laptop.</li>
+  <li><b>Drop:</b> BMECRA31210 <b>ETH2</b> and <b>ETH3</b> to the two copper ports of the drop’s BMXNRP0200. Set the CRA rotary switches to drop 1 (tens 0, ones 1) with its power off.</li>
+  <li><b>Fiber:</b> the two duplex links between the NRPs’ fiber ports. Clean each LC ferrule with a one-click cleaner before plugging in; most “no link” faults are dirty ends. <b>Tx must land on Rx</b>: standard A–B duplex cords already cross over; if a link stays dark, flip the two simplex connectors at <i>one</i> end only. Keep bends gentler than about a 30 mm radius.</li>
+  <li>Leave the racks powered off until the CPU is configured (section 6).</li>
 </ol>
+<div class="warn"><b>Never look into a live fiber or port.</b> The light is invisible. Use a fiber microscope or visual fault locator to check an end.</div>
 <h3>Drive</h3>
 <ol class="steps">
   <li>Check the drive supply: the ATV930U07M3 needs <b>200–240 V three-phase</b> on L1/L2/L3, through the breaker sized in its installation manual.</li>
-  <li>Mount the ATV930 in the PLC panel. Run the motor cable (shielded, 360° bonded at both ends) to the motor.</li>
-  <li>Patch the ATV930’s embedded Ethernet port to BMENOC0301 <b>ETH2</b>. It stays on the PLC side of the fiber, so pulling the fiber cuts only the sensor data.</li>
+  <li>Run the motor cable (shielded, 360° bonded at both ends) to the motor.</li>
+  <li>Patch the ATV930’s embedded Ethernet port to BMENOC0311 <b>ETH2</b>.</li>
   <li>Wire the E-stop to the STO inputs. Set up the drive on its keypad as in the Control Expert guide, section 2.</li>
+</ol>
+<h3>SIG300 and MPB10</h3>
+<ol class="steps">
+  <li>DIN-mount the SIG300 and wire its 24 VDC power cable (pin-out and connector from its operating instructions).</li>
+  <li>Patch BMENOC0311 <b>ETH3</b> to one of the SIG300’s Ethernet ports with the RJ45-to-M12 cable.</li>
+  <li>Bolt the MPB10 to the motor and run the M12 sensor cable to SIG300 port <b>S1</b>.</li>
 </ol>
 <h3>Wi-Fi and the cobot</h3>
 <ol class="steps">
   <li>On the D-Link’s web page (<code>http://192.168.20.1</code>): LAN address <code>192.168.20.1</code> / 24, DHCP pool <code>192.168.20.150</code> to <code>.199</code>. Give the cobot a reservation at <code>192.168.20.94</code>, or a fixed address in Cobot Expert.</li>
-  <li>Patch one of the D-Link’s <b>LAN</b> ports to the BMENOC0301’s <b>ETH1</b> service port. Leave its WAN port empty: it must not route the rig onto another network. The cobot stays cabled to the D-Link.</li>
+  <li>Patch one of the D-Link’s <b>LAN</b> ports to the BMENOC0311’s <b>ETH1</b> service port. Leave its WAN port empty: it must not route the rig onto another network. The cobot stays cabled to the D-Link.</li>
   <li>A laptop on the D-Link’s Wi-Fi now reaches the SIG300, the ATV930 and the cobot web pages. If its internet stops working, the D-Link has become its default route: set a fixed address in the pool with no gateway on that Wi-Fi adapter.</li>
   <li>In the SIG300’s DTM, set the input connection to <b>Point to Point</b> like the ATV930’s, so multicast I/O doesn’t flood the Wi-Fi.</li>
-</ol>
-<h3>IT side (OPC UA)</h3>
-<ol class="steps">
-  <li>Plug the USB Ethernet adapter into the dashboard laptop and set it to <code>192.168.30.100</code> / <code>255.255.255.0</code>, no gateway, no DNS.</li>
-  <li>Patch it to the BMENUA0100 <b>control port</b> (the module’s front port, not the backplane side). The module’s setup is in the Control Expert guide, section 7.</li>
-</ol>
-<h3>Fiber link</h3>
-<ol class="steps">
-  <li>Remove the dust caps only when we’re ready to plug in. Clean each LC ferrule with a one-click cleaner. Most bench “no link” faults are dirty ends.</li>
-  <li>Plug the duplex cord into the BMXNRP0200’s fiber port (panel) and the other end into the media converter (field).</li>
-  <li><b>Tx must land on Rx.</b> Standard A–B duplex cords already cross over. If there is no link light later, flip the two simplex connectors at <i>one</i> end only.</li>
-  <li>Dress the run in a loop or on the spool, no tighter than about a 30 mm bend radius. Put a label at each end.</li>
-</ol>
-<div class="warn"><b>Never look into a live fiber or port.</b> At 1300 nm the light is invisible. Use a fiber microscope or visual fault locator to check an end.</div>
-<h3>Field end</h3>
-<ol class="steps">
-  <li>DIN-mount the media converter and the SIG300. Wire the 24 VDC supply to the converter terminals and the SIG300 power cable (pin-out and connector from the SIG300 operating instructions).</li>
-  <li>Connect the converter RJ45 to one of the SIG300 Ethernet ports with the RJ45-to-M12 cable.</li>
-  <li>Bolt the MPB10 to the motor and run the M12 sensor cable to SIG300 port <b>S1</b>.</li>
-  <li>Power up the field end. Expect the converter’s power LED and the SIG300 power LED on. The fiber link LED stays off until the RIO drop (and its BMXNRP0200) is powered.</li>
 </ol>
 
 <h2><span class="n">5</span>Set up the SIG300 and MPB10</h2>
 <ol class="steps">
-  <li>Connect the laptop directly to the SIG300 (or through the converter with the rack off). Find its factory address on the label or in the operating instructions, put the laptop on the same subnet for now, and browse to it.</li>
-  <li>Change the SIG300 IP to <code>192.168.20.20</code> / 255.255.255.0, no gateway. Save, set the laptop to <code>192.168.20.100</code> and reconnect at the new address. (Later, with the rack running, reach it through the NOC’s ETH1 service port.)</li>
+  <li>Connect the laptop directly to the SIG300. Find its factory address on the label or in the operating instructions, put the laptop on the same subnet for now, and browse to it.</li>
+  <li>Change the SIG300 IP to <code>192.168.20.20</code> / 255.255.255.0, no gateway. Save, set the laptop to <code>192.168.20.100</code> and reconnect at the new address. (Later, with the rack running, reach it through the D-Link’s Wi-Fi or the NOC’s ETH1 service port.)</li>
   <li>Set port <b>S1</b> to <b>IO-Link</b> mode. The MPB10 should be listed with its vendor and device ID, and the port LED should show IO-Link communication.</li>
   <li>Load the MPB10 IODD into the SIG300 (if it isn’t built in) so its values show by name. Set the measurement mode and warning/alarm thresholds here or in SOPAS ET.</li>
-  <li>Turn on <b>Data Storage</b> on port S1 so a replacement MPB10 gets the same settings (demo step 5).</li>
-  <li>Note the SIG300’s EtherNet/IP assembly instances and where port S1’s process data starts in the input assembly. We need that byte offset in section 7.</li>
+  <li>Turn on <b>Data Storage</b> on port S1 so a replacement MPB10 gets the same settings.</li>
+  <li>Note the SIG300’s EtherNet/IP assembly instances and where port S1’s process data starts in the input assembly. We need that byte offset in the Control Expert guide.</li>
 </ol>
 
 <h2><span class="n">6</span>Program the M580 and run the dashboard</h2>
-<p>The Control Expert program and its step-by-step build live in <code>m580-mpb-fiber\control-expert</code>. Open <b>Control-Expert-build-guide.html</b> there. It covers the ATV930 keypad set-up, the rack, RIO drop and BMENOC0301 set-up, the SIG300 and ATV930 in the DTM Browser, OPC UA on the BMENUA0100, the six ST sections (MPB10 decode, drive state machine with the panel buttons, stack light, dashboard link), and the commissioning order.</p>
-<p>The customer screen is in <code>m580-mpb-fiber\dashboard</code>: run <code>Start Dashboard.bat</code>. It has tabs for machine health, the drive, VFD control (run the ATV930 through the M580), the network path, the IT side over OPC UA, every IP address, and setup. Plug the laptop into the CPU <b>service port (ETH1)</b> so the screen stays up when we pull the fiber; it then shows exactly where the data stops. Test the screen before the PLC is ready with <code>python fake_m580.py</code>.</p>
+<p>The Control Expert program and its step-by-step build live in <code>m580-mpb-fiber\control-expert</code>. Open <b>Control-Expert-build-guide.html</b> there. It covers the ATV930 keypad set-up, the safety project with its racks, the RIO drop over fiber and the BMENOC0311, the SIG300 and ATV930 in the DTM Browser, the six ST sections (MPB10 decode, drive state machine, stack-light state, dashboard link), and the commissioning order. Our sections run in the normal <b>MAST</b> task; the SAFE task stays empty.</p>
+<p>The customer screen is in <code>m580-mpb-fiber\dashboard</code>: run <code>Start Dashboard.bat</code>. It has tabs for machine health, the drive, VFD control (run the ATV930 through the M580), the network path, every IP address, and setup. Plug the laptop into the CPU <b>service port (ETH1)</b>. Test the screen before the PLC is ready with <code>python fake_m580.py</code>.</p>
 <div class="note">The dashboard only <b>reads</b> the PLC unless “Allow drive control” is ticked in its Setup tab <i>and</i> the PLC sets <code>xDashboardAllowed</code>. A 1 s watchdog in the PLC stops the motor if the dashboard goes silent. The E-stop is hard-wired to the ATV930 STO inputs.</div>
 
 <h2><span class="n">7</span>Bring-up checklist</h2>
 <div class="card"><ul class="check">
-  <li>Rack powers up, CPU RUN LED steady after download</li>
-  <li>RIO drop healthy; pull one ring cable and it stays healthy (ring status goes open), reconnect</li>
-  <li>Panel buttons and key switch show in the animation table; each lamp lights when forced</li>
-  <li>Fiber link LED on at the BMXNRP0200 and at the field media converter</li>
-  <li>Laptop on CPU ETH1 pings <code>192.168.10.10</code> and <code>.15</code>; on the NOC’s ETH1 (as <code>192.168.20.100</code>) it pings <code>192.168.20.10</code>, <code>.20</code> and <code>.30</code></li>
+  <li>Racks power up, CPU RUN LED steady after download</li>
+  <li>Fiber link LEDs on at both BMXNRP0200s</li>
+  <li>RIO drop healthy; pull one fiber link and it stays healthy (ring status goes open), reconnect</li>
+  <li>Laptop on CPU ETH1 pings <code>192.168.10.10</code> and <code>.15</code>; on the D-Link Wi-Fi it pings <code>192.168.20.10</code>, <code>.20</code> and <code>.30</code></li>
   <li>SIG300 NS LED solid green; port S1 shows IO-Link communication</li>
-  <li>Device health bit TRUE in the animation table</li>
+  <li>Device health bits TRUE in the animation table</li>
   <li>Values change when we tap the motor; temperature reads close to room temperature at rest</li>
-  <li>Pull the fiber: <code>xSensorCommAlarm</code> goes TRUE within a few RPIs. Reconnect and it clears</li>
+  <li>Unplug the SIG300 cable: <code>xSensorCommAlarm</code> goes TRUE within a few RPIs. Reconnect and it clears</li>
   <li>Clip on the weight: vibration rises and the warning bit trips</li>
-  <li>Dashboard in Live mode: heartbeat counting, every box on the SIG300 &amp; network tab green, the CPU and drop reachable on the IP addresses tab (the device network shows “not from here”)</li>
-  <li>Drive runs from the animation table, then from the panel Start button, then from the dashboard; panel Stop stops a dashboard run; the E-stop stops it regardless</li>
-  <li>Dashboard IT side · OPC UA tab connects to <code>192.168.30.10</code>: 14 of 14 variables, both value columns match, and the write test is refused</li>
+  <li>Dashboard in Live mode: heartbeat counting, every box on the network tab green, the CPU and drop reachable on the IP addresses tab (the device network shows “not from here”)</li>
+  <li>Drive runs from the animation table, then from the dashboard; the E-stop stops it regardless</li>
 </ul></div>
 
 <h2><span class="n">8</span>When it doesn’t work</h2>
 <div class="wrap"><table>
 <tr><th style="width:32%">Symptom</th><th>Check</th></tr>
-<tr><td>No fiber link light at either end</td><td>Tx/Rx swapped: flip one end. Dirty ferrule: clean it. Wrong converter: it must be <b>100BASE-FX at about 1300 nm</b>, matching the BMXNRP0200. A 1 Gb SFP or an 850 nm part will never link.</td></tr>
-<tr><td>Link light on one end only</td><td>One strand broken or not seated. Swap strands to see if the fault follows the strand.</td></tr>
-<tr><td>Fiber link up, no ping to SIG300</td><td>The SIG300 is on the device network: ping it from the NOC’s ETH1 service port with the laptop on <code>192.168.20.x</code>, not from the CPU port. Then check the SIG300 isn’t still at its factory address, and the mask.</td></tr>
-<tr><td>RIO drop not healthy</td><td>Rotary switches don’t match the drop number in the project (set them with the power off), ring cables in the wrong CPU ports, or the drop’s IP clashes with another device.</td></tr>
+<tr><td>No fiber link light on an NRP</td><td>Tx/Rx swapped: flip one end. Dirty ferrule: clean it. One strand broken or not seated: swap strands to see if the fault follows the strand.</td></tr>
+<tr><td>RIO drop not healthy</td><td>Rotary switches don’t match the drop number in the project (set them with the power off), the ring patches in the wrong CPU or CRA ports, both fiber links down, or the drop’s IP clashes with another device.</td></tr>
+<tr><td>Only one RIO port lit on the CPU or CRA</td><td>The ring is open: one patch or fiber link is missing. The drop still runs, but without redundancy.</td></tr>
+<tr><td>No ping to the SIG300</td><td>It is on the device network: ping it from the D-Link Wi-Fi or the NOC’s ETH1 service port with the laptop on <code>192.168.20.x</code>, not from the CPU port. Then check it isn’t still at its factory address, and the mask.</td></tr>
 <tr><td>Ping OK, health bit FALSE</td><td>Wrong EDS or SIG300 variant (PROFINET model), assembly mismatch, or IP in the DTM doesn’t match the device.</td></tr>
-<tr><td>Data arrives but values look wrong</td><td>Byte order (swap high/low), wrong <code>PD_OFS</code>, or the MPB10 measurement mode doesn’t match the offsets we used.</td></tr>
-<tr><td>IT side tab won’t connect</td><td>USB adapter on 192.168.30.100 with no gateway, cable in the NUA control port, the module’s mode matching the Security setting, and our certificate trusted in Secured mode. Full table in the Control Expert guide, section 7.</td></tr>
+<tr><td>Data arrives but values look wrong</td><td>Byte order (swap high/low), wrong <code>iPD_Ofs</code>, or the MPB10 measurement mode doesn’t match the offsets we used.</td></tr>
 <tr><td>MPB10 not found on S1</td><td>Port not in IO-Link mode, cable not A-coded or too long (&gt; 20 m), or the port is disabled in the SIG300.</td></tr>
+<tr><td>Control Expert can’t create or open the project</td><td>A BMEP584040S needs the Safety (XLS) license. Check Help → About or the license manager.</td></tr>
 </table></div>
 
 <h2><span class="n">9</span>Confirm before the customer sees it</h2>
 <div class="warn">
-These came from datasheets and distributor listings; check them against the official manuals for the units on the bench:
+These came from photos, datasheets and distributor listings; check them against the official manuals and the units on the bench:
 <ul>
-  <li>SIG300 order code really is the EtherNet/IP variant, and its power pin-out.</li>
+  <li>The rack part numbers and slot counts (main rack; the drop’s dual-PSU rack), and the main rack’s power supply part number.</li>
+  <li>The two safety I/O modules right of the BMXSDI1602 on the drop.</li>
+  <li>How the RIO ring is patched through the two BMXNRP0200s, and that pulling one fiber link leaves the drop running.</li>
+  <li>SIG300 order code really is the EtherNet/IP variant, its power pin-out, factory IP address and connectors, and where port S1’s process data sits in its EtherNet/IP input assembly.</li>
   <li>MPB10 process-data layout, scaling and alarm-bit meanings (IODD / operating instructions).</li>
-  <li>SIG300: factory IP address, power and Ethernet connectors, and where port S1’s process data sits in its EtherNet/IP input assembly.</li>
-  <li>The BMXNRP0200 and the field media converter match: 100BASE-FX, multimode, about 1300 nm, the same fiber connector, and the link budget covers the cord length we bring.</li>
-  <li>Which X80 I/O modules are on the drop and which channel each button and lamp uses. On our board: the second module with rotary switches next to the CRA, and the wired I/O module.</li>
   <li>The supply to the ATV930U07M3 is 200–240 V three-phase, and the motor nameplate (voltage, current 4.6 A or less, speed) suits it.</li>
-  <li>BMENUA0100 firmware, mode selector setting, and default login (Schneider FAQ FA405101).</li>
   <li>Which SIG300 input-assembly bit means “device present on S1”, and the Modbus unit ID the M580 answers on (255 or 0).</li>
 </ul>
 </div>

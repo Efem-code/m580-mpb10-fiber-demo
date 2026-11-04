@@ -9,9 +9,6 @@ from the dashboard" is ticked in Setup: then a 3-register command block, refresh
 PLC's watchdog sees the dashboard is alive. The PLC decides whether the drive actually runs.
 Control Expert side: ../control-expert/.
 
-IT SIDE (optional): with `asyncua` installed, the "IT side · OPC UA" tab reads the same PLC variables over
-OPC UA from the BMENUA0100 control port (a second network, e.g. a USB Ethernet adapter). See opcua_side.py.
-
 STATUS MAP  (read, offset from the status base, default %MW1000)
   +0   heartbeat          PLC counts up every scan; frozen = PLC data stale
   +1   status bits        b0 SIG300 EtherNet/IP healthy   b1 IO-Link device on S1
@@ -35,9 +32,10 @@ STATUS MAP  (read, offset from the status base, default %MW1000)
   +26  motor thermal      % (THR)
   +27  last fault code    (LFT)
   +28  CMD                command word sent to the drive (raw)
-  +29  panel / RIO bits  b0 BMECRA31210 drop healthy  b1 Start PB  b2 Stop PB pressed  b3 Reset PB
-                          b4 enable (key switch)  b5 green lamp  b6 amber lamp  b7 red lamp
-                          b8 RIO main ring closed  b9 ring diagnostics mapped  b10 run started from the panel
+  +29  panel / RIO bits  b0 BMECRA31210 drop healthy  b4 demo enable (xDemoEnable)
+                          b5 green  b6 amber  b7 red: the program's stack-light state (no lamps fitted)
+                          b8 RIO main ring closed  b9 ring diagnostics mapped
+                          (b1-b3 and b10 were the operator panel buttons: no panel on this board, always 0)
   +30  accel ramp         s x10 sent to the drive (ACC)
   +31  decel ramp         s x10 sent to the drive (DEC)
 
@@ -60,7 +58,6 @@ from collections import deque
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 from modbus import ModbusClient
-from opcua_side import AVAILABLE as OPCUA_AVAILABLE, OpcUaSide
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 STATIC = os.path.join(HERE, "static")
@@ -73,20 +70,15 @@ TYPES = {".html": "text/html; charset=utf-8", ".js": "text/javascript; charset=u
 
 DEFAULTS = {
     "mode": "sim",
-    # IP plan (the IP addresses tab): three networks.
-    # Control 192.168.10.x: the CPU, the NUA's backplane side, the RIO drop and the laptop on CPU ETH1.
-    # Devices 192.168.20.x: the BMENOC0301 (backplane port disabled) with the SIG300 and ATV930 on its front ports.
+    # IP plan (the IP addresses tab): two networks.
+    # Control 192.168.10.x: the CPU, the RIO drop and the laptop on CPU ETH1.
+    # Devices 192.168.20.x: the BMENOC0311 (backplane port disabled) with the SIG300 and ATV930 on its front ports.
     "laptop_ip": "192.168.10.100", "plc_host": "192.168.10.10", "noc_host": "192.168.20.10",
-    "nua_host": "192.168.10.12", "cra_host": "192.168.10.15", "cra_drop": 1,
+    "cra_host": "192.168.10.15", "cra_drop": 1,
     "sig300_host": "192.168.20.20", "atv_host": "192.168.20.30", "netmask": "255.255.255.0",
     # also on the device network: the D-Link router as a Wi-Fi access point (DHCP pool .150-.199) and the cobot
     "ap_host": "192.168.20.1", "cobot_host": "192.168.20.94",
     "gateway": "",                        # none: the rig is isolated
-    # BMENUA0100 control port: its own network (SCADA / OPC UA side), never the device network.
-    # 192.168.30.x so it can't clash with the lab networks (192.168.10.x, 192.168.20.x) or office Wi-Fi.
-    "nua_ctrl_host": "192.168.30.10", "laptop_it_ip": "192.168.30.100",
-    # IT side: OPC UA client to the NUA control port
-    "opcua_on": False, "nua_ctrl_port": 4840, "opcua_security": "none", "opcua_user": "", "opcua_password": "",
     # Modbus
     "plc_port": 502, "unit_id": 255, "base": 1000, "cmd_base": 1100,
     # ISO 10816-3 group 2 (15-300 kW), rigid mounting: zone limits in mm/s RMS
@@ -105,12 +97,12 @@ DEFAULTS = {
     ],
     "seq_loop": True,
 }
-DEVICE_KEYS = ("laptop_ip", "plc_host", "noc_host", "nua_host", "cra_host", "sig300_host", "atv_host", "ap_host", "cobot_host")
-CONTROL_KEYS = ("laptop_ip", "plc_host", "nua_host", "cra_host")      # on the CPU's network
+DEVICE_KEYS = ("laptop_ip", "plc_host", "noc_host", "cra_host", "sig300_host", "atv_host", "ap_host", "cobot_host")
+CONTROL_KEYS = ("laptop_ip", "plc_host", "cra_host")      # on the CPU's network
 FIELD_KEYS = ("noc_host", "sig300_host", "atv_host", "ap_host", "cobot_host")   # on the NOC's network
 # what the IP tab checks from this laptop, and on which TCP port
 REACH = {"plc_host": 502, "noc_host": 502, "cra_host": 502, "sig300_host": 80, "atv_host": 502,
-         "nua_ctrl_host": 4840, "ap_host": 80}      # not the cobot: its controller limits connections
+         "ap_host": 80}      # not the cobot: its controller limits connections
 
 
 def load_settings():
@@ -120,7 +112,7 @@ def load_settings():
             saved = json.load(f)
         if "sig200_host" in saved and "sig300_host" not in saved:     # the rig moved from a SIG200 to a SIG300
             saved["sig300_host"] = saved["sig200_host"]
-        cfg.update({k: v for k, v in saved.items() if k in DEFAULTS})
+        cfg.update({k: v for k, v in saved.items() if k in DEFAULTS})   # old keys (the NUA's, OPC UA) drop out
     except (OSError, ValueError):
         pass
     return cfg
@@ -151,10 +143,6 @@ def clean_sequence(v):
 def coerce(k, v):
     if k == "sequence":
         return clean_sequence(v)
-    if k == "opcua_security":
-        if v not in ("none", "sign_encrypt"):
-            raise ValueError("OPC UA security must be None or Sign & encrypt")
-        return v
     t = type(DEFAULTS[k])
     if t is bool:
         return v if isinstance(v, bool) else str(v).lower() in ("1", "true", "on", "yes")
@@ -177,13 +165,11 @@ def check_ip_plan(cfg):
             addrs[k] = ipaddress.IPv4Address(cfg[k])
         except ValueError:
             errors.append(f"{LABELS[k]}: “{cfg[k]}” is not an IPv4 address")
-    for k in ("nua_ctrl_host", "laptop_it_ip") + (("gateway",) if cfg["gateway"] else ()):   # no gateway is fine
+    if cfg["gateway"]:                    # no gateway is fine
         try:
-            ipaddress.IPv4Address(cfg[k])
+            ipaddress.IPv4Address(cfg["gateway"])
         except ValueError:
-            errors.append(f"{LABELS[k]}: “{cfg[k]}” is not an IPv4 address")
-    if not 1 <= int(cfg["nua_ctrl_port"]) <= 65535:
-        errors.append("OPC UA port must be 1–65535 (the BMENUA0100 uses 4840)")
+            errors.append(f"{LABELS['gateway']}: “{cfg['gateway']}” is not an IPv4 address")
     if not 1 <= int(cfg["cra_drop"]) <= 159:
         errors.append("RIO drop number must be 1–159 (the BMECRA31210 rotary switches)")
     if errors:
@@ -200,19 +186,6 @@ def check_ip_plan(cfg):
     if cfg["gateway"] and ipaddress.IPv4Address(cfg["gateway"]) not in net:
         warns.append(f"Gateway {cfg['gateway']} is not in the control network {net}")
     seen = {}
-    ctrl, it = ipaddress.IPv4Address(cfg["nua_ctrl_host"]), ipaddress.IPv4Address(cfg["laptop_it_ip"])
-    it_net = ipaddress.IPv4Network(f"{ctrl}/24", strict=False)
-    if ctrl in net or ctrl in dev:
-        warns.append(f"{LABELS['nua_ctrl_host']} {ctrl} is inside the {'control' if ctrl in net else 'device'} network: "
-                     "the BMENUA0100 control port should be on a network of its own")
-    if it == ctrl:
-        errors.append(f"{LABELS['laptop_it_ip']} and {LABELS['nua_ctrl_host']} both use {it}")
-    elif it not in it_net and not ctrl.is_loopback:      # 127.0.0.1 = the stand-in NUA on this laptop
-        warns.append(f"{LABELS['laptop_it_ip']} {it} is not in the NUA control port’s network {it_net}: "
-                     "OPC UA won’t reach the module")
-    if it in net or it in dev:
-        warns.append(f"{LABELS['laptop_it_ip']} {it} is inside the {'control' if it in net else 'device'} network: "
-                     "use the NUA’s separate network")
     for k in DEVICE_KEYS:
         a = str(addrs[k])
         if a in seen:
@@ -221,10 +194,9 @@ def check_ip_plan(cfg):
     return errors, warns
 
 
-LABELS = {"laptop_ip": "Laptop", "plc_host": "M580 CPU", "noc_host": "BMENOC0301", "nua_host": "BMENUA0100",
+LABELS = {"laptop_ip": "Laptop", "plc_host": "M580 CPU", "noc_host": "BMENOC0311",
           "cra_host": "RIO drop (BMECRA31210)", "sig300_host": "SIG300", "atv_host": "ATV930",
-          "gateway": "Gateway", "nua_ctrl_host": "BMENUA0100 control port",
-          "laptop_it_ip": "Laptop USB adapter (IT side)", "ap_host": "D-Link Wi-Fi access point",
+          "gateway": "Gateway", "ap_host": "D-Link Wi-Fi access point",
           "cobot_host": "Lexium cobot"}
 
 
@@ -255,9 +227,9 @@ class SimSource:
     def __init__(self):
         self.unbalance = 0.0      # 0..1, the slider ("clip-on weight")
         self.heat = 0.0           # 0..1, extra heating
-        self.fiber_ok = True
-        self.ring_ok = True       # RIO main ring closed (both CPU ports to the drop)
-        self.drop_ok = True
+        self.sig_ok = True        # SIG300 Ethernet cable on NOC ETH3
+        self.ring_ok = True       # RIO main ring closed: both fibers between the BMXNRP0200s
+        self.drop_ok = True       # at least one fiber path to the drop
         self.swap_until = 0.0
         self.shock_until = 0.0
         self.shocks = 0
@@ -278,8 +250,8 @@ class SimSource:
         elif name == "knock":
             self.shocks += 1
             self.shock_until = time.time() + 1.5
-        elif name == "fiber":
-            self.fiber_ok = bool(value)
+        elif name == "sig":
+            self.sig_ok = bool(value)
         elif name == "ring":
             self.ring_ok = bool(value)
         elif name == "drop":
@@ -332,7 +304,7 @@ class SimSource:
         self.temp += (ttarget - self.temp) * min(1.0, dt / 12.0)
 
         present = now >= self.swap_until
-        eip = self.fiber_ok
+        eip = self.sig_ok
         regs = [0] * BLOCK
         regs[0] = self.hb
         if eip and present:
@@ -351,7 +323,7 @@ class SimSource:
             regs[1] = (1 if eip else 0) | (2 if eip and present else 0)
             regs[2:8] = [NA] * 5 + [self.shocks]
         regs[20:29] = drive
-        # operator panel on the RIO drop: stack light follows the same rules as 05_IO_Out
+        # the program's stack-light state (04_Dashboard_Out): no lamps fitted on this board
         sensor_lost = not (eip and present)
         red = bool(self.fault) or (not sensor_lost and v >= cfg["zone_cd"]) or (sensor_lost and int(now * 2) % 2)
         amber = not sensor_lost and (v >= cfg["zone_bc"] or self.temp >= cfg["temp_warn"])
@@ -409,7 +381,6 @@ class Engine:
         self.reach = {}
         self.prog = {"on": False}           # demo sequence runner
         self.marks = deque(maxlen=60)      # speed-change markers for the charts: [t, label]
-        self.opc = OpcUaSide(lambda: dict(self.cfg), self.event)   # IT side, its own thread
         threading.Thread(target=self._loop, daemon=True, name="poll").start()
         threading.Thread(target=self._reach_loop, daemon=True, name="reach").start()
 
@@ -417,9 +388,6 @@ class Engine:
     def configure(self, new):
         with self.lock:
             trial = dict(self.cfg)
-            # the password is never sent back to the page; a blank or missing one keeps the saved one
-            if not new.get("opcua_password"):
-                new = {k: v for k, v in new.items() if k != "opcua_password"}
             trial.update({k: coerce(k, v) for k, v in new.items() if k in DEFAULTS})
             errors, warns = check_ip_plan(trial)
             if errors:
@@ -497,7 +465,7 @@ class Engine:
                 save_settings(self.cfg)
                 self.event("info", f"Ramps set: accel {acc:.1f} s, decel {dec:.1f} s")
             elif action == "stop":
-                # a 1 s pulse, not a latch, so the panel Start still works after a dashboard Stop
+                # a 1 s pulse, not a latch, so a later Start still works after a dashboard Stop
                 c["run"], c["stop_until"], c["jog_until"] = False, time.time() + 1.0, 0.0
                 self.event("info", "Stop requested")
                 self._seq_halt("STOP pressed")
@@ -576,8 +544,8 @@ class Engine:
                 c["reverse"], c["run"], P["wait"], P["t0"] = P["rev"], True, False, now
             return
         if st["dir"] != "stop" and not c["run"]:
-            # something else dropped the run: panel Stop, key switch, PLC
-            return self._seq_halt("the run was stopped from the panel or the PLC", "warn")
+            # something else dropped the run: the PLC (demo enable, animation table)
+            return self._seq_halt("the run was stopped by the PLC", "warn")
         if st["dir"] != "stop" and now - P["t0"] > 4 and not d["running"]:
             c["run"] = False
             return self._seq_halt("the drive didn’t start: check the Ready to run list", "bad")
@@ -694,13 +662,12 @@ class Engine:
             "decel": round(regs[31] / 10, 1) if d_ok else None,
         }
         pb = regs[29] if fresh else 0
-        panel = {"drop": bool(pb & 1), "start": bool(pb & 2), "stop": bool(pb & 4), "reset": bool(pb & 8),
-                 "enable": bool(pb & 16), "green": bool(pb & 32), "amber": bool(pb & 64), "red": bool(pb & 128),
-                 "ring": bool(pb & 256), "ring_known": bool(pb & 512), "from_panel": bool(pb & 1024)}
-        if fresh and cmd["run"] and (panel["stop"] or not panel["enable"]):
+        panel = {"drop": bool(pb & 1), "enable": bool(pb & 16), "green": bool(pb & 32), "amber": bool(pb & 64),
+                 "red": bool(pb & 128), "ring": bool(pb & 256), "ring_known": bool(pb & 512)}
+        if fresh and cmd["run"] and not panel["enable"]:
             # the PLC dropped the run: clear the page's request so it needs a fresh Start
             self.cmd["run"], self.cmd["jog_until"] = False, 0.0
-            self.event("info", "Stopped from the operator panel" if panel["stop"] else "Run dropped: enable key switch is off")
+            self.event("info", "Run dropped: demo enable (xDemoEnable) is off in the PLC")
         drive["state"] = cia402_state(drive["eta"]) if d_ok else "No connection"
         zone = None
         if v is not None:
@@ -724,7 +691,7 @@ class Engine:
                         "jog": cmd["jog"], "jog_rev": self.cmd["jog_rev"], "jog_rpm": cfg["jog_rpm"],
                         "accel_s": cfg["accel_s"], "decel_s": cfg["decel_s"],
                         "alive": cmd["alive"], "max_rpm": cfg["max_rpm"]},
-            "sim": {"unbalance": self.sim.unbalance, "heat": self.sim.heat, "fiber": self.sim.fiber_ok,
+            "sim": {"unbalance": self.sim.unbalance, "heat": self.sim.heat, "sig": self.sim.sig_ok,
                     "ring": self.sim.ring_ok, "drop": self.sim.drop_ok,
                     "swapping": time.time() < self.sim.swap_until} if cfg["mode"] == "sim" else None,
         }
@@ -742,9 +709,9 @@ class Engine:
             if PL["fresh"] and L["plc"] and not L["fresh"]:
                 self.event("bad", "PLC heartbeat stopped: data is stale")
             if PL["eip"] and not L["eip"] and L["fresh"]:
-                self.event("bad", "SIG300 lost: EtherNet/IP connection down (fiber or switch?)")
+                self.event("bad", "SIG300 lost: EtherNet/IP connection down (cable on NOC ETH3?)")
             if not PL["eip"] and L["eip"]:
-                self.event("ok", "SIG300 back online over the fiber link")
+                self.event("ok", "SIG300 back online")
             if PL["iolink"] and not L["iolink"] and L["eip"]:
                 self.event("bad", "MPB10 disconnected from port S1")
             if not PL["iolink"] and L["iolink"] and PL["eip"]:
@@ -755,18 +722,16 @@ class Engine:
                 self.event("ok", "ATV930 connected")
             P, PP = s["panel"], p["panel"]
             if PL["drop"] and not L["drop"] and L["fresh"]:
-                self.event("bad", "RIO drop (BMECRA31210) lost: panel buttons and stack light offline")
+                self.event("bad", "RIO drop (BMECRA31210) lost: both fiber paths down")
             if not PL["drop"] and L["drop"] and PL["fresh"]:
                 self.event("ok", "RIO drop (BMECRA31210) back")
             if P["ring_known"] and L["drop"] and PL["drop"]:
                 if PP["ring"] and not P["ring"]:
-                    self.event("warn", "RIO ring opened: drop still running on the other path (RSTP)")
+                    self.event("warn", "RIO ring opened (a fiber pulled?): drop still running on the other path")
                 if not PP["ring"] and P["ring"]:
                     self.event("ok", "RIO ring closed again: redundancy restored")
-            if P["start"] and not PP["start"]:
-                self.event("info", "Start pressed on the operator panel")
             if P["enable"] != PP["enable"] and L["fresh"] and PL["fresh"]:
-                self.event("info" if P["enable"] else "warn", f"Enable key switch {'ON' if P['enable'] else 'OFF'}")
+                self.event("info" if P["enable"] else "warn", f"Demo enable (xDemoEnable) {'ON' if P['enable'] else 'OFF'}")
             D, PD = s["drive"], p["drive"]
             if D["ref"] is not None and PD["ref"] is not None and D["ref"] != PD["ref"]:
                 r = D["ref"]
@@ -796,13 +761,12 @@ class Engine:
 
     def snapshot(self):
         with self.lock:
-            return dict(self.state, events=list(self.events)[:14], reach=self.reach, marks=list(self.marks),
-                        opcua=self.opc.snapshot())
+            return dict(self.state, events=list(self.events)[:14], reach=self.reach, marks=list(self.marks))
 
 
 def public_cfg(cfg):
-    """The settings as the page sees them: no password, just whether one is saved."""
-    return dict(cfg, opcua_password="", opcua_password_set=bool(cfg["opcua_password"]), _opcua_available=OPCUA_AVAILABLE)
+    """The settings as the page sees them."""
+    return dict(cfg)
 
 
 def cia402_state(eta):
@@ -913,9 +877,6 @@ class Handler(BaseHTTPRequestHandler):
             except (TypeError, ValueError) as e:
                 return self._json({"errors": [str(e)], "warnings": []}, 400)
             return self._json(r, 400 if r["errors"] else 200)
-        if path == "/api/opcua":
-            err = eng.opc.request_write_test() if b.get("action") == "write_test" else "unknown action"
-            return self._json({"error": err} if err else {"ok": True}, 409 if err else 200)
         if path == "/api/clear":
             with eng.lock:
                 eng.history.clear()
