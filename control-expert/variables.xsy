@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <VariablesExchangeFile>
-<fileHeader company="Schneider Automation" product="EcoStruxure Control Expert" dateTime="date_and_time#2026-11-05-07:47:41" content="Variable source file" DTDVersion="41"></fileHeader>
-<contentHeader name="M580 MPB10 demo" version="0.0.000" dateTime="date_and_time#2026-11-05-07:47:41"></contentHeader>
+<fileHeader company="Schneider Automation" product="EcoStruxure Control Expert" dateTime="date_and_time#2026-11-05-08:07:30" content="Variable source file" DTDVersion="41"></fileHeader>
+<contentHeader name="M580 MPB10 demo" version="0.0.000" dateTime="date_and_time#2026-11-05-08:07:30"></contentHeader>
 <dataBlock>
 <variables name="aDash" typeName="ARRAY[0..31] OF INT" topologicalAddress="%MW1000">
 <comment>Status block read by the dashboard</comment>
@@ -322,6 +322,89 @@
 </variables>
 <variables name="iDashIdx" typeName="INT">
 <comment>Loop index (04_Dashboard_Out)</comment>
+</variables>
+<variables name="aAlm" typeName="ARRAY[0..443] OF INT" topologicalAddress="%MW1300">
+<comment>Alarm block: status, raised times and history (06_Alarms)</comment>
+</variables>
+<variables name="aAlmCmd" typeName="ARRAY[0..1] OF INT" topologicalAddress="%MW1290">
+<comment>Alarm commands: [0] acknowledge bits, [1] 1 = clear history</comment>
+</variables>
+<variables name="aAlmCond" typeName="ARRAY[1..12] OF BOOL">
+<comment>Alarm conditions, live</comment>
+</variables>
+<variables name="aAlmActive" typeName="ARRAY[1..12] OF BOOL">
+<comment>Alarm active</comment>
+</variables>
+<variables name="aAlmUnack" typeName="ARRAY[1..12] OF BOOL">
+<comment>Alarm not acknowledged</comment>
+</variables>
+<variables name="aAlmState" typeName="ARRAY[1..12] OF INT">
+<comment>0 normal, 1 active, 2 active acknowledged, 3 cleared not acknowledged</comment>
+</variables>
+<variables name="aAlmText" typeName="ARRAY[1..12] OF string[32]">
+<comment>Alarm names</comment>
+</variables>
+<variables name="aAlmPrio" typeName="ARRAY[1..12] OF INT">
+<comment>Alarm priority: 1 critical, 2 warning</comment>
+</variables>
+<variables name="aAlmTimer" typeName="ARRAY[1..12] OF INT">
+<comment>Alarm on-delay counters, 100 ms</comment>
+</variables>
+<variables name="iAlmDelay" typeName="INT">
+<comment>Alarm on-delay, 100 ms units</comment>
+<variableInit value="30"></variableInit>
+</variables>
+<variables name="xAlmAckAll" typeName="BOOL">
+<comment>Acknowledge every alarm (resets itself)</comment>
+<variableInit value="FALSE"></variableInit>
+</variables>
+<variables name="xAlmInit" typeName="BOOL">
+<comment>Alarm names are set</comment>
+<variableInit value="FALSE"></variableInit>
+</variables>
+<variables name="xAlmNow" typeName="BOOL">
+<comment>This alarm's condition after the on-delay</comment>
+</variables>
+<variables name="rtAlmTick" typeName="R_TRIG">
+<comment>100 ms tick for the on-delay</comment>
+</variables>
+<variables name="wAlmAckMask" typeName="WORD">
+<comment>Acknowledge bits this scan</comment>
+</variables>
+<variables name="wAlmBit" typeName="WORD">
+<comment>This alarm's bit</comment>
+</variables>
+<variables name="wAlmActive" typeName="WORD">
+<comment>Active alarms, one bit each</comment>
+</variables>
+<variables name="wAlmUnack" typeName="WORD">
+<comment>Unacknowledged alarms, one bit each</comment>
+</variables>
+<variables name="iAlm" typeName="INT">
+<comment>Loop index (06_Alarms)</comment>
+</variables>
+<variables name="iAlmIdx" typeName="INT">
+<comment>Loop index (06_Alarms)</comment>
+</variables>
+<variables name="iAlmType" typeName="INT">
+<comment>Event this scan: 1 raised, 2 cleared, 3 acknowledged</comment>
+</variables>
+<variables name="iAlmOfs" typeName="INT">
+<comment>Offset into aAlm</comment>
+</variables>
+<variables name="iAlmHead" typeName="INT">
+<comment>Next history slot</comment>
+<variableInit value="0"></variableInit>
+</variables>
+<variables name="iAlmSeq" typeName="INT">
+<comment>Alarm events so far</comment>
+<variableInit value="0"></variableInit>
+</variables>
+<variables name="iAlmActCount" typeName="INT">
+<comment>Active alarms</comment>
+</variables>
+<variables name="iAlmUnackCount" typeName="INT">
+<comment>Unacknowledged alarms</comment>
 </variables>
 </dataBlock>
 </VariablesExchangeFile>

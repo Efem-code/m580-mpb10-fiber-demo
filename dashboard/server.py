@@ -4,9 +4,10 @@
   python server.py --live          read the M580 over Modbus TCP (addresses from the IP addresses tab)
   python server.py --lan           also reachable from phones/iPads/TVs on the same network
 
-Live mode READS one block of holding registers from the M580. It WRITES only when "Allow drive control
-from the dashboard" is ticked in Setup: then a 3-register command block, refreshed every cycle, so the
-PLC's watchdog sees the dashboard is alive. The PLC decides whether the drive actually runs.
+Live mode READS one block of holding registers from the M580, and the alarm block at %MW1300 (alarms.py).
+It WRITES the drive command block only when "Allow drive control from the dashboard" is ticked in Setup:
+refreshed every cycle, so the PLC's watchdog sees the dashboard is alive. The PLC decides whether the
+drive actually runs. Acknowledging an alarm or clearing the alarm history writes %MW1290, once per press.
 Control Expert side: ../control-expert/.
 
 STATUS MAP  (read, offset from the status base, default %MW1000)
@@ -57,6 +58,7 @@ import webbrowser
 from collections import deque
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
+import alarms
 from modbus import ModbusClient
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -380,6 +382,10 @@ class Engine:
                     "jog_until": 0.0, "jog_rev": False}
         self.reach = {}
         self.prog = {"on": False}           # demo sequence runner
+        self.alarm_sim = alarms.AlarmLog()  # S06_Alarms, for simulation mode
+        self.alarm_block = None             # the last block read
+        self.alarm_cmd_sim = [0, False]     # acknowledge mask, clear, waiting for the next cycle
+        self.alarm_read = 0.0
         self.marks = deque(maxlen=60)      # speed-change markers for the charts: [t, label]
         threading.Thread(target=self._loop, daemon=True, name="poll").start()
         threading.Thread(target=self._reach_loop, daemon=True, name="reach").start()
@@ -613,6 +619,7 @@ class Engine:
                     self.errors += 1
                     self.last_error = err
                 self.state = self._decode(regs, err, now, cmd)
+                self._alarms_tick(now)
                 self._diff_events()
                 self._seq_tick(now, cmd)
                 self.state["prog"] = self._seq_state(now)
@@ -759,6 +766,53 @@ class Engine:
                 self.event("warn", f"Temperature high: {s['mpb']['temp']:.1f} °C")
         self.prev = s
 
+    # ---- alarms: the same block whether it comes from the PLC or from the simulation
+    def _alarms_tick(self, now):
+        s = self.state
+        try:
+            if self.cfg["mode"] == "sim":
+                L, d, m, p = s["links"], s["drive"], s["mpb"], s["panel"]
+                conds = {n for n, on in ((1, d["fault"]), (2, not L["atv"]), (3, not L["eip"]),
+                                         (4, L["eip"] and not L["iolink"]), (5, not L["drop"]),
+                                         (6, p["ring_known"] and L["drop"] and not p["ring"]),
+                                         (7, m["warn"]), (8, m["alarm"]), (9, m["temp_warn"])) if on}
+                mask, clear = self.alarm_cmd_sim
+                self.alarm_cmd_sim = [0, False]
+                self.alarm_block = self.alarm_sim.update(conds, now, mask, clear)
+            elif self.plc and now - self.alarm_read >= 1.0:
+                self.alarm_read = now
+                head = self.plc.client.read_holding(alarms.BASE, alarms.LOG_START)
+                old = self.alarm_block
+                if old is None or old[0] != head[0] or old[5] != head[5]:
+                    log = []
+                    for ofs in range(alarms.LOG_START, alarms.SIZE, 120):       # Modbus reads up to 125 at a time
+                        log += self.plc.client.read_holding(alarms.BASE + ofs, min(120, alarms.SIZE - ofs))
+                else:
+                    log = old[alarms.LOG_START:]
+                self.alarm_block = list(head) + list(log)
+        except Exception as e:  # noqa: BLE001 - the block shows as out of date on the page
+            self.last_error = str(e) or e.__class__.__name__
+        s["alarms"] = alarms.decode(self.alarm_block) if self.alarm_block else None
+
+    def alarm_command(self, action, n=None):
+        """Acknowledge one alarm or all of them, or clear the history."""
+        mask, clear = 0, 0
+        if action == "ack":
+            mask = 1 << (int(n) - 1) if n else 0x0FFF
+        elif action == "clear":
+            clear = 1
+        else:
+            return "unknown alarm command"
+        with self.lock:
+            if self.cfg["mode"] == "sim":
+                self.alarm_cmd_sim = [self.alarm_cmd_sim[0] | mask, self.alarm_cmd_sim[1] or bool(clear)]
+            elif self.plc:
+                self.plc.client.write_registers(alarms.CMD_BASE, [mask, clear])
+                self.alarm_read = 0.0
+            else:
+                return "not connected to the PLC"
+        return None
+
     def snapshot(self):
         with self.lock:
             return dict(self.state, events=list(self.events)[:14], reach=self.reach, marks=list(self.marks))
@@ -870,6 +924,12 @@ class Handler(BaseHTTPRequestHandler):
                 err = eng.drive(b.get("action", ""), b.get("value"))
             except (TypeError, ValueError, KeyError) as e:
                 err = f"bad request: {e}"
+            return self._json({"error": err} if err else {"ok": True}, 409 if err else 200)
+        if path == "/api/alarm":
+            try:
+                err = eng.alarm_command(b.get("action", ""), b.get("id"))
+            except (OSError, TypeError, ValueError) as e:
+                err = f"couldn't reach the PLC: {e}"
             return self._json({"error": err} if err else {"ok": True}, 409 if err else 200)
         if path == "/api/config":
             try:

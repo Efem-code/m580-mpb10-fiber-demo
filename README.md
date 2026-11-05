@@ -35,6 +35,7 @@ Start Dashboard.bat --live       talk to the real M580 (addresses from the IP ad
 Start Dashboard.bat --lan        also show it on a TV / iPad on the same network (view-only there)
 Start Dashboard.bat --port 8781  use another port
 python fake_m580.py              stand-in PLC on 127.0.0.1:5020, to try Live mode without hardware
+                                 (--alarm-demo raises and clears an alarm every 20 s)
 python drive_bridge.py           let Control Expert's PLC simulator run the real ATV930 (testing only)
 ```
 

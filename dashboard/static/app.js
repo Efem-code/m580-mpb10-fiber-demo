@@ -269,6 +269,8 @@ function render(s) {
   pill.textContent = s.mode === "sim" ? "SIMULATION" : `LIVE · M580 ${s.plc.host}` + (s.control.writing ? " · CONTROL ON" : "");
   $("simbar").style.display = s.mode === "sim" && local ? "" : "none";
 
+  renderAlarms(s.alarms);
+
   // ---- machine tab
   const [label, text] = HEALTH[s.health];
   $("healthCard").className = "card health " + s.health;
@@ -329,6 +331,51 @@ const bitsHtml = (v, names) => Array.from({ length: 16 }, (_, i) => 15 - i).map(
   `<div class="${v != null && (v >> b) & 1 ? "on" : ""}" title="${names[b] || "bit " + b}">${b}<small>${names[b] ? names[b].split(" ")[0] : "·"}</small></div>`).join("");
 
 function chip(id, on, kind) { $(id).className = "chip" + (on ? " on " + kind : ""); }
+
+const ALM_STATES = ["Normal", "Active · not acknowledged", "Active · acknowledged", "Cleared · not acknowledged"];
+let almLog = [];
+const esc = t => String(t).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+
+function renderAlarms(a) {
+  const on = !!a;
+  const badge = on ? a.unack || a.active : 0;
+  $("almBadge").textContent = badge;
+  $("almBadge").classList.toggle("show", badge > 0);
+  $("almAckAll").disabled = !on || !a.unack;
+  $("almClear").disabled = $("almCsv").disabled = !on || !a.log.length;
+  if (!on) {
+    $("almTitle").textContent = "Alarms";
+    $("almRows").innerHTML = `<tr><td colspan="5" class="sub">No alarm data from the PLC yet.</td></tr>`;
+    $("almLog").innerHTML = "";
+    $("almNote").textContent = "";
+    return;
+  }
+  almLog = a.log;
+  const shown = a.items.filter(i => i.state);
+  $("almTitle").textContent = shown.length ? `Alarms · ${a.active} active, ${a.unack} to acknowledge` : "Alarms · all clear";
+  $("almRows").innerHTML = shown.map(i => `<tr class="s${i.state} p${i.prio}"><td><b>${esc(i.text)}</b></td>
+    <td><span class="almprio p${i.prio}">${i.prio === 1 ? "Critical" : "Warning"}</span></td>
+    <td><span class="almstate s${i.state}">${ALM_STATES[i.state]}</span></td>
+    <td class="t">${i.raised || "–"}</td>
+    <td>${i.state !== 2 ? `<button class="btn" data-ack="${i.id}">Acknowledge</button>` : ""}</td></tr>`).join("")
+    || `<tr><td colspan="5" class="sub">No alarms.</td></tr>`;
+  $("almLog").innerHTML = a.log.map(e => `<tr><td class="t">${e.at || "–"}</td><td>${esc(e.text)}</td><td>${e.type}</td></tr>`).join("")
+    || `<tr><td colspan="3" class="sub">Nothing yet.</td></tr>`;
+  $("almNote").textContent = !a.clock ? "The PLC isn't filling the alarm block yet: load the S06_Alarms section."
+    : a.clock_set ? `PLC clock ${a.clock}.` : `The PLC's clock isn't set (it reads ${a.clock}), so timestamps will be wrong until it is.`;
+}
+
+$("almAckAll").onclick = () => post("/api/alarm", { action: "ack" });
+$("almRows").onclick = e => { const n = e.target.dataset.ack; if (n) post("/api/alarm", { action: "ack", id: +n }); };
+$("almClear").onclick = () => { if (confirm("Clear the alarm history?")) post("/api/alarm", { action: "clear" }); };
+$("almCsv").onclick = () => {
+  const rows = [["Time", "Alarm", "Event"], ...almLog.map(e => [e.at || "", e.text, e.type])];
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(new Blob([rows.map(r => r.map(c => `"${c}"`).join(",")).join("\r\n")], { type: "text/csv" }));
+  a.download = "m580-alarm-history.csv";
+  a.click();
+  URL.revokeObjectURL(a.href);
+};
 
 function renderDrive(s) {
   const d = s.drive, c = s.control;

@@ -97,3 +97,29 @@ iHeartbeat;INT;;0;PLC heartbeat for the dashboard
 wDashStatus;WORD;;;Sensor status bits for the dashboard
 wDashDrive;WORD;;;Drive status bits for the dashboard
 iDashIdx;INT;;;Loop index (04_Dashboard_Out)
+aAlm;ARRAY[0..443] OF INT;%MW1300;;Alarm block: status, raised times and history (06_Alarms)
+aAlmCmd;ARRAY[0..1] OF INT;%MW1290;;Alarm commands: [0] acknowledge bits, [1] 1 = clear history
+aAlmCond;ARRAY[1..12] OF BOOL;;;Alarm conditions, live
+aAlmActive;ARRAY[1..12] OF BOOL;;;Alarm active
+aAlmUnack;ARRAY[1..12] OF BOOL;;;Alarm not acknowledged
+aAlmState;ARRAY[1..12] OF INT;;;0 normal, 1 active, 2 active acknowledged, 3 cleared not acknowledged
+aAlmText;ARRAY[1..12] OF string[32];;;Alarm names
+aAlmPrio;ARRAY[1..12] OF INT;;;Alarm priority: 1 critical, 2 warning
+aAlmTimer;ARRAY[1..12] OF INT;;;Alarm on-delay counters, 100 ms
+iAlmDelay;INT;;30;Alarm on-delay, 100 ms units
+xAlmAckAll;BOOL;;FALSE;Acknowledge every alarm (resets itself)
+xAlmInit;BOOL;;FALSE;Alarm names are set
+xAlmNow;BOOL;;;This alarm's condition after the on-delay
+rtAlmTick;R_TRIG;;;100 ms tick for the on-delay
+wAlmAckMask;WORD;;;Acknowledge bits this scan
+wAlmBit;WORD;;;This alarm's bit
+wAlmActive;WORD;;;Active alarms, one bit each
+wAlmUnack;WORD;;;Unacknowledged alarms, one bit each
+iAlm;INT;;;Loop index (06_Alarms)
+iAlmIdx;INT;;;Loop index (06_Alarms)
+iAlmType;INT;;;Event this scan: 1 raised, 2 cleared, 3 acknowledged
+iAlmOfs;INT;;;Offset into aAlm
+iAlmHead;INT;;0;Next history slot
+iAlmSeq;INT;;0;Alarm events so far
+iAlmActCount;INT;;;Active alarms
+iAlmUnackCount;INT;;;Unacknowledged alarms

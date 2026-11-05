@@ -10,6 +10,7 @@ import math
 import sys
 import time
 
+import alarms
 from modbus import DataStore, ModbusServer
 
 BASE, CMD = 1000, 1100
@@ -20,6 +21,8 @@ store = DataStore()
 ModbusServer("127.0.0.1", port, store).start()
 print(f"Fake M580 on 127.0.0.1:{port}: status %MW{BASE}, commands %MW{CMD}, dashboard allowed = {allowed}")
 
+alarm_log = alarms.AlarmLog()
+store.write("holding", alarms.CMD_BASE, [0, 0])
 hb = 0
 speed = 0.0
 last_dash_hb, dash_changed = None, 0.0
@@ -55,3 +58,8 @@ while True:
     regs += [1 | 16 | running << 5 | (v >= 2.8) << 6 | (v >= 4.5) << 7 | 1 << 8 | 1 << 9]
     regs += [round(acc_s * 10), round(dec_s * 10)]
     store.write("holding", BASE, [x & 0xFFFF for x in regs])
+    # the same alarm block as S06_Alarms; --alarm-demo opens the ring for 10 s in every 20
+    ack, clear = store.read("holding", alarms.CMD_BASE, 2)
+    store.write("holding", alarms.CMD_BASE, [0, 0])
+    conds = {n for n, on in ((6, "--alarm-demo" in sys.argv and now % 20 < 10), (7, v >= 2.8), (8, v >= 4.5)) if on}
+    store.write("holding", alarms.BASE, alarm_log.update(conds, now, ack, clear == 1))

@@ -3,3 +3,6 @@ __pycache__/
 dashboard/settings.json
 .DS_Store
 Thumbs.db
+tv-app/build/
+tv-app/keystore.jks
+tv-app/*.apk

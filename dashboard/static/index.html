@@ -68,6 +68,22 @@
   .events { list-style: none; margin: 0; padding: 0; max-height: 420px; overflow: auto; }
   .events li { display: grid; grid-template-columns: 64px 1fr; gap: 8px; padding: 7px 0; border-bottom: 1px solid var(--rule); font-size: 14px; }
   .events time { color: var(--muted); font-variant-numeric: tabular-nums; }
+  nav button .badge { display: none; margin-left: 6px; min-width: 20px; padding: 0 6px; border-radius: 10px; background: var(--bad); color: #fff; font-size: 12px; line-height: 20px; text-align: center; }
+  nav button .badge.show { display: inline-block; }
+  .almhead { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 12px; }
+  .almhead h2 { margin: 0; }
+  .almhead .acts { display: flex; gap: 8px; }
+  table.alm { width: 100%; border-collapse: collapse; font-size: 14px; }
+  table.alm th { text-align: left; color: var(--muted); font-weight: 600; font-size: 12px; padding: 6px 8px; border-bottom: 1px solid var(--rule); }
+  table.alm td { padding: 8px; border-bottom: 1px solid var(--rule); vertical-align: middle; }
+  table.alm td.t { font-variant-numeric: tabular-nums; white-space: nowrap; color: var(--muted); }
+  table.alm tr.s1.p1 td { background: var(--bad-bg); } table.alm tr.s1.p2 td { background: var(--warn-bg); }
+  .almstate { font-weight: 600; white-space: nowrap; }
+  .almstate.s1 { color: var(--bad); } .almstate.s2 { color: var(--warn); } .almstate.s3 { color: var(--muted); }
+  .almprio { font-size: 12px; font-weight: 600; padding: 2px 8px; border-radius: 999px; background: var(--warn-bg); color: #8A5A00; }
+  .almprio.p1 { background: var(--bad-bg); color: var(--bad); }
+  .almscroll { max-height: 460px; overflow: auto; }
+  table.alm button { padding: 4px 12px; font-size: 13px; }
   .ev-ok span { color: var(--good); } .ev-warn span { color: #9A6100; } .ev-bad span { color: var(--bad); font-weight: 600; }
   .simbar { margin-top: 16px; background: var(--char2); color: #EDEEEC; border-radius: 12px; padding: 14px 18px; display: flex; flex-wrap: wrap; gap: 20px; align-items: center; }
   .simbar h2 { color: var(--orange); margin: 0; font-size: 13px; letter-spacing: .07em; }
@@ -176,6 +192,7 @@
   <h1>Machine Health · M580 + SICK</h1>
   <nav>
     <button data-tab="machine" class="on">Machine health</button>
+    <button data-tab="alarms">Alarms<span class="badge" id="almBadge">0</span></button>
     <button data-tab="drive">Drive (ATV930)</button>
     <button data-tab="vfd">VFD control</button>
     <button data-tab="network">SIG300 &amp; network</button>
@@ -261,6 +278,30 @@
 </section>
 
 <!-- ======================= DRIVE ======================= -->
+<section class="tab" id="tab-alarms">
+  <div class="card" style="margin-bottom:14px">
+    <div class="almhead">
+      <h2 id="almTitle">Alarms</h2>
+      <div class="acts"><button class="btn orange" id="almAckAll">Acknowledge all</button></div>
+    </div>
+    <table class="alm">
+      <thead><tr><th>Alarm</th><th>Priority</th><th>State</th><th>Raised</th><th></th></tr></thead>
+      <tbody id="almRows"></tbody>
+    </table>
+    <p class="note" id="almNote"></p>
+  </div>
+  <div class="card">
+    <div class="almhead">
+      <h2>History · last 64 events</h2>
+      <div class="acts"><button class="btn" id="almCsv">Save as CSV</button><button class="btn" id="almClear">Clear history</button></div>
+    </div>
+    <div class="almscroll"><table class="alm">
+      <thead><tr><th>Time (PLC clock)</th><th>Alarm</th><th>Event</th></tr></thead>
+      <tbody id="almLog"></tbody>
+    </table></div>
+  </div>
+</section>
+
 <section class="tab" id="tab-drive">
   <div class="grid dtop">
     <div class="card">

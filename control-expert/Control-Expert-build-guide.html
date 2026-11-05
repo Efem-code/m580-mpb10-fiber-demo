@@ -55,9 +55,9 @@
 
 <h2><span class="n">1</span>What’s in the folder</h2>
 <div class="flow">
-  <span class="edit">00_IO_Map</span><i>→</i><span>01_MPB10_Decode</span><i>→</i><span>02_Dashboard_In</span><i>→</i><span>03_ATV930_Control</span><i>→</i><span>04_Dashboard_Out</span><i>→</i><span class="edit">05_IO_Out</span>
+  <span class="edit">00_IO_Map</span><i>→</i><span>01_MPB10_Decode</span><i>→</i><span>02_Dashboard_In</span><i>→</i><span>03_ATV930_Control</span><i>→</i><span>04_Dashboard_Out</span><i>→</i><span class="edit">05_IO_Out</span><i>→</i><span>06_Alarms</span>
 </div>
-<p>All six run in the <b>MAST</b> task, in that order. The safety CPU’s <b>SAFE</b> task stays empty: the safety I/O on the board isn’t used by this demo. Only the two orange sections name the device DDTs Control Expert generates (SIG300, ATV930, and the RIO drop’s status), so they are the only ones we edit for our project. The others work on plain variables.</p>
+<p>All seven run in the <b>MAST</b> task, in that order. The safety CPU’s <b>SAFE</b> task stays empty: the safety I/O on the board isn’t used by this demo. Only the two orange sections name the device DDTs Control Expert generates (SIG300, ATV930, and the RIO drop’s status), so they are the only ones we edit for our project. The others work on plain variables.</p>
 <div class="wrap"><table>
 <tr><th style="width:26%">File</th><th>Does</th></tr>
 <tr><td>00_IO_Map.st</td><td>Copies the SIG300 and ATV930 device-DDT inputs (health bits, input bytes, ETA, RFRD, LCR, OTR, THR, LFT) and the RIO drop’s health and ring status into plain variables. Ships “unmapped” (health FALSE) so it compiles and nothing runs.</td></tr>
@@ -66,6 +66,7 @@
 <tr><td>03_ATV930_Control.st</td><td>One run latch for two sources (dashboard, animation table): last Start wins, any Stop wins. CiA402 state machine builds CMD and the speed reference.</td></tr>
 <tr><td>04_Dashboard_Out.st</td><td>Works out the stack-light state (shown on the dashboard; the board has no lamps) and fills the status block at %MW1000 for the dashboard (word 29 = RIO, enable and stack-light bits, words 30–31 = ramps in use).</td></tr>
 <tr><td>05_IO_Out.st</td><td>Writes CMD, LFRD and the ramps into the ATV930 device DDT.</td></tr>
+<tr><td>06_Alarms.st</td><td>Latched alarms with acknowledge, timestamps and a 64-event history. Fills <code>%MW1300</code> for the dashboard’s Alarms tab, and plain variables for anyone building a screen (section 7).</td></tr>
 <tr><td>variables.csv</td><td>Every variable: name, type, located address, initial value, comment. Open it in Excel next to the Data Editor.</td></tr>
 </table></div>
 
@@ -149,7 +150,7 @@
 <ol class="steps">
   <li>Variables: import <code>variables.xsy</code> (Data Editor → right-click → <b>Import</b>, or File → Import), which holds every row of <code>variables.csv</code>. If our version refuses it, create them by hand from <code>variables.csv</code>; after editing the CSV, <code>python make_xsy.py</code> rebuilds the import file.</li>
   <li>Check every row of <code>variables.csv</code> is there. Give <code>aDash</code> the address <code>%MW1000</code> and <code>aCmd</code> <code>%MW1100</code>, and set the initial values shown (limits, <code>iMaxSpeed</code>, the placeholders).</li>
-  <li>Program → Tasks → MAST → Sections: create six <b>ST</b> sections, in this order: <code>S00_IO_Map</code>, <code>S01_MPB10_Decode</code>, <code>S02_Dashboard_In</code>, <code>S03_ATV930_Control</code>, <code>S04_Dashboard_Out</code>, <code>S05_IO_Out</code>. (A section name can’t start with a digit, so each gets an S in front of its file name.)</li>
+  <li>Program → Tasks → MAST → Sections: create seven <b>ST</b> sections, in this order: <code>S00_IO_Map</code>, <code>S01_MPB10_Decode</code>, <code>S02_Dashboard_In</code>, <code>S03_ATV930_Control</code>, <code>S04_Dashboard_Out</code>, <code>S05_IO_Out</code>, <code>S06_Alarms</code>. (A section name can’t start with a digit, so each gets an S in front of its file name.)</li>
   <li>Paste each file’s text into its section. Build → Analyze. It should compile with zero errors before we map anything.</li>
 </ol>
 
@@ -166,7 +167,35 @@ xRing_Closed   := BMEP58_ECPU_EXT.REDUNDANCY_STATUS;</pre>
 <div class="warn"><b>Before any download, stop the motor.</b> The download cuts the drive’s connection, and a running drive trips <b>ETHF</b> (Embedded Ethernet communication interruption). Clear it with <code>xLocalReset</code> or the dashboard’s Fault reset. Then check <code>xSimBridge</code> is <b>0</b> in an animation table: left at 1 on the real PLC, the program ignores the drive, so <code>xATV_Health</code> stays FALSE and ETA reads 0 even with <code>ATV9xx.Freshness</code> at 1.</div>
 <div class="note">The MPB10 sends four big-endian floats (temperature, then vibration X, Y and Z) and a status word. <code>01_MPB10_Decode</code> builds them from their bytes. We read that layout from the live sensor, so check it against the IODD or the SIG300 web page. Shock and the status bits aren’t decoded yet.</div>
 
-<h2><span class="n">7</span>Commission it, in this order</h2>
+<h2><span class="n">7</span>Alarms, for screens</h2>
+<p><code>06_Alarms</code> latches every alarm until it has cleared <b>and</b> been acknowledged. A condition must hold for <code>iAlmDelay</code> (3 s) first, so a blip doesn’t raise one. Build a screen on these variables, or read <code>%MW1300</code> over Modbus (the map is at the top of the file).</p>
+<div class="wrap"><table>
+<tr><th style="width:8%">No.</th><th style="width:30%">Alarm</th><th style="width:14%">Priority</th><th>Condition</th></tr>
+<tr><td>1</td><td>Drive fault</td><td>Critical</td><td><code>xATV_Fault</code></td></tr>
+<tr><td>2</td><td>Drive connection lost</td><td>Critical</td><td><code>NOT xATV_Health</code></td></tr>
+<tr><td>3</td><td>SIG300 connection lost</td><td>Warning</td><td><code>NOT xSIG300_Health</code></td></tr>
+<tr><td>4</td><td>MPB10 data lost</td><td>Warning</td><td>SIG300 healthy but <code>xMPB_DataOK</code> FALSE</td></tr>
+<tr><td>5</td><td>RIO drop lost</td><td>Critical</td><td><code>NOT xDrop_Health</code></td></tr>
+<tr><td>6</td><td>RIO ring open</td><td>Warning</td><td>Drop healthy but <code>xRing_Closed</code> FALSE</td></tr>
+<tr><td>7</td><td>Vibration warning</td><td>Warning</td><td><code>xVibWarning</code></td></tr>
+<tr><td>8</td><td>Vibration alarm</td><td>Critical</td><td><code>xVibAlarm</code></td></tr>
+<tr><td>9</td><td>Temperature warning</td><td>Warning</td><td><code>xTempWarning</code></td></tr>
+<tr><td>10</td><td>Dashboard link lost</td><td>Warning</td><td><code>xDashboardAllowed</code> on but the dashboard’s watchdog has expired</td></tr>
+<tr><td>11, 12</td><td>Spare 1, Spare 2</td><td>Warning</td><td>Ours to fill in: <code>aAlmCond[11]</code>, <code>aAlmCond[12]</code>, and their names in <code>aAlmText</code></td></tr>
+</table></div>
+<div class="wrap"><table>
+<tr><th style="width:30%">For a screen</th><th>What it is</th></tr>
+<tr><td><code>aAlmText[n]</code>, <code>aAlmPrio[n]</code></td><td>The name, and 1 critical or 2 warning</td></tr>
+<tr><td><code>aAlmState[n]</code></td><td>0 normal, 1 active, 2 active and acknowledged, 3 cleared but not acknowledged</td></tr>
+<tr><td><code>aAlmActive[n]</code>, <code>aAlmUnack[n]</code></td><td>The same as two BOOLs</td></tr>
+<tr><td><code>iAlmActCount</code>, <code>iAlmUnackCount</code></td><td>Counts, for a banner</td></tr>
+<tr><td><code>xAlmAckAll</code></td><td>Set TRUE to acknowledge everything. It resets itself</td></tr>
+<tr><td><code>aAlmCmd[0]</code></td><td>Acknowledge bits: bit 0 is alarm 1. Reset after each scan</td></tr>
+<tr><td><code>aAlmCmd[1]</code></td><td>Write 1 to clear the history</td></tr>
+</table></div>
+<p>Timestamps come from the CPU’s clock, in <code>%SW50</code>–<code>%SW53</code>, so set it first: a CPU with an empty clock reads 1980. The dashboard’s Alarms tab warns if it isn’t set.</p>
+
+<h2><span class="n">8</span>Commission it, in this order</h2>
 <h3>RIO drop over fiber</h3>
 <ol class="steps">
   <li>Power both racks. The fiber link LEDs on both BMXNRP0200s come on, the CRA takes its address and <code>xDrop_Health</code> goes TRUE.</li>
@@ -217,7 +246,7 @@ xRing_Closed   := BMEP58_ECPU_EXT.REDUNDANCY_STATUS;</pre>
 </table></div>
 <p>The bridge caps the speed reference at 300 rpm until we pass <code>--max-rpm</code> (for example <code>python drive_bridge.py --max-rpm 1750</code>). If the drive doesn’t answer, try <code>--drive-unit 248</code> or <code>255</code>. <code>--no-ramps</code> keeps the keypad ramps. Leave <code>xSimBridge</code>’s initial value FALSE, so the real M580 always uses the DDT.</p>
 
-<h2><span class="n">8</span>Confirm on our hardware</h2>
+<h2><span class="n">9</span>Confirm on our hardware</h2>
 <div class="warn"><ul style="margin:0">
   <li>Control Expert has the Safety (XLS) license, and the project’s CPU firmware (3.10) matches the CPU.</li>
   <li>The drop’s health bit and the CPU’s RIO main-ring status bit (element names in the Data Editor), and that pulling one fiber link leaves the drop running.</li>
