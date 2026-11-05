@@ -515,8 +515,8 @@ function renderVfd(s) {
   if (!local) msg = `<div class="msg warn">View-only screen: control the demo from the presenter’s laptop.</div>`;
   else if (!c.allowed) msg = `<div class="msg warn">Drive control from the dashboard is off. Turn it on in Setup (live mode only).</div>`;
   else if (live && !d.healthy) { msg = `<div class="msg bad">No EtherNet/IP connection to the ATV930.</div>`; }
-  else if (L.fresh && !P.enable) msg = `<div class="msg warn"><code>xDemoEnable</code> is OFF in the PLC: set it TRUE from an animation table.</div>`;
-  else if (live && !d.plc_allows) msg = `<div class="msg warn">The PLC has not enabled dashboard control: set <code>xDashboardAllowed</code> in the M580.</div>`;
+  else if (L.fresh && !P.enable) msg = `<div class="msg warn"><code>xDemoEnable</code> is OFF in the PLC: turn on Demo enable in Ready to run, above.</div>`;
+  else if (live && !d.plc_allows) msg = `<div class="msg warn">The PLC has not enabled dashboard control: turn on PLC permission in Ready to run, above.</div>`;
   else if (live && !d.watchdog_ok) msg = `<div class="msg warn">PLC watchdog doesn’t see the dashboard heartbeat yet: check the command block address.</div>`;
   else if (d.fault) msg = `<div class="msg bad">Drive in fault: fix the cause, then Fault reset.</div>`;
   else if (c.jog) msg = `<div class="msg ok">Jogging ${c.jog_rev ? "reverse" : "forward"} at ${Math.min(c.jog_rpm, c.max_rpm)} rpm. Let go to stop.</div>`;

@@ -278,7 +278,13 @@ class Engine {
                 if (plc == null) return "not connected to the PLC";
                 boolean dash = "dash".equals(map(value).get("which")), on = truthy(map(value).get("on"));
                 try {
-                    plc.write(ENABLE + (dash ? 1 : 0), on ? 1 : 2);
+                    int addr = ENABLE + (dash ? 1 : 0);
+                    plc.write(addr, on ? 1 : 2);
+                    sleep(300);                  // S02 clears the word within a scan
+                    if (plc.read(addr, 1)[0] != 0) {
+                        plc.write(addr, 0);
+                        return "The PLC didn’t respond: load the S02 section with aEnableCmd first";
+                    }
                 } catch (IOException e) {
                     return "couldn't reach the PLC: " + e.getMessage();
                 }

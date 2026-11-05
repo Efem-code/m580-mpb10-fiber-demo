@@ -58,7 +58,7 @@ aDash[26] := iATV_Thermal;
 aDash[27] := iATV_LastFault;
 aDash[28] := WORD_TO_INT(wATV_CMD);
 
-(* ---- stack light: no lamps on this board, the dashboard shows these three ---- *)
+(* ---- stack light state, shown on the dashboard ---- *)
 xLampGreen := xATV_Running AND NOT xATV_Fault;
 xLampAmber := xMPB_DataOK AND (xVibWarning OR xTempWarning);
 xLampRed   := xATV_Fault OR (xMPB_DataOK AND xVibAlarm) OR (xSensorCommAlarm AND %S6);   (* %S6: 1 s blink *)

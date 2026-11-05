@@ -435,7 +435,12 @@ class Engine:
             if action == "plc_enable":
                 if not self.plc:
                     return "not connected to the PLC" if self.cfg["mode"] == "live" else "Only on the real PLC"
-                self.plc.client.write_registers(alarms.ENABLE_BASE + (value["which"] == "dash"), [1 if value["on"] else 2])
+                addr = alarms.ENABLE_BASE + (value["which"] == "dash")
+                self.plc.client.write_registers(addr, [1 if value["on"] else 2])
+                time.sleep(0.3)                      # S02 clears the word within a scan
+                if self.plc.client.read_holding(addr, 1)[0]:
+                    self.plc.client.write_registers(addr, [0])
+                    return "The PLC didn’t respond: load the S02 section with aEnableCmd first"
                 self.event("warn" if value["on"] else "info", f"{'Dashboard permission' if value['which'] == 'dash' else 'Demo enable'} "
                                                               f"switched {'ON' if value['on'] else 'OFF'} from this screen")
                 return None

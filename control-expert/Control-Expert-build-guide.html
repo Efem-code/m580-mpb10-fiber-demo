@@ -64,8 +64,8 @@
 <tr><td>01_MPB10_Decode.st</td><td>Turns the 20 IO-Link bytes into mm/s, °C and alarm bits. Adds PLC-side limits and a shock counter. Zeroes everything when the sensor data is lost.</td></tr>
 <tr><td>02_Dashboard_In.st</td><td>Reads the dashboard command block at %MW1100 and runs a 1 s heartbeat watchdog.</td></tr>
 <tr><td>03_ATV930_Control.st</td><td>One run latch for two sources (dashboard, animation table): last Start wins, any Stop wins. CiA402 state machine builds CMD and the speed reference.</td></tr>
-<tr><td>04_Dashboard_Out.st</td><td>Works out the stack-light state (shown on the dashboard; the board has no lamps) and fills the status block at %MW1000 for the dashboard (word 29 = RIO, enable and stack-light bits, words 30–31 = ramps in use).</td></tr>
-<tr><td>05_IO_Out.st</td><td>Writes CMD, LFRD and the ramps into the ATV930 device DDT.</td></tr>
+<tr><td>04_Dashboard_Out.st</td><td>Works out the stack-light state and fills the status block at %MW1000 for the dashboard (word 29 = RIO, enable and stack-light bits, words 30–31 = ramps in use).</td></tr>
+<tr><td>05_IO_Out.st</td><td>Writes CMD, LFRD and the ramps into the ATV930 device DDT, and a vibration bar to the SICK SLT060 on SIG300 port S2 (set it to Level Meter Mode, ISDU 120 = 1; segment colors, ISDU 262, 1–8 green, 9–16 yellow, 17–20 red; style, ISDU 263, all continuous).</td></tr>
 <tr><td>06_Alarms.st</td><td>Latched alarms with acknowledge, timestamps and a 64-event history. Fills <code>%MW1300</code> for the dashboard’s Alarms tab, and plain variables for anyone building a screen (section 7).</td></tr>
 <tr><td>variables.csv</td><td>Every variable: name, type, located address, initial value, comment. Open it in Excel next to the Data Editor.</td></tr>
 </table></div>
@@ -119,7 +119,7 @@
   <li>DTM Browser → right-click the <b>BMENOC0311</b> → Add → SIG300. Alias <code>SIG300</code>. (Both devices hang off the NOC, not the CPU’s embedded scanner.)</li>
   <li>Address Setting: IP <code>192.168.20.20</code>, mask <code>255.255.255.0</code> (static, matches the SIG300 web UI). RPI <b>50 ms</b>.</li>
   <li>Set the input connection to <b>Point to Point</b> (as for the ATV930), so its I/O isn’t multicast onto the D-Link’s Wi-Fi.</li>
-  <li>Pick the <b>Input Only</b> connection: we only read the sensor, and the SIG300 keeps the port settings from its web page. (<b>Exclusive Owner</b> also works, but it writes the DTM’s 138-byte configuration to the SIG300 each time it connects, replacing those settings, and adds a 404-byte output block.) The input block is 404 bytes: byte 4 is port S1’s qualifier (PQI), byte 5 is reserved and bytes 6–37 are S1’s process data, so <code>iPD_Ofs</code> is <b>6</b>.</li>
+  <li>Keep the <b>Exclusive Owner</b> connection: the SLT060 on port S2 needs its 404-byte output block. It writes the DTM’s 138-byte configuration to the SIG300 each time it connects, replacing what’s set on the web page, so set port modes in the DTM (IOL Autostart by default). The input block is 404 bytes: byte 4 is port S1’s qualifier (PQI), byte 5 is reserved and bytes 6–37 are S1’s process data, so <code>iPD_Ofs</code> is <b>6</b>.</li>
 </ol>
 <h3>Altivar ATV930</h3>
 <ol class="steps">
@@ -165,7 +165,7 @@ xDrop_Health   := BMEP58_ECPU_EXT.DROP_HEALTH[3];
 xRing_Closed   := BMEP58_ECPU_EXT.REDUNDANCY_STATUS;</pre>
 <p>Our ATV9xx connection carries ETA, RFRD, CMD and LFRD. Add the other channels from section 4 in its DTM, build, then remove the comment marks on their lines in both sections. There is no operator panel on this board, so <code>xDemoEnable</code> is set from an animation table. Build, then download over USB (first time) or ETH1.</p>
 <div class="warn"><b>Before any download, stop the motor.</b> The download cuts the drive’s connection, and a running drive trips <b>ETHF</b> (Embedded Ethernet communication interruption). Clear it with <code>xLocalReset</code> or the dashboard’s Fault reset. Then check <code>xSimBridge</code> is <b>0</b> in an animation table: left at 1 on the real PLC, the program ignores the drive, so <code>xATV_Health</code> stays FALSE and ETA reads 0 even with <code>ATV9xx.Freshness</code> at 1.</div>
-<div class="note">From the MPB10’s IODD: the sensor sends temperature, then v-RMS Z, Y and X as big-endian floats, then its alert bits. <code>01_MPB10_Decode</code> builds them from their bytes. Bit 5 is the acceleration-peak (shock) alert, whose limit is 10 g by default; change it in SOPAS, ISDU index 4435.</div>
+<div class="note">From the MPB10’s IODD: the sensor sends temperature, then v-RMS Z, Y and X as big-endian floats, then its alert bits. <code>01_MPB10_Decode</code> builds them from their bytes. Bit 5 is the acceleration-peak (shock) alert, whose limit is 10 g (its minimum; ISDU 4435). The MPB10 latches its alerts by default, so shock only counts once: on the SIG300’s Port 1 page, write ISDU 4842 subindex 2 = <code>00 00 03 E8</code>, which resets each alert after 1000 ms.</div>
 
 <h2><span class="n">7</span>Alarms, for screens</h2>
 <p><code>06_Alarms</code> latches every alarm until it has cleared <b>and</b> been acknowledged. A condition must hold for <code>iAlmDelay</code> (3 s) first, so a blip doesn’t raise one. Build a screen on these variables, or read <code>%MW1300</code> over Modbus (the map is at the top of the file).</p>
