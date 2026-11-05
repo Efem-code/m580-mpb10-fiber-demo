@@ -52,4 +52,4 @@ Drive control from the dashboard is **off by default**. It needs **Allow drive c
 
 ## Status
 
-Tested in simulation and in Live mode against the stand-in PLC. The device-DDT names in `00_IO_Map.st` / `05_IO_Out.st` and the MPB10 process-data offsets are placeholders to confirm on the real hardware (listed in the Control Expert guide).
+Tested in simulation and in Live mode against the stand-in PLC. Also run on the real board: the M580 reads the MPB10 through the SIG300 and runs the ATV930 from the dashboard. The MPB10 data layout was read from the live sensor and still needs checking against its IODD; the rest is listed in the Control Expert guide.

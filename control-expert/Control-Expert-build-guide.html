@@ -122,7 +122,7 @@
 </ol>
 <h3>Altivar ATV930</h3>
 <ol class="steps">
-  <li>Add the ATV930 under the same BMENOC0311, using the Altivar DTM from the Schneider DTM library (or the ATV930 EDS). Alias <code>ATV930</code>, IP <code>192.168.20.30</code>, mask <code>255.255.255.0</code>.</li>
+  <li>Add the ATV930 under the same BMENOC0311, using the Altivar DTM from the Schneider DTM library (or the ATV930 EDS). Our alias is <code>ATV9xx</code>. IP <code>192.168.20.30</code>, mask <code>255.255.255.0</code>, and <b>DHCP for this device disabled</b>: the drive has a fixed address.</li>
   <li>Open the drive’s <b>Protocols &amp; Drive Profiles</b> page:
     <ul>
       <li>EtherNet Protocol: <b>EtherNet/IP</b>.</li>
@@ -130,6 +130,7 @@
       <li>Fallback Mode: <b>Freewheel stop</b>, so the motor coasts to a stop if the PLC connection drops.</li>
       <li>RPI 10 ms for both directions. Input Mode: <b>Point to Point</b>. Multicast drive data would be copied out of the NOC’s built-in switch to the SIG300 and the Wi-Fi as well.</li>
     </ul></li>
+  <li>The profile and the sizes must match the drive. Ours reports assemblies 100 and 101 at <b>4 bytes</b> each (<code>ETA</code>, <code>RFRD</code>, <code>CMD</code>, <code>LFRD</code>), and 106 and 107 at 12 and 24 bytes. With the path on 106/107 but sizes of 4 bytes, the connection never came up. The table below is what we want in the end; until we work out how to add channels on this drive, keep those four.</li>
   <li>Drive I/O Profile: click the <b>Code</b> cell of each row and pick the parameter.
     <div class="wrap"><table>
       <tr><th style="width:12%">Channel</th><th>Inputs (drive to controller)</th><th>Outputs (controller to drive)</th></tr>
@@ -162,7 +163,8 @@ iATV_Speed     := ATV9xx.Inputs.RFRD;
 xDrop_Health   := BMEP58_ECPU_EXT.DROP_HEALTH[3];
 xRing_Closed   := BMEP58_ECPU_EXT.REDUNDANCY_STATUS;</pre>
 <p>Our ATV9xx connection carries ETA, RFRD, CMD and LFRD. Add the other channels from section 4 in its DTM, build, then remove the comment marks on their lines in both sections. There is no operator panel on this board, so <code>xDemoEnable</code> is set from an animation table. Build, then download over USB (first time) or ETH1.</p>
-<div class="note">The MPB10 offsets and scaling (<code>iVal1_Ofs</code>, <code>iVal2_Ofs</code>, <code>rVal1_Gain</code>, <code>rVal2_Gain</code>) are placeholders. Take them from the MPB10 IODD for the measurement mode we set on the sensor. Until then the vibration and temperature numbers are not meaningful.</div>
+<div class="warn"><b>Before any download, stop the motor.</b> The download cuts the drive’s connection, and a running drive trips <b>ETHF</b> (Embedded Ethernet communication interruption). Clear it with <code>xLocalReset</code> or the dashboard’s Fault reset. Then check <code>xSimBridge</code> is <b>0</b> in an animation table: left at 1 on the real PLC, the program ignores the drive, so <code>xATV_Health</code> stays FALSE and ETA reads 0 even with <code>ATV9xx.Freshness</code> at 1.</div>
+<div class="note">The MPB10 sends four big-endian floats (temperature, then vibration X, Y and Z) and a status word. <code>01_MPB10_Decode</code> builds them from their bytes. We read that layout from the live sensor, so check it against the IODD or the SIG300 web page. Shock and the status bits aren’t decoded yet.</div>
 
 <h2><span class="n">7</span>Commission it, in this order</h2>
 <h3>RIO drop over fiber</h3>
@@ -173,7 +175,7 @@ xRing_Closed   := BMEP58_ECPU_EXT.REDUNDANCY_STATUS;</pre>
 <h3>Sensor</h3>
 <ol class="steps">
   <li>Animation table: <code>xSIG300_Health</code> TRUE. Watch <code>aSIG300_In</code> and tap the motor: the bytes that move are the MPB10’s. Set <code>iPD_Ofs</code> so byte 0 of the 20 lines up with them.</li>
-  <li>Fill in the IODD offsets and gains. Check <code>rTemperature</code> reads room temperature at rest and <code>rVibVelocity</code> rises when we tap.</li>
+  <li>Check <code>rTemperature</code> reads room temperature at rest and <code>rVibVelocity</code> rises when we tap.</li>
   <li>Unplug the SIG300’s Ethernet cable: <code>xSensorCommAlarm</code> TRUE and the values go to 0 within a second. Reconnect.</li>
 </ol>
 <h3>Drive (motor uncoupled, low speed)</h3>

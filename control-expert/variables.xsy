@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <VariablesExchangeFile>
-<fileHeader company="Schneider Automation" product="EcoStruxure Control Expert" dateTime="date_and_time#2026-11-04-16:06:07" content="Variable source file" DTDVersion="41"></fileHeader>
-<contentHeader name="M580 MPB10 demo" version="0.0.000" dateTime="date_and_time#2026-11-04-16:06:07"></contentHeader>
+<fileHeader company="Schneider Automation" product="EcoStruxure Control Expert" dateTime="date_and_time#2026-11-05-07:47:41" content="Variable source file" DTDVersion="41"></fileHeader>
+<contentHeader name="M580 MPB10 demo" version="0.0.000" dateTime="date_and_time#2026-11-05-07:47:41"></contentHeader>
 <dataBlock>
 <variables name="aDash" typeName="ARRAY[0..31] OF INT" topologicalAddress="%MW1000">
 <comment>Status block read by the dashboard</comment>
@@ -28,33 +28,47 @@
 <comment>Offset of port S1 process data in aSIG300_In (6, from the SIG300 EDS)</comment>
 <variableInit value="6"></variableInit>
 </variables>
-<variables name="iVal1_Ofs" typeName="INT">
-<comment>PLACEHOLDER: offset of the vibration value inside the 20 bytes (IODD)</comment>
-<variableInit value="2"></variableInit>
-</variables>
-<variables name="iVal2_Ofs" typeName="INT">
-<comment>PLACEHOLDER: offset of the temperature value inside the 20 bytes (IODD)</comment>
-<variableInit value="12"></variableInit>
-</variables>
-<variables name="rVal1_Gain" typeName="REAL">
-<comment>PLACEHOLDER: vibration scaling to mm/s (IODD)</comment>
-<variableInit value="0.01"></variableInit>
-</variables>
-<variables name="rVal2_Gain" typeName="REAL">
-<comment>PLACEHOLDER: temperature scaling to degC (IODD)</comment>
-<variableInit value="0.1"></variableInit>
-</variables>
 <variables name="wMPB_Alarm" typeName="WORD">
-<comment>MPB10 alarm word (process data bits 0-15)</comment>
-</variables>
-<variables name="wMPB_Val1" typeName="WORD">
-<comment>Raw vibration value</comment>
-</variables>
-<variables name="wMPB_Val2" typeName="WORD">
-<comment>Raw temperature value</comment>
+<comment>MPB10 status word, raw (process data bytes 18-19)</comment>
 </variables>
 <variables name="rVibVelocity" typeName="REAL">
-<comment>Vibration velocity RMS, mm/s</comment>
+<comment>Vibration velocity RMS, the worst axis, mm/s</comment>
+</variables>
+<variables name="rVibX" typeName="REAL">
+<comment>Vibration X, mm/s</comment>
+</variables>
+<variables name="rVibY" typeName="REAL">
+<comment>Vibration Y, mm/s</comment>
+</variables>
+<variables name="rVibZ" typeName="REAL">
+<comment>Vibration Z, mm/s</comment>
+</variables>
+<variables name="aMPB_Value" typeName="ARRAY[0..3] OF REAL">
+<comment>The MPB10's four floats: temperature, X, Y, Z</comment>
+</variables>
+<variables name="iFloat" typeName="INT">
+<comment>Loop index (01_MPB10_Decode)</comment>
+</variables>
+<variables name="iPow" typeName="INT">
+<comment>Loop index (01_MPB10_Decode)</comment>
+</variables>
+<variables name="iExpo" typeName="INT">
+<comment>Float exponent (01_MPB10_Decode)</comment>
+</variables>
+<variables name="rFloat" typeName="REAL">
+<comment>Float being built (01_MPB10_Decode)</comment>
+</variables>
+<variables name="iB0" typeName="INT">
+<comment>Float byte (01_MPB10_Decode)</comment>
+</variables>
+<variables name="iB1" typeName="INT">
+<comment>Float byte (01_MPB10_Decode)</comment>
+</variables>
+<variables name="iB2" typeName="INT">
+<comment>Float byte (01_MPB10_Decode)</comment>
+</variables>
+<variables name="iB3" typeName="INT">
+<comment>Float byte (01_MPB10_Decode)</comment>
 </variables>
 <variables name="rTemperature" typeName="REAL">
 <comment>Temperature, degC</comment>
@@ -78,7 +92,7 @@
 <comment>Vibration alarm</comment>
 </variables>
 <variables name="xShock" typeName="BOOL">
-<comment>Shock detected</comment>
+<comment>Shock detected (no source yet)</comment>
 </variables>
 <variables name="xTempWarning" typeName="BOOL">
 <comment>Temperature warning</comment>

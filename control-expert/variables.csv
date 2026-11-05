@@ -6,21 +6,27 @@ xSIG300_Health;BOOL;;FALSE;SIG300 EtherNet/IP connection healthy
 xMPB_PortActive;BOOL;;FALSE;Port S1 has a working IO-Link device
 xMPB_DataOK;BOOL;;FALSE;MPB10 values are valid this scan
 iPD_Ofs;INT;;6;Offset of port S1 process data in aSIG300_In (6, from the SIG300 EDS)
-iVal1_Ofs;INT;;2;PLACEHOLDER: offset of the vibration value inside the 20 bytes (IODD)
-iVal2_Ofs;INT;;12;PLACEHOLDER: offset of the temperature value inside the 20 bytes (IODD)
-rVal1_Gain;REAL;;0.01;PLACEHOLDER: vibration scaling to mm/s (IODD)
-rVal2_Gain;REAL;;0.1;PLACEHOLDER: temperature scaling to degC (IODD)
-wMPB_Alarm;WORD;;;MPB10 alarm word (process data bits 0-15)
-wMPB_Val1;WORD;;;Raw vibration value
-wMPB_Val2;WORD;;;Raw temperature value
-rVibVelocity;REAL;;;Vibration velocity RMS, mm/s
+wMPB_Alarm;WORD;;;MPB10 status word, raw (process data bytes 18-19)
+rVibVelocity;REAL;;;Vibration velocity RMS, the worst axis, mm/s
+rVibX;REAL;;;Vibration X, mm/s
+rVibY;REAL;;;Vibration Y, mm/s
+rVibZ;REAL;;;Vibration Z, mm/s
+aMPB_Value;ARRAY[0..3] OF REAL;;;The MPB10's four floats: temperature, X, Y, Z
+iFloat;INT;;;Loop index (01_MPB10_Decode)
+iPow;INT;;;Loop index (01_MPB10_Decode)
+iExpo;INT;;;Float exponent (01_MPB10_Decode)
+rFloat;REAL;;;Float being built (01_MPB10_Decode)
+iB0;INT;;;Float byte (01_MPB10_Decode)
+iB1;INT;;;Float byte (01_MPB10_Decode)
+iB2;INT;;;Float byte (01_MPB10_Decode)
+iB3;INT;;;Float byte (01_MPB10_Decode)
 rTemperature;REAL;;;Temperature, degC
 rVibWarnLimit;REAL;;2.8;PLC warning limit, mm/s (ISO 10816-3 B/C)
 rVibAlarmLimit;REAL;;4.5;PLC alarm limit, mm/s (ISO 10816-3 C/D)
 rTempWarnLimit;REAL;;70.0;PLC temperature warning, degC
 xVibWarning;BOOL;;;Vibration warning
 xVibAlarm;BOOL;;;Vibration alarm
-xShock;BOOL;;;Shock detected
+xShock;BOOL;;;Shock detected (no source yet)
 xTempWarning;BOOL;;;Temperature warning
 xSensorCommAlarm;BOOL;;;Sensor data not reaching the PLC
 rtShock;R_TRIG;;;Shock edge

@@ -20,9 +20,15 @@ wDashStatus.5 := xTempWarning;
 aDash[1] := WORD_TO_INT(wDashStatus);
 
 aDash[2] := REAL_TO_INT(rVibVelocity * 100.0);   (* mm/s x100 *)
-aDash[3] := -32768;                              (* X: -32768 = not available; fill in if we decode per-axis values *)
-aDash[4] := -32768;                              (* Y *)
-aDash[5] := -32768;                              (* Z *)
+IF xMPB_DataOK THEN
+    aDash[3] := REAL_TO_INT(rVibX * 100.0);      (* mm/s x100 *)
+    aDash[4] := REAL_TO_INT(rVibY * 100.0);
+    aDash[5] := REAL_TO_INT(rVibZ * 100.0);
+ELSE
+    aDash[3] := -32768;                          (* -32768 = not available *)
+    aDash[4] := -32768;
+    aDash[5] := -32768;
+END_IF;
 aDash[6] := REAL_TO_INT(rTemperature * 10.0);    (* degC x10 *)
 aDash[7] := iShockCount;
 aDash[8] := WORD_TO_INT(wMPB_Alarm);

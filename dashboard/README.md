@@ -8,6 +8,7 @@ Start Dashboard.bat --live       talk to the real M580 (addresses from the IP ad
 Start Dashboard.bat --lan        also show it on a TV / iPad on the same network (view-only there)
 python fake_m580.py              stand-in PLC on 127.0.0.1:5020 that obeys the command block
 python fake_m580.py --no-enable  ...with the PLC-side permission off
+python fake_atv930.py            stand-in ATV930 (Modbus on 127.0.0.1:5030), for the bridge with no hardware
 python drive_bridge.py           Control Expert's PLC simulator runs the real ATV930 (testing only, see the
                                  Control Expert guide, section 8; or Start Drive Bridge.bat)
 ```
