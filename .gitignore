@@ -6,3 +6,4 @@ Thumbs.db
 tv-app/build/
 tv-app/keystore.jks
 tv-app/*.apk
+tv-app/*.idsig
