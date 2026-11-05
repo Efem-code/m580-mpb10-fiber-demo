@@ -1,23 +1,39 @@
 # TV app
 
-A fullscreen, read-only machine screen for the Android TV in the demo room (Hikvision DS-D5B75RB/D, Android 11).
-It reads the M580 directly over Modbus TCP, with no laptop: the status block at %MW1000 and the alarm block at
-%MW1300. It never writes to the PLC, so acknowledging alarms stays on the dashboard or an HMI.
+The Machine Health dashboard, fullscreen on the Android TV in the demo room (Hikvision DS-D5B75RB/D, Android 11),
+with no laptop. The page is the dashboard's own (`dashboard/static`, copied in at each build). `Engine.java` and
+`WebServer.java` do what `dashboard/server.py` does, in the app, and talk straight to the M580 over Modbus TCP.
+Change the status or command maps in both places.
+
+It has the same tabs as the dashboard, except the Cobot tab, which needs the laptop. It's live mode only.
 
 ## Install
 
 Copy `M580-Machine-Health.apk` to a USB stick, plug it into the TV, and open it from the TV's file manager.
-The TV may ask to allow installs from that app. It starts by itself when the TV powers up.
+It installs over an earlier version, signed with the same key. It starts by itself when the TV powers up.
 
 ## Network
 
-The TV has to be on the control network, so it needs a cable to a small unmanaged switch at the CPU's service
-port (the laptop moves to that switch too). Set the TV's wired network to a fixed address, for example
-`192.168.10.50`, mask `255.255.255.0`, no gateway. The app defaults to the CPU at `192.168.10.10`, port 502,
-unit 255. To change that, press MENU on the remote or tap the top right of the screen.
+The TV needs to be on the control network: a fixed address such as `192.168.10.201`, mask `255.255.255.0`, cabled
+to the CPU's service port or a switch on it. The PLC address is on the IP addresses tab.
+
+## Running the motor from the TV
+
+Off by default, and the app then only reads. On the VFD control tab, turn on **Dashboard control**, then **PLC
+permission** and **Demo enable**. The app then writes the command block at %MW1100 every 200 ms. The PLC needs
+S02 with `aEnableCmd`.
+
+**Only one writer at a time.** Don't tick it on the TV and on the laptop's dashboard together: they would fight over
+the same block. The E-stop is hard-wired and works whatever the app does. If the app closes or leaves the screen,
+the run request drops, and the PLC's 1 s watchdog stops the motor if the writes stop.
+
+Limit sliders and alarm acknowledge write to the PLC at any time.
 
 ## Build
 
 `python build.py <folder holding sdk\ and jdk-17*\>`, using Android platform 30, build-tools 34.0.0 and JDK 17.
 It signs with `keystore.jks` here, made on the first build and not in the repo. Keep it: a later APK only installs
 over this one if it has the same key. Its password is in `build.py`, so treat it as a demo key, not a release key.
+
+To test the server on a PC: compile `src` without `MainActivity` and `BootReceiver`, then run
+`ca.guillevin.m580tv.WebServer <dashboard/static> <settings file> <port>`.

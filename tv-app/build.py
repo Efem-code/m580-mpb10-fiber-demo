@@ -34,12 +34,16 @@ os.makedirs(os.path.join(OUT, "classes"))
 os.makedirs(os.path.join(OUT, "gen"))
 res, unsigned, aligned = (os.path.join(OUT, n) for n in ("res.zip", "unsigned.apk", "aligned.apk"))
 
+# the page is the dashboard's own, copied in at each build
+shutil.rmtree(os.path.join(HERE, "assets"), ignore_errors=True)
+shutil.copytree(os.path.join(HERE, "..", "dashboard", "static"), os.path.join(HERE, "assets", "web"))
+
 run(os.path.join(BT, "aapt2.exe"), "compile", "--dir", "res", "-o", res)
 run(os.path.join(BT, "aapt2.exe"), "link", "-I", JAR, "--manifest", "AndroidManifest.xml", "-A", "assets",
     "--java", os.path.join(OUT, "gen"), "-o", unsigned, res)
 sources = glob.glob(os.path.join(HERE, "src", "**", "*.java"), recursive=True) + \
     glob.glob(os.path.join(OUT, "gen", "**", "*.java"), recursive=True)
-run(os.path.join(JDK, "bin", "javac.exe"), "-source", "8", "-target", "8", "-nowarn", "-Xlint:-options",
+run(os.path.join(JDK, "bin", "javac.exe"), "-encoding", "UTF-8", "-source", "8", "-target", "8", "-nowarn", "-Xlint:-options",
     "-bootclasspath", JAR, "-d", os.path.join(OUT, "classes"), *sources)
 classes = glob.glob(os.path.join(OUT, "classes", "**", "*.class"), recursive=True)
 run(os.path.join(BT, "d8.bat"), "--lib", JAR, "--min-api", "26", "--release", "--output", OUT, *classes)

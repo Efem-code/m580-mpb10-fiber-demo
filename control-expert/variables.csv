@@ -6,7 +6,7 @@ xSIG300_Health;BOOL;;FALSE;SIG300 EtherNet/IP connection healthy
 xMPB_PortActive;BOOL;;FALSE;Port S1 has a working IO-Link device
 xMPB_DataOK;BOOL;;FALSE;MPB10 values are valid this scan
 iPD_Ofs;INT;;6;Offset of port S1 process data in aSIG300_In (6, from the SIG300 EDS)
-wMPB_Alarm;WORD;;;MPB10 status word, raw (process data bytes 18-19)
+wMPB_Alarm;WORD;;;MPB10 alert bits (process data bytes 18-19)
 rVibVelocity;REAL;;;Vibration velocity RMS, the worst axis, mm/s
 rVibX;REAL;;;Vibration X, mm/s
 rVibY;REAL;;;Vibration Y, mm/s
@@ -26,7 +26,7 @@ rVibAlarmLimit;REAL;;4.5;PLC alarm limit, mm/s (ISO 10816-3 C/D)
 rTempWarnLimit;REAL;;70.0;PLC temperature warning, degC
 xVibWarning;BOOL;;;Vibration warning
 xVibAlarm;BOOL;;;Vibration alarm
-xShock;BOOL;;;Shock detected (no source yet)
+xShock;BOOL;;;Shock: the MPB10's acceleration-peak alert
 xTempWarning;BOOL;;;Temperature warning
 xSensorCommAlarm;BOOL;;;Sensor data not reaching the PLC
 rtShock;R_TRIG;;;Shock edge
@@ -123,3 +123,6 @@ iAlmHead;INT;;0;Next history slot
 iAlmSeq;INT;;0;Alarm events so far
 iAlmActCount;INT;;;Active alarms
 iAlmUnackCount;INT;;;Unacknowledged alarms
+aLimits;ARRAY[0..2] OF INT;%MW1280;;Live limits: [0] warning, [1] alarm, mm/s x100; [2] temperature, degC x10
+tofAlmShock;TOF;;;Holds a shock long enough to raise its alarm
+aEnableCmd;ARRAY[0..1] OF INT;%MW1286;;Enables from a screen: [0] xDemoEnable, [1] xDashboardAllowed. 1 on, 2 off

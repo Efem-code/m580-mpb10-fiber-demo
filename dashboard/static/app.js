@@ -68,8 +68,10 @@ const CMD_MAP = [[0, "Dashboard heartbeat (changes every 200 ms)"], [1, "b0 run 
 function applyCfg(c) {
   cfg = c;
   if (c._local !== undefined) local = c._local;
+  if (c._app) document.body.classList.add("app");   // the TV app: laptop-only parts hide
   for (const [id, k] of Object.entries(FIELDS)) $(id).value = c[k];
   $("c-allow").checked = !!c.allow_control;
+  showLimits(c);
   for (const k of IPS) $("ip-" + k).value = c[k];
   $("ip-cra_drop").value = c.cra_drop;
   seqLoad(c);
@@ -270,6 +272,10 @@ function render(s) {
   $("simbar").style.display = s.mode === "sim" && local ? "" : "none";
 
   renderAlarms(s.alarms);
+  const cm = s.mpb;
+  $("cV").textContent = fmt(cm.v); $("cX").textContent = fmt(cm.vx); $("cY").textContent = fmt(cm.vy); $("cZ").textContent = fmt(cm.vz);
+  $("cT").textContent = fmt(cm.temp, 1); $("cS").textContent = cm.shocks ?? "–";
+  $("cHealth").textContent = s.health === "offline" ? "No sensor data" : "";
 
   // ---- machine tab
   const [label, text] = HEALTH[s.health];
@@ -377,6 +383,44 @@ $("almCsv").onclick = () => {
   URL.revokeObjectURL(a.href);
 };
 
+// ---- limits: dragging sends them to the PLC, and the page follows if a screen changes them
+function limitLabels() {
+  $("lWarnV").textContent = (+$("lWarn").value).toFixed(2);
+  $("lAlarmV").textContent = (+$("lAlarm").value).toFixed(2);
+  $("lTempV").textContent = (+$("lTemp").value).toFixed(0);
+}
+function showLimits(c) {
+  if (["lWarn", "lAlarm", "lTemp"].some(id => document.activeElement === $(id))) return;
+  $("lWarn").value = c.zone_bc;
+  $("lAlarm").value = c.zone_cd;
+  $("lTemp").value = c.temp_warn;
+  limitLabels();
+}
+function sendLimits(e) {
+  let w = +$("lWarn").value, a = +$("lAlarm").value;
+  if (e.target === $("lWarn") && w > a) a = w;
+  if (e.target === $("lAlarm") && a < w) w = a;
+  $("lWarn").value = w; $("lAlarm").value = a;
+  limitLabels();
+  post("/api/config", { zone_ab: Math.min(cfg.zone_ab, w / 2), zone_bc: w, zone_cd: a, temp_warn: +$("lTemp").value })
+    .then(r => { if (r.config) applyCfg(Object.assign({}, r.config)); });
+  e.target.blur();
+}
+["lWarn", "lAlarm", "lTemp"].forEach(id => { $(id).oninput = limitLabels; $(id).onchange = sendLimits; });
+
+// ---- cobot: the Lexium Cobot controller page, with the sensor's live values above it
+const COBOT = "http://127.0.0.1:8765/";
+async function cobotOpen() {
+  const local = ["127.0.0.1", "localhost"].includes(location.hostname);
+  let up = false;
+  if (local) { try { await fetch(COBOT, { mode: "no-cors", cache: "no-store" }); up = true; } catch (e) {} }
+  $("cobotOff").style.display = up ? "none" : "";
+  $("cobotFrame").style.display = up ? "" : "none";
+  if (up && !$("cobotFrame").getAttribute("src")) $("cobotFrame").src = COBOT;
+}
+$("cobotRetry").onclick = cobotOpen;
+document.querySelector("nav button[data-tab=cobot]").addEventListener("click", cobotOpen);
+
 function renderDrive(s) {
   const d = s.drive, c = s.control;
   $("dState").textContent = d.state;
@@ -415,6 +459,17 @@ function renderDrive(s) {
 }
 
 // ------------------------------------------------------------ VFD control tab
+// ---- selectors: dashboard control here, and the two PLC enables through aEnableCmd at %MW1286
+function sel(id, on, can) {
+  $(id).textContent = on ? "ON" : "OFF";
+  $(id).classList.toggle("on", on);
+  $(id).disabled = !can;
+}
+$("selCtl").onclick = () => post("/api/config", { allow_control: !$("selCtl").classList.contains("on") })
+  .then(r => { if (r.config) applyCfg(Object.assign({}, r.config)); });
+$("selDash").onclick = () => drive("plc_enable", { which: "dash", on: !$("selDash").classList.contains("on") });
+$("selDemo").onclick = () => drive("plc_enable", { which: "demo", on: !$("selDemo").classList.contains("on") });
+
 function renderVfd(s) {
   const d = s.drive, c = s.control, L = s.links, P = s.panel || {}, live = s.mode === "live";
   // speed
@@ -436,15 +491,18 @@ function renderVfd(s) {
   const perms = [
     [L.fresh, "M580 connected and running"],
     [d.healthy, "ATV930 on EtherNet/IP (via the BMENOC0311)"],
-    [!d.fault, d.fault ? `Drive fault ${d.fault_code}: fix, then Fault reset` : "No drive fault"],
+    [!d.fault, d.fault ? `Drive fault${d.fault_code ? " " + d.fault_code : ""}: fix, then Fault reset (the keypad shows which)` : "No drive fault"],
     [stoOff, "Power stage ready (STO / E-stop released)"],
     [!!P.enable, "Demo enable ON in the PLC (xDemoEnable)"],
     [c.allowed, "Dashboard control on (Setup tab)"],
     [!live || d.plc_allows, "PLC permission xDashboardAllowed"],
     [!live || d.watchdog_ok, "PLC watchdog sees this dashboard"],
-    [local, "This is the presenter’s laptop"],
+    [local, cfg._app ? "This is the presenter’s screen" : "This is the presenter’s laptop"],
   ];
   const blocking = perms.filter(x => !x[0]).length;
+  sel("selCtl", c.allowed, local);
+  sel("selDash", !!d.plc_allows, local && c.allowed && live && L.fresh);
+  sel("selDemo", !!P.enable, local && c.allowed && live && L.fresh);
   $("perm").innerHTML = perms.map(([ok, t]) => `<li class="${ok ? "" : "no"}"><span class="led ${ok ? "g" : "r"}"></span>${t}</li>`).join("");
   $("vReady").textContent = blocking ? `NOT READY · ${blocking} to fix` : d.running ? "RUNNING" : "READY";
   $("vReady").style.color = blocking ? "var(--bad)" : "var(--good)";

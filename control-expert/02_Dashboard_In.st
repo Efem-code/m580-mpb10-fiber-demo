@@ -9,9 +9,18 @@
      [3] accel ramp, s x10 (0 = use iAccDefault)
      [4] decel ramp, s x10 (0 = use iDecDefault)
 
-   xDashboardAllowed : PLC-side permission (animation table). FALSE = the
-                       dashboard can watch but never start the motor.
+   xDashboardAllowed : PLC-side permission. FALSE = the dashboard can watch but never start
+                       the motor.
+
+   aEnableCmd AT %MW1286 : ARRAY[0..1] OF INT, so a screen can set the two enables without
+   Control Expert: [0] xDemoEnable, [1] xDashboardAllowed. 1 = on, 2 = off, cleared here.
    ===================================================================================== *)
+
+(* enables from a screen; they start FALSE again after a download or cold start *)
+IF aEnableCmd[0] = 1 THEN xDemoEnable := TRUE;  ELSIF aEnableCmd[0] = 2 THEN xDemoEnable := FALSE;  END_IF;
+IF aEnableCmd[1] = 1 THEN xDashboardAllowed := TRUE;  ELSIF aEnableCmd[1] = 2 THEN xDashboardAllowed := FALSE;  END_IF;
+aEnableCmd[0] := 0;
+aEnableCmd[1] := 0;
 
 (* watchdog: heartbeat must change at least once a second *)
 xDashHbChanged := aCmd[0] <> iDashHbLast;

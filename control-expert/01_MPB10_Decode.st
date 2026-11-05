@@ -4,15 +4,17 @@
 
    iPD_Ofs : where port S1's process data starts inside aSIG300_In (6, from the SIG300 EDS)
 
-   Layout read from the live sensor, high byte first. Check it against the MPB10 IODD:
-     bytes  0-3   temperature, degC        REAL
-     bytes  4-7   vibration X, mm/s        REAL
-     bytes  8-11  vibration Y, mm/s        REAL
-     bytes 12-15  vibration Z, mm/s        REAL
-     bytes 16-19  status (bit meanings not known yet; shown raw in wMPB_Alarm)
+   Layout from the MPB10 IODD (V1.0.1, default process data), high byte first:
+     bytes  0-3   Value 3, temperature, degC    REAL
+     bytes  4-7   Value 2, v-RMS Z, mm/s        REAL
+     bytes  8-11  Value 1, v-RMS Y, mm/s        REAL
+     bytes 12-15  Value 0, v-RMS X, mm/s        REAL
+     bytes 16-17  reserved
+     bytes 18-19  alert bits, in wMPB_Alarm: 4 temperature, 5 acceleration peak (shock),
+                  6 v-RMS pre-max, 7 v-RMS max
    ===================================================================================== *)
 
-(* the status word, shown raw on the dashboard *)
+(* the alert bits *)
 wMPB_Alarm := SHL(BYTE_TO_WORD(aSIG300_In[iPD_Ofs + 18]), 8)
               OR BYTE_TO_WORD(aSIG300_In[iPD_Ofs + 19]);
 
@@ -45,9 +47,9 @@ END_FOR;
 
 IF xMPB_DataOK THEN
     rTemperature := aMPB_Value[0];               (* degC *)
-    rVibX := aMPB_Value[1];                      (* mm/s *)
+    rVibZ := aMPB_Value[1];                      (* mm/s *)
     rVibY := aMPB_Value[2];
-    rVibZ := aMPB_Value[3];
+    rVibX := aMPB_Value[3];
     rVibVelocity := rVibX;                       (* the worst axis *)
     IF rVibY > rVibVelocity THEN rVibVelocity := rVibY; END_IF;
     IF rVibZ > rVibVelocity THEN rVibVelocity := rVibZ; END_IF;
@@ -59,9 +61,14 @@ ELSE
     rVibZ := 0.0;
     rTemperature := 0.0;
 END_IF;
-xShock := FALSE;                                 (* no shock source until we know the status bits *)
+xShock := xMPB_DataOK AND wMPB_Alarm.5;          (* the sensor's shock limit, default 10 g, is set in SOPAS *)
 
-(* PLC-side limits, so the PLC makes its own decision too (match the dashboard's Setup tab) *)
+(* PLC-side limits. aLimits AT %MW1280 lets a screen change them live: [0] warning, [1] alarm,
+   mm/s x100; [2] temperature, degC x10. 0 keeps the value already here. *)
+IF aLimits[0] > 0 THEN rVibWarnLimit  := INT_TO_REAL(aLimits[0]) / 100.0; END_IF;
+IF aLimits[1] > 0 THEN rVibAlarmLimit := INT_TO_REAL(aLimits[1]) / 100.0; END_IF;
+IF aLimits[2] > 0 THEN rTempWarnLimit := INT_TO_REAL(aLimits[2]) / 10.0;  END_IF;
+
 xVibWarning  := xMPB_DataOK AND rVibVelocity >= rVibWarnLimit;
 xVibAlarm    := xMPB_DataOK AND rVibVelocity >= rVibAlarmLimit;
 xTempWarning := xMPB_DataOK AND rTemperature >= rTempWarnLimit;

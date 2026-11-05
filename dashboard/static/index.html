@@ -64,12 +64,21 @@
   .gauge svg { width: 100%; max-width: 240px; display: block; margin: 0 auto; }
   .axes { display: grid; gap: 10px; margin-top: 4px; }
   .axis { display: grid; grid-template-columns: 22px 1fr 84px; align-items: center; gap: 8px; font-weight: 600; font-size: 14px; }
-  .mid { grid-template-columns: 2.2fr 1fr; margin-top: 16px; }
+  .mid { grid-template-columns: 2.2fr 1fr 1fr; margin-top: 16px; }
   .events { list-style: none; margin: 0; padding: 0; max-height: 420px; overflow: auto; }
   .events li { display: grid; grid-template-columns: 64px 1fr; gap: 8px; padding: 7px 0; border-bottom: 1px solid var(--rule); font-size: 14px; }
   .events time { color: var(--muted); font-variant-numeric: tabular-nums; }
   nav button .badge { display: none; margin-left: 6px; min-width: 20px; padding: 0 6px; border-radius: 10px; background: var(--bad); color: #fff; font-size: 12px; line-height: 20px; text-align: center; }
   nav button .badge.show { display: inline-block; }
+  .lim { display: block; margin: 10px 0 14px; font-size: 15px; } .lim input { display: block; width: 100%; margin-top: 6px; }
+  .cobotbar { display: flex; gap: 22px; align-items: center; flex-wrap: wrap; margin-bottom: 12px; font-size: 16px; }
+  .cobotbar b { font-size: 22px; font-variant-numeric: tabular-nums; }
+  #cobotFrame { width: 100%; height: calc(100vh - 210px); min-height: 480px; border: 1px solid var(--rule); border-radius: 12px; background: #fff; }
+  body.app nav button[data-tab=cobot], body.app #almCsv, body.app #c-mode, body.app label[for=c-mode] { display: none; }
+  .sels { margin-top: 12px; padding-top: 8px; border-top: 1px solid var(--rule); }
+  .sels div { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 5px 0; }
+  .sels button { min-width: 74px; }
+  .sels button.on { background: var(--good); color: #fff; }
   .almhead { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 12px; }
   .almhead h2 { margin: 0; }
   .almhead .acts { display: flex; gap: 8px; }
@@ -196,6 +205,7 @@
     <button data-tab="drive">Drive (ATV930)</button>
     <button data-tab="vfd">VFD control</button>
     <button data-tab="network">SIG300 &amp; network</button>
+    <button data-tab="cobot">Cobot</button>
     <button data-tab="ips">IP addresses</button>
     <button data-tab="setup">Setup</button>
   </nav>
@@ -257,6 +267,13 @@
         <span style="--c:#D98A00">Warning limit</span>
         <span style="--c:#C8322B">Alarm limit</span>
       </div>
+    </div>
+    <div class="card">
+      <h2>Alarm limits · live</h2>
+      <label class="lim">Warning <b id="lWarnV">–</b> mm/s<input type="range" id="lWarn" min="0.05" max="10" step="0.05"></label>
+      <label class="lim">Alarm <b id="lAlarmV">–</b> mm/s<input type="range" id="lAlarm" min="0.05" max="10" step="0.05"></label>
+      <label class="lim">Temperature warning <b id="lTempV">–</b> °C<input type="range" id="lTemp" min="10" max="100" step="1"></label>
+      <p class="note" style="margin-bottom:0">Drag a limit below the live reading to trip it. The PLC and any screen use the same limits.</p>
     </div>
     <div class="card">
       <h2>What the PLC saw</h2>
@@ -378,6 +395,11 @@
       <h2>Ready to run?</h2>
       <div class="ready" id="vReady">–</div>
       <ul class="perm" id="perm"></ul>
+      <div class="sels">
+        <div><span>Dashboard control</span><button class="btn" id="selCtl">OFF</button></div>
+        <div><span>PLC permission</span><button class="btn" id="selDash">OFF</button></div>
+        <div><span>Demo enable</span><button class="btn" id="selDemo">OFF</button></div>
+      </div>
     </div>
     <div class="card">
       <h2>Speed</h2>
@@ -604,6 +626,20 @@
 </section>
 
 <!-- ======================= IP ADDRESSES ======================= -->
+<section class="tab" id="tab-cobot">
+  <div class="card cobotbar">
+    <span>Vibration <b id="cV">–</b> mm/s</span>
+    <span>X <b id="cX">–</b></span><span>Y <b id="cY">–</b></span><span>Z <b id="cZ">–</b></span>
+    <span>Temperature <b id="cT">–</b> °C</span>
+    <span>Shocks <b id="cS">–</b></span>
+    <span id="cHealth" class="sub"></span>
+  </div>
+  <div class="card" id="cobotOff"><h2>Cobot controller not running</h2>
+    <p>Start it with <code>Start Cobot.bat</code> in the dashboard folder, then press Retry. It runs from this laptop only, and it starts at 10% speed with its own limits.</p>
+    <button class="btn orange" id="cobotRetry">Retry</button></div>
+  <iframe id="cobotFrame" title="Lexium Cobot controller" style="display:none"></iframe>
+</section>
+
 <section class="tab" id="tab-ips">
   <div class="card">
     <h2>IP plan for the demo rig</h2>

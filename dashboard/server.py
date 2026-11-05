@@ -20,7 +20,7 @@ STATUS MAP  (read, offset from the status base, default %MW1000)
   +5   velocity Z         mm/s x100
   +6   temperature        degC x10
   +7   shock counter
-  +8   MPB10 alarm word   (bits 0-15 of the IO-Link process data)
+  +8   MPB10 alert bits   b4 temperature  b5 acceleration peak (shock)  b6 v-RMS pre-max  b7 v-RMS max
   +9 .. +18               raw IO-Link process data, 20 bytes, high byte first
   +19  reserved
   +20  drive bits         b0 ATV930 EtherNet/IP healthy  b1 ready  b2 running  b3 fault
@@ -386,6 +386,7 @@ class Engine:
         self.alarm_block = None             # the last block read
         self.alarm_cmd_sim = [0, False]     # acknowledge mask, clear, waiting for the next cycle
         self.alarm_read = 0.0
+        self.limits_dirty = True            # our vibration and temperature limits need sending to the PLC
         self.marks = deque(maxlen=60)      # speed-change markers for the charts: [t, label]
         threading.Thread(target=self._loop, daemon=True, name="poll").start()
         threading.Thread(target=self._reach_loop, daemon=True, name="reach").start()
@@ -399,6 +400,7 @@ class Engine:
             if errors:
                 return {"errors": errors, "warnings": warns}
             changed_source = any(trial[k] != self.cfg[k] for k in ("mode", "plc_host", "plc_port", "unit_id", "base", "cmd_base"))
+            self.limits_dirty = self.limits_dirty or any(trial[k] != self.cfg[k] for k in ("zone_bc", "zone_cd", "temp_warn"))
             if trial["allow_control"] and not self.cfg["allow_control"]:
                 self.event("warn", "Drive control from the dashboard switched ON")
             if not trial["allow_control"] and self.cfg["allow_control"]:
@@ -430,6 +432,13 @@ class Engine:
             c = self.cmd
             if self.prog["on"] and action in ("run", "run_fwd", "run_rev", "jog", "speed", "reverse"):
                 return "The demo sequence is running: press Stop sequence (or STOP) first"
+            if action == "plc_enable":
+                if not self.plc:
+                    return "not connected to the PLC" if self.cfg["mode"] == "live" else "Only on the real PLC"
+                self.plc.client.write_registers(alarms.ENABLE_BASE + (value["which"] == "dash"), [1 if value["on"] else 2])
+                self.event("warn" if value["on"] else "info", f"{'Dashboard permission' if value['which'] == 'dash' else 'Demo enable'} "
+                                                              f"switched {'ON' if value['on'] else 'OFF'} from this screen")
+                return None
             if action == "seq_start":
                 return self._seq_start()
             if action == "seq_stop":
@@ -775,12 +784,14 @@ class Engine:
                 conds = {n for n, on in ((1, d["fault"]), (2, not L["atv"]), (3, not L["eip"]),
                                          (4, L["eip"] and not L["iolink"]), (5, not L["drop"]),
                                          (6, p["ring_known"] and L["drop"] and not p["ring"]),
-                                         (7, m["warn"]), (8, m["alarm"]), (9, m["temp_warn"])) if on}
+                                         (7, m["warn"]), (8, m["alarm"]), (9, m["temp_warn"]),
+                                         (11, now < self.sim.shock_until + 4)) if on}
                 mask, clear = self.alarm_cmd_sim
                 self.alarm_cmd_sim = [0, False]
                 self.alarm_block = self.alarm_sim.update(conds, now, mask, clear)
             elif self.plc and now - self.alarm_read >= 1.0:
                 self.alarm_read = now
+                self._limits_sync()
                 head = self.plc.client.read_holding(alarms.BASE, alarms.LOG_START)
                 old = self.alarm_block
                 if old is None or old[0] != head[0] or old[5] != head[5]:
@@ -793,6 +804,17 @@ class Engine:
         except Exception as e:  # noqa: BLE001 - the block shows as out of date on the page
             self.last_error = str(e) or e.__class__.__name__
         s["alarms"] = alarms.decode(self.alarm_block) if self.alarm_block else None
+
+    def _limits_sync(self):
+        """Our limits go to aLimits at %MW1280. If a screen changed them there, we follow."""
+        cfg = self.cfg
+        ours = [round(cfg["zone_bc"] * 100), round(cfg["zone_cd"] * 100), round(cfg["temp_warn"] * 10)]
+        plc = self.plc.client.read_holding(alarms.LIMITS_BASE, 3)
+        if self.limits_dirty or not all(plc):
+            self.plc.client.write_registers(alarms.LIMITS_BASE, ours)
+            self.limits_dirty = False
+        elif list(plc) != ours:
+            self.cfg = dict(cfg, zone_bc=plc[0] / 100, zone_cd=plc[1] / 100, temp_warn=plc[2] / 10)
 
     def alarm_command(self, action, n=None):
         """Acknowledge one alarm or all of them, or clear the history."""

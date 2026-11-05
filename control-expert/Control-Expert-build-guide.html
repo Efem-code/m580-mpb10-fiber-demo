@@ -165,7 +165,7 @@ xDrop_Health   := BMEP58_ECPU_EXT.DROP_HEALTH[3];
 xRing_Closed   := BMEP58_ECPU_EXT.REDUNDANCY_STATUS;</pre>
 <p>Our ATV9xx connection carries ETA, RFRD, CMD and LFRD. Add the other channels from section 4 in its DTM, build, then remove the comment marks on their lines in both sections. There is no operator panel on this board, so <code>xDemoEnable</code> is set from an animation table. Build, then download over USB (first time) or ETH1.</p>
 <div class="warn"><b>Before any download, stop the motor.</b> The download cuts the drive’s connection, and a running drive trips <b>ETHF</b> (Embedded Ethernet communication interruption). Clear it with <code>xLocalReset</code> or the dashboard’s Fault reset. Then check <code>xSimBridge</code> is <b>0</b> in an animation table: left at 1 on the real PLC, the program ignores the drive, so <code>xATV_Health</code> stays FALSE and ETA reads 0 even with <code>ATV9xx.Freshness</code> at 1.</div>
-<div class="note">The MPB10 sends four big-endian floats (temperature, then vibration X, Y and Z) and a status word. <code>01_MPB10_Decode</code> builds them from their bytes. We read that layout from the live sensor, so check it against the IODD or the SIG300 web page. Shock and the status bits aren’t decoded yet.</div>
+<div class="note">From the MPB10’s IODD: the sensor sends temperature, then v-RMS Z, Y and X as big-endian floats, then its alert bits. <code>01_MPB10_Decode</code> builds them from their bytes. Bit 5 is the acceleration-peak (shock) alert, whose limit is 10 g by default; change it in SOPAS, ISDU index 4435.</div>
 
 <h2><span class="n">7</span>Alarms, for screens</h2>
 <p><code>06_Alarms</code> latches every alarm until it has cleared <b>and</b> been acknowledged. A condition must hold for <code>iAlmDelay</code> (3 s) first, so a blip doesn’t raise one. Build a screen on these variables, or read <code>%MW1300</code> over Modbus (the map is at the top of the file).</p>
@@ -181,7 +181,8 @@ xRing_Closed   := BMEP58_ECPU_EXT.REDUNDANCY_STATUS;</pre>
 <tr><td>8</td><td>Vibration alarm</td><td>Critical</td><td><code>xVibAlarm</code></td></tr>
 <tr><td>9</td><td>Temperature warning</td><td>Warning</td><td><code>xTempWarning</code></td></tr>
 <tr><td>10</td><td>Dashboard link lost</td><td>Warning</td><td><code>xDashboardAllowed</code> on but the dashboard’s watchdog has expired</td></tr>
-<tr><td>11, 12</td><td>Spare 1, Spare 2</td><td>Warning</td><td>Ours to fill in: <code>aAlmCond[11]</code>, <code>aAlmCond[12]</code>, and their names in <code>aAlmText</code></td></tr>
+<tr><td>11</td><td>Shock detected</td><td>Warning</td><td><code>xShock</code>, held 5 s</td></tr>
+<tr><td>12</td><td>Spare</td><td>Warning</td><td>Ours to fill in: <code>aAlmCond[12]</code>, and its name in <code>aAlmText</code></td></tr>
 </table></div>
 <div class="wrap"><table>
 <tr><th style="width:30%">For a screen</th><th>What it is</th></tr>
@@ -192,6 +193,8 @@ xRing_Closed   := BMEP58_ECPU_EXT.REDUNDANCY_STATUS;</pre>
 <tr><td><code>xAlmAckAll</code></td><td>Set TRUE to acknowledge everything. It resets itself</td></tr>
 <tr><td><code>aAlmCmd[0]</code></td><td>Acknowledge bits: bit 0 is alarm 1. Reset after each scan</td></tr>
 <tr><td><code>aAlmCmd[1]</code></td><td>Write 1 to clear the history</td></tr>
+<tr><td><code>aEnableCmd</code> at <code>%MW1286</code></td><td>[0] <code>xDemoEnable</code>, [1] <code>xDashboardAllowed</code>: 1 on, 2 off, cleared after each scan. The dashboard’s selectors use these. Both start FALSE after a download</td></tr>
+<tr><td><code>aLimits</code> at <code>%MW1280</code></td><td>Live limits: [0] warning, [1] alarm, mm/s × 100; [2] temperature, °C × 10. 0 keeps the current value</td></tr>
 </table></div>
 <p>Timestamps come from the CPU’s clock, in <code>%SW50</code>–<code>%SW53</code>, so set it first: a CPU with an empty clock reads 1980. The dashboard’s Alarms tab warns if it isn’t set.</p>
 

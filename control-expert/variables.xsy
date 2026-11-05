@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <VariablesExchangeFile>
-<fileHeader company="Schneider Automation" product="EcoStruxure Control Expert" dateTime="date_and_time#2026-11-05-08:07:30" content="Variable source file" DTDVersion="41"></fileHeader>
-<contentHeader name="M580 MPB10 demo" version="0.0.000" dateTime="date_and_time#2026-11-05-08:07:30"></contentHeader>
+<fileHeader company="Schneider Automation" product="EcoStruxure Control Expert" dateTime="date_and_time#2026-11-05-10:21:26" content="Variable source file" DTDVersion="41"></fileHeader>
+<contentHeader name="M580 MPB10 demo" version="0.0.000" dateTime="date_and_time#2026-11-05-10:21:26"></contentHeader>
 <dataBlock>
 <variables name="aDash" typeName="ARRAY[0..31] OF INT" topologicalAddress="%MW1000">
 <comment>Status block read by the dashboard</comment>
@@ -29,7 +29,7 @@
 <variableInit value="6"></variableInit>
 </variables>
 <variables name="wMPB_Alarm" typeName="WORD">
-<comment>MPB10 status word, raw (process data bytes 18-19)</comment>
+<comment>MPB10 alert bits (process data bytes 18-19)</comment>
 </variables>
 <variables name="rVibVelocity" typeName="REAL">
 <comment>Vibration velocity RMS, the worst axis, mm/s</comment>
@@ -92,7 +92,7 @@
 <comment>Vibration alarm</comment>
 </variables>
 <variables name="xShock" typeName="BOOL">
-<comment>Shock detected (no source yet)</comment>
+<comment>Shock: the MPB10's acceleration-peak alert</comment>
 </variables>
 <variables name="xTempWarning" typeName="BOOL">
 <comment>Temperature warning</comment>
@@ -405,6 +405,15 @@
 </variables>
 <variables name="iAlmUnackCount" typeName="INT">
 <comment>Unacknowledged alarms</comment>
+</variables>
+<variables name="aLimits" typeName="ARRAY[0..2] OF INT" topologicalAddress="%MW1280">
+<comment>Live limits: [0] warning, [1] alarm, mm/s x100</comment>
+</variables>
+<variables name="tofAlmShock" typeName="TOF">
+<comment>Holds a shock long enough to raise its alarm</comment>
+</variables>
+<variables name="aEnableCmd" typeName="ARRAY[0..1] OF INT" topologicalAddress="%MW1286">
+<comment>Enables from a screen: [0] xDemoEnable, [1] xDashboardAllowed. 1 on, 2 off</comment>
 </variables>
 </dataBlock>
 </VariablesExchangeFile>

@@ -3,7 +3,7 @@ section's logic for simulation mode and the stand-in PLC. See ../control-expert/
 """
 import time
 
-BASE, CMD_BASE = 1300, 1290
+BASE, CMD_BASE, LIMITS_BASE, ENABLE_BASE = 1300, 1290, 1280, 1286
 SIZE = 444                           # words in the block
 SLOTS = 64                           # history lines
 LOG_START, STAMPS_START = 60, 10
@@ -13,7 +13,7 @@ ALARMS = [                           # number, name, priority (1 critical, 2 war
     (1, "Drive fault", 1), (2, "Drive connection lost", 1), (3, "SIG300 connection lost", 2),
     (4, "MPB10 data lost", 2), (5, "RIO drop lost", 1), (6, "RIO ring open", 2),
     (7, "Vibration warning", 2), (8, "Vibration alarm", 1), (9, "Temperature warning", 2),
-    (10, "Dashboard link lost", 2), (11, "Spare 1", 2), (12, "Spare 2", 2)]
+    (10, "Dashboard link lost", 2), (11, "Shock detected", 2), (12, "Spare", 2)]
 
 
 def bcd(n):

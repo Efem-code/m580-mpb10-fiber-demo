@@ -4,7 +4,7 @@
    the dashboard's Alarms tab reads them, and an HMI or SCADA screen can use the same data.
 
    Each alarm:
-     aAlmCond[n]    the live condition (spare 11 and 12 are ours to fill in)
+     aAlmCond[n]    the live condition (spare 12 is ours to fill in)
      aAlmText[n]    its name
      aAlmPrio[n]    1 critical, 2 warning
      aAlmState[n]   0 normal   1 active, not acknowledged   2 active, acknowledged
@@ -37,8 +37,8 @@ IF NOT xAlmInit THEN
     aAlmText[8]  := 'Vibration alarm';           aAlmPrio[8]  := 1;
     aAlmText[9]  := 'Temperature warning';       aAlmPrio[9]  := 2;
     aAlmText[10] := 'Dashboard link lost';       aAlmPrio[10] := 2;
-    aAlmText[11] := 'Spare 1';                   aAlmPrio[11] := 2;
-    aAlmText[12] := 'Spare 2';                   aAlmPrio[12] := 2;
+    aAlmText[11] := 'Shock detected';            aAlmPrio[11] := 2;
+    aAlmText[12] := 'Spare';                     aAlmPrio[12] := 2;
 END_IF;
 
 (* ---- the conditions ---- *)
@@ -52,8 +52,9 @@ aAlmCond[7]  := xVibWarning;
 aAlmCond[8]  := xVibAlarm;
 aAlmCond[9]  := xTempWarning;
 aAlmCond[10] := xDashboardAllowed AND NOT xDashOK;
-aAlmCond[11] := FALSE;                           (* spare: our own condition goes here *)
-aAlmCond[12] := FALSE;                           (* spare *)
+tofAlmShock(IN := xShock, PT := t#5s);           (* a shock is short: hold it past the on-delay *)
+aAlmCond[11] := tofAlmShock.Q;
+aAlmCond[12] := FALSE;                           (* spare: our own condition goes here *)
 
 (* ---- commands from a screen ---- *)
 wAlmAckMask := INT_TO_WORD(aAlmCmd[0]);
