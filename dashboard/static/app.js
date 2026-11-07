@@ -495,6 +495,7 @@ function renderVfd(s) {
     [stoOff, "Power stage ready (STO / E-stop released)"],
     [!!P.enable, "Demo enable ON in the PLC (xDemoEnable)"],
     [c.allowed, "Dashboard control on (Setup tab)"],
+    [!c.blocked, "No other screen controlling the drive"],
     [!live || d.plc_allows, "PLC permission xDashboardAllowed"],
     [!live || d.watchdog_ok, "PLC watchdog sees this dashboard"],
     [local, cfg._app ? "This is the presenter’s screen" : "This is the presenter’s laptop"],
@@ -511,9 +512,10 @@ function renderVfd(s) {
   $("vSrc").innerHTML = !d.running ? "Motor stopped." : `In control: <b>${c.jog ? "this dashboard (jog)" : c.run ? "this dashboard" : "PLC / animation table"}</b>`;
 
   // what the buttons can do right now, and why not
-  let msg = "", can = c.allowed && local;
+  let msg = "", can = c.allowed && local && !c.blocked;
   if (!local) msg = `<div class="msg warn">View-only screen: control the demo from the presenter’s laptop.</div>`;
   else if (!c.allowed) msg = `<div class="msg warn">Drive control from the dashboard is off. Turn it on in Setup (live mode only).</div>`;
+  else if (c.blocked) msg = `<div class="msg warn">Another screen, probably the TV, is controlling the drive, so this dashboard has stepped back. Turn off control on that screen to use this one. STOP still works here.</div>`;
   else if (live && !d.healthy) { msg = `<div class="msg bad">No EtherNet/IP connection to the ATV930.</div>`; }
   else if (L.fresh && !P.enable) msg = `<div class="msg warn"><code>xDemoEnable</code> is OFF in the PLC: turn on Demo enable in Ready to run, above.</div>`;
   else if (live && !d.plc_allows) msg = `<div class="msg warn">The PLC has not enabled dashboard control: turn on PLC permission in Ready to run, above.</div>`;

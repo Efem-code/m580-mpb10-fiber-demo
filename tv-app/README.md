@@ -23,8 +23,9 @@ Off by default, and the app then only reads. On the VFD control tab, turn on **D
 permission** and **Demo enable**. The app then writes the command block at %MW1100 every 200 ms. The PLC needs
 S02 with `aEnableCmd`.
 
-**Only one writer at a time.** Don't tick it on the TV and on the laptop's dashboard together: they would fight over
-the same block. The E-stop is hard-wired and works whatever the app does. If the app closes or leaves the screen,
+**Only one writer at a time.** The laptop's dashboard watches the command block and steps back when something else
+writes it, so with control on here, the TV wins and the laptop can only watch or press STOP. The app has no such
+check, so turn control off here before using the laptop. The E-stop is hard-wired and works whatever the app does. If the app closes or leaves the screen,
 the run request drops, and the PLC's 1 s watchdog stops the motor if the writes stop.
 
 Limit sliders and alarm acknowledge write to the PLC at any time.

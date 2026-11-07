@@ -27,7 +27,7 @@ STATUS MAP  (read, offset from the status base, default %MW1000)
                           b4 dashboard control allowed by PLC  b5 dashboard watchdog OK  b6 reverse
   +21  ETA                drive status word (raw)
   +22  output speed       rpm (RFRD)
-  +23  speed reference    rpm actually sent to the drive (LFRD)
+  +23  speed reference    rpm sent to the drive (LFRD), negative in reverse
   +24  motor current      A x10 (LCR)
   +25  motor torque       % (OTR)
   +26  motor thermal      % (THR)
@@ -337,15 +337,42 @@ class SimSource:
 
 
 class PlcSource:
+    LISTEN_S = 1.5     # how long to watch the command block before the first write
+    HOLD_S = 3.0       # how long the block must stay quiet after another writer is seen
+
     def __init__(self, cfg):
         self.client = ModbusClient(cfg["plc_host"], int(cfg["plc_port"]), int(cfg["unit_id"]), timeout=1.0)
         self.base = int(cfg["base"])
         self.cmd_base = int(cfg["cmd_base"])
         self.hb = 0
+        self._guard_reset()
+
+    def _guard_reset(self):
+        self.last_seen = None      # command heartbeat at the last check
+        self.last_written = None   # the heartbeat we last wrote
+        self.quiet_until = 0.0     # no writes before this time
+        self.blocked = False       # another writer, such as the TV, holds the command block
+
+    def _may_write(self, now):
+        """Give way to anything else writing the block. The TV has no such check, so it always wins."""
+        seen = self.client.read_holding(self.cmd_base, 1)[0]
+        if self.last_seen is None:
+            self.quiet_until = now + self.LISTEN_S
+        elif seen != (self.last_seen if self.last_written is None else self.last_written):
+            self.quiet_until = now + self.HOLD_S
+            self.blocked = True
+        self.last_seen = seen
+        if now < self.quiet_until:
+            self.last_written = None
+            return False
+        self.blocked = False
+        return True
 
     def read(self, cfg, cmd, dt):
         regs = self.client.read_holding(self.base, BLOCK)
-        if cfg["allow_control"]:
+        if not cfg["allow_control"]:
+            self._guard_reset()
+        elif self._may_write(time.time()) or cmd["stop"]:   # Stop always gets through
             # refreshed every cycle: the PLC watchdog stops the drive if this stops changing
             self.hb = (self.hb + 1) & 0x7FFF
             run = cmd["run"] and cmd["alive"] and not cmd["stop"]
@@ -353,6 +380,7 @@ class PlcSource:
             speed = min(max(int(cmd["speed"]), 0), int(cfg["max_rpm"]))
             self.client.write_registers(self.cmd_base, [self.hb, bits, speed,
                                                         round(cmd["accel"] * 10), round(cmd["decel"] * 10)])
+            self.last_written = self.hb
         return regs
 
     def close(self):
@@ -381,6 +409,7 @@ class Engine:
         self.cmd = {"run": False, "stop_until": 0.0, "reverse": False, "speed": 900, "reset_until": 0.0,
                     "jog_until": 0.0, "jog_rev": False}
         self.reach = {}
+        self.writer_blocked = False         # another screen holds the command block
         self.prog = {"on": False}           # demo sequence runner
         self.alarm_sim = alarms.AlarmLog()  # S06_Alarms, for simulation mode
         self.alarm_block = None             # the last block read
@@ -429,6 +458,8 @@ class Engine:
         with self.lock:
             if not self.control_allowed():
                 return "Drive control from the dashboard is off (Setup tab)"
+            if self.writer_blocked and action in ("run", "run_fwd", "run_rev", "jog", "seq_start"):
+                return "Another screen, probably the TV, is controlling the drive: turn its control off first"
             c = self.cmd
             if self.prog["on"] and action in ("run", "run_fwd", "run_rev", "jog", "speed", "reverse"):
                 return "The demo sequence is running: press Stop sequence (or STOP) first"
@@ -632,6 +663,7 @@ class Engine:
                     err = str(e) or e.__class__.__name__
                     self.errors += 1
                     self.last_error = err
+                self._writer_check()
                 self.state = self._decode(regs, err, now, cmd)
                 self._alarms_tick(now)
                 self._diff_events()
@@ -642,6 +674,17 @@ class Engine:
                     last_hist = now
                     self.history.append([round(now, 1), m["v"], m["vx"], m["vy"], m["vz"], m["temp"], d["speed"], d["ref"]])
                 self.seq += 1
+
+    def _writer_check(self):
+        blocked = bool(self.plc and self.cfg["mode"] == "live" and self.plc.blocked)
+        if blocked and not self.writer_blocked:
+            # needs a fresh Start afterwards, so the motor can't restart on its own when the other screen goes away
+            self.cmd["run"], self.cmd["jog_until"] = False, 0.0
+            self._seq_halt("another screen took control of the drive", "warn")
+            self.event("warn", "Another screen, probably the TV, is writing drive commands: the dashboard has stopped")
+        elif self.writer_blocked and not blocked:
+            self.event("info", "The other screen has stopped: the dashboard can control the drive again")
+        self.writer_blocked = blocked
 
     def _decode(self, regs, err, now, cmd):
         cfg = self.cfg
@@ -707,7 +750,8 @@ class Engine:
             "plc": {"heartbeat": regs[0] if plc_ok else None, "rate": round(rate, 1), "errors": self.errors,
                     "error": err, "last_error": self.last_error, "host": cfg["plc_host"]},
             "mpb": mpb, "zone": zone, "health": health, "drive": drive, "panel": panel,
-            "control": {"allowed": self.control_allowed(), "writing": cfg["mode"] == "live" and cfg["allow_control"],
+            "control": {"allowed": self.control_allowed(), "blocked": self.writer_blocked,
+                        "writing": cfg["mode"] == "live" and cfg["allow_control"] and not self.writer_blocked,
                         "run": self.cmd["run"], "speed": self.cmd["speed"], "reverse": self.cmd["reverse"],
                         "jog": cmd["jog"], "jog_rev": self.cmd["jog_rev"], "jog_rpm": cfg["jog_rpm"],
                         "accel_s": cfg["accel_s"], "decel_s": cfg["decel_s"],
