@@ -128,3 +128,7 @@ tofAlmShock;TOF;;;Holds a shock long enough to raise its alarm
 aEnableCmd;ARRAY[0..1] OF INT;%MW1286;;Enables from a screen: [0] xDemoEnable, [1] xDashboardAllowed. 1 on, 2 off
 rSltLevel;REAL;;;SLT060 level, %: vibration scaled so its colors follow the limits (05_IO_Out)
 iSltLevel;INT;;;SLT060 level sent to SIG300 port S2, 0-100 %
+dtAlmNow;DT;;;PLC clock, for alarm timestamps
+aAlmClk;ARRAY[0..3] OF INT;;;PLC clock, BCD: [0] seconds, [1] HHMM, [2] MMDD, [3] year
+aNetDiag;ARRAY[0..1] OF INT;%MW1288;;Ring diagnostics: [0] CPU ETH2 and ETH3 links, [1] port status bytes
+wNetLinks;WORD;;;CPU ETH2 and ETH3 link bits

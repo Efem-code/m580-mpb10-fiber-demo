@@ -196,7 +196,7 @@ xRing_Closed   := BMEP58_ECPU_EXT.REDUNDANCY_STATUS;</pre>
 <tr><td><code>aEnableCmd</code> at <code>%MW1286</code></td><td>[0] <code>xDemoEnable</code>, [1] <code>xDashboardAllowed</code>: 1 on, 2 off, cleared after each scan. The dashboard’s selectors use these. Both start FALSE after a download</td></tr>
 <tr><td><code>aLimits</code> at <code>%MW1280</code></td><td>Live limits: [0] warning, [1] alarm, mm/s × 100; [2] temperature, °C × 10. 0 keeps the current value</td></tr>
 </table></div>
-<p>Timestamps come from the CPU’s clock, in <code>%SW50</code>–<code>%SW53</code>, so set it first: a CPU with an empty clock reads 1980. The dashboard’s Alarms tab warns if it isn’t set.</p>
+<p>Timestamps come from the CPU’s clock, read with <code>RRTC_DT</code>, so set it first: a CPU with an empty clock reads 1980. The dashboard’s Alarms tab warns if it isn’t set.</p>
 
 <h2><span class="n">8</span>Commission it, in this order</h2>
 <h3>RIO drop over fiber</h3>

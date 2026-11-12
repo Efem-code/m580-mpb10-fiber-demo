@@ -113,7 +113,7 @@ class Bridge:
 
     def write_drive(self, dash):
         cmd = u16(dash[DASH_CMD])
-        ref = max(-self.a.max_rpm, min(self.a.max_rpm, s16(dash[DASH_LFRD])))
+        ref = min(self.a.max_rpm, abs(s16(dash[DASH_LFRD])))   # the block is signed for the screens; CMD bit 11 sets the direction
         ramps = (dash[DASH_ACC], dash[DASH_DEC])
         try:
             if not self.a.no_ramps and ramps != self.ramps and all(0 < s16(v) <= 6000 for v in ramps):

@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <VariablesExchangeFile>
-<fileHeader company="Schneider Automation" product="EcoStruxure Control Expert" dateTime="date_and_time#2026-11-05-10:52:35" content="Variable source file" DTDVersion="41"></fileHeader>
-<contentHeader name="M580 MPB10 demo" version="0.0.000" dateTime="date_and_time#2026-11-05-10:52:35"></contentHeader>
+<fileHeader company="Schneider Automation" product="EcoStruxure Control Expert" dateTime="date_and_time#2026-11-05-14:32:53" content="Variable source file" DTDVersion="41"></fileHeader>
+<contentHeader name="M580 MPB10 demo" version="0.0.000" dateTime="date_and_time#2026-11-05-14:32:53"></contentHeader>
 <dataBlock>
 <variables name="aDash" typeName="ARRAY[0..31] OF INT" topologicalAddress="%MW1000">
 <comment>Status block read by the dashboard</comment>
@@ -420,6 +420,18 @@
 </variables>
 <variables name="iSltLevel" typeName="INT">
 <comment>SLT060 level sent to SIG300 port S2, 0-100 %</comment>
+</variables>
+<variables name="dtAlmNow" typeName="DT">
+<comment>PLC clock, for alarm timestamps</comment>
+</variables>
+<variables name="aAlmClk" typeName="ARRAY[0..3] OF INT">
+<comment>PLC clock, BCD: [0] seconds, [1] HHMM, [2] MMDD, [3] year</comment>
+</variables>
+<variables name="aNetDiag" typeName="ARRAY[0..1] OF INT" topologicalAddress="%MW1288">
+<comment>Ring diagnostics: [0] CPU ETH2 and ETH3 links, [1] port status bytes</comment>
+</variables>
+<variables name="wNetLinks" typeName="WORD">
+<comment>CPU ETH2 and ETH3 link bits</comment>
 </variables>
 </dataBlock>
 </VariablesExchangeFile>

@@ -51,7 +51,11 @@ wDashDrive.6 := xReverse;
 aDash[20] := WORD_TO_INT(wDashDrive);
 aDash[21] := WORD_TO_INT(wATV_ETA);
 aDash[22] := iATV_Speed;
-aDash[23] := iATV_SpeedRef;
+IF xReverse THEN                                 (* LFRD itself stays positive: bit 11 of CMD sets the direction *)
+    aDash[23] := -iATV_SpeedRef;
+ELSE
+    aDash[23] := iATV_SpeedRef;
+END_IF;
 aDash[24] := iATV_Current;
 aDash[25] := iATV_Torque;
 aDash[26] := iATV_Thermal;

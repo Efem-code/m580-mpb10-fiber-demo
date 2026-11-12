@@ -17,7 +17,7 @@
    aAlm AT %MW1300 : ARRAY[0..443] OF INT, for screens that read over Modbus
      [0] events so far    [1] active bits    [2] unacknowledged bits
      [3] active count     [4] unacknowledged count     [5] next history slot (0-63)
-     [6] year  [7] MMDD  [8] HHMM  [9] seconds: the PLC clock now, BCD (%SW53..%SW50)
+     [6] year  [7] MMDD  [8] HHMM  [9] seconds: the PLC clock now, BCD
      [10 + 4 * (n - 1)] .. +3   when alarm n was last raised: year, MMDD, HHMM, seconds
      [60 + 6 * slot]            history, 64 events, oldest overwritten:
          +0 event number   +1 100 * type + alarm number (type 1 raised, 2 cleared,
@@ -55,6 +55,10 @@ aAlmCond[10] := xDashboardAllowed AND NOT xDashOK;
 tofAlmShock(IN := xShock, PT := t#5s);           (* a shock is short: hold it past the on-delay *)
 aAlmCond[11] := tofAlmShock.Q;
 aAlmCond[12] := FALSE;                           (* spare: our own condition goes here *)
+
+(* ---- the clock, local time, BCD: [0] seconds, [1] HHMM, [2] MMDD, [3] year (Schneider FAQ FA230499) ---- *)
+RRTC_DT(OUT => dtAlmNow);
+DT_TO_ARINT(dtAlmNow, aAlmClk);
 
 (* ---- commands from a screen ---- *)
 wAlmAckMask := INT_TO_WORD(aAlmCmd[0]);
@@ -95,10 +99,10 @@ FOR iAlm := 1 TO 12 DO
         aAlmUnack[iAlm] := TRUE;
         iAlmType := 1;
         iAlmOfs := 10 + 4 * (iAlm - 1);
-        aAlm[iAlmOfs]     := %SW53;
-        aAlm[iAlmOfs + 1] := %SW52;
-        aAlm[iAlmOfs + 2] := %SW51;
-        aAlm[iAlmOfs + 3] := %SW50;
+        aAlm[iAlmOfs]     := aAlmClk[3];
+        aAlm[iAlmOfs + 1] := aAlmClk[2];
+        aAlm[iAlmOfs + 2] := aAlmClk[1];
+        aAlm[iAlmOfs + 3] := aAlmClk[0];
     ELSIF aAlmActive[iAlm] AND NOT xAlmNow THEN
         aAlmActive[iAlm] := FALSE;
         iAlmType := 2;
@@ -114,10 +118,10 @@ FOR iAlm := 1 TO 12 DO
         iAlmOfs := 60 + 6 * iAlmHead;
         aAlm[iAlmOfs]     := iAlmSeq;
         aAlm[iAlmOfs + 1] := 100 * iAlmType + iAlm;
-        aAlm[iAlmOfs + 2] := %SW53;
-        aAlm[iAlmOfs + 3] := %SW52;
-        aAlm[iAlmOfs + 4] := %SW51;
-        aAlm[iAlmOfs + 5] := %SW50;
+        aAlm[iAlmOfs + 2] := aAlmClk[3];
+        aAlm[iAlmOfs + 3] := aAlmClk[2];
+        aAlm[iAlmOfs + 4] := aAlmClk[1];
+        aAlm[iAlmOfs + 5] := aAlmClk[0];
         iAlmHead := (iAlmHead + 1) MOD 64;
     END_IF;
 
@@ -147,7 +151,17 @@ aAlm[2] := WORD_TO_INT(wAlmUnack);
 aAlm[3] := iAlmActCount;
 aAlm[4] := iAlmUnackCount;
 aAlm[5] := iAlmHead;
-aAlm[6] := %SW53;
-aAlm[7] := %SW52;
-aAlm[8] := %SW51;
-aAlm[9] := %SW50;
+aAlm[6] := aAlmClk[3];
+aAlm[7] := aAlmClk[2];
+aAlm[8] := aAlmClk[1];
+aAlm[9] := aAlmClk[0];
+
+(* ---- ring diagnostics, for telling the two fiber links apart ----
+   aNetDiag AT %MW1288: [0] bit 0 CPU ETH2 link, bit 1 CPU ETH3 link;
+   [1] low byte ETH_PORT_1_2_STATUS, high byte ETH_PORT3_BKP_STATUS *)
+wNetLinks := 0;
+wNetLinks.0 := BMEP58_ECPU_EXT.PORT2_LINK;
+wNetLinks.1 := BMEP58_ECPU_EXT.PORT3_LINK;
+aNetDiag[0] := WORD_TO_INT(wNetLinks);
+aNetDiag[1] := WORD_TO_INT(SHL(BYTE_TO_WORD(BMEP58_ECPU_EXT.ETH_PORT3_BKP_STATUS), 8)
+                           OR BYTE_TO_WORD(BMEP58_ECPU_EXT.ETH_PORT_1_2_STATUS));
