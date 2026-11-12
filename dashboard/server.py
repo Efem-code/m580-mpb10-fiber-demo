@@ -52,6 +52,7 @@ import json
 import os
 import random
 import socket
+import sys
 import threading
 import time
 import webbrowser
@@ -64,6 +65,9 @@ from modbus import ModbusClient
 HERE = os.path.dirname(os.path.abspath(__file__))
 STATIC = os.path.join(HERE, "static")
 SETTINGS = os.path.join(HERE, "settings.json")
+if getattr(sys, "frozen", False):          # the single .exe: page inside it, settings next to it
+    STATIC = os.path.join(sys._MEIPASS, "static")
+    SETTINGS = os.path.join(os.path.dirname(sys.executable), "settings.json")
 NA = -32768
 BLOCK = 32
 CMD_WORDS = 5

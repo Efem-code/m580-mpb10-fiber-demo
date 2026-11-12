@@ -6,6 +6,8 @@ The dashboard also runs **without any hardware**, in simulation mode, so anyone 
 
 **Read the guides online:** <https://efem-code.github.io/m580-mpb10-fiber-demo/>
 
+**Just want to try it?** Download **M580-Machine-Health-Demo.exe** from the [latest release](https://github.com/Efem-code/m580-mpb10-fiber-demo/releases/latest) and double-click it. Nothing to install: it opens the dashboard in your browser in simulation mode. Windows may warn that the app is unrecognised (it isn't signed): click **More info → Run anyway**. Close its window to stop it.
+
 ## What's in here
 
 | Folder / file | What it is |
@@ -15,6 +17,9 @@ The dashboard also runs **without any hardware**, in simulation mode, so anyone 
 | `M580-MPB10-fiber-build-guide.html` | Bench build guide: parts, wiring diagram, IP plan, build steps, checklist, troubleshooting |
 
 ## Install and run the dashboard
+
+(Or use the .exe above. To build it yourself: `python -m pip install pyinstaller`, then in `dashboard`:
+`pyinstaller --onefile --name M580-Machine-Health-Demo --add-data "static;static" server.py`.)
 
 1. Install **Python 3.8 or newer** from [python.org](https://www.python.org/downloads/). On Windows, tick **Add python.exe to PATH** in the installer.
 2. Download this repo: the green **Code** button → **Download ZIP**, then unzip it. Or, with git:
