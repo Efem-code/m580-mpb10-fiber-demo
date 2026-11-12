@@ -1,0 +1,58 @@
+# Builds the Linux downloads and attaches them to a release.
+# Ubuntu 22.04's older C library lets the binary run on 22.04 and anything newer.
+name: Linux build
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Release tag to attach the Linux files to
+        required: true
+        default: v1.0
+
+permissions:
+  contents: write
+
+jobs:
+  linux:
+    runs-on: ubuntu-22.04
+    env:
+      TAG: ${{ github.event.release.tag_name || inputs.tag }}
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.release.tag_name || github.ref }}   # run by hand: the branch picked, so older tags get today's files
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Build the single-file binary
+        working-directory: dashboard
+        run: |
+          python -m pip install pyinstaller
+          pyinstaller --onefile --name M580-Machine-Health-Demo-linux --add-data "static:static" server.py
+
+      - name: Pack the Python version
+        run: git archive --format=tar.gz --prefix=m580-dashboard/ -o M580-Machine-Health-Demo-linux-python.tar.gz HEAD:dashboard
+
+      - name: Check both serve the dashboard
+        run: |
+          check() {
+            "$@" --no-browser --port 8790 & pid=$!
+            for i in $(seq 1 30); do curl -sf http://127.0.0.1:8790/ >/dev/null && break; sleep 1; done
+            curl -sf http://127.0.0.1:8790/ | grep -qi "<html"
+            kill $pid
+          }
+          check dashboard/dist/M580-Machine-Health-Demo-linux
+          mkdir unpack && tar xzf M580-Machine-Health-Demo-linux-python.tar.gz -C unpack
+          check unpack/m580-dashboard/start-dashboard.sh
+
+      - name: Attach to the release
+        run: |
+          gh release upload "$TAG" --clobber \
+            dashboard/dist/M580-Machine-Health-Demo-linux \
+            M580-Machine-Health-Demo-linux-python.tar.gz

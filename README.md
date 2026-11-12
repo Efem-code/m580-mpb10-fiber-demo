@@ -8,6 +8,12 @@ The dashboard also runs **without any hardware**, in simulation mode, so anyone 
 
 **Just want to try it?** Download **M580-Machine-Health-Demo.exe** from the [latest release](https://github.com/Efem-code/m580-mpb10-fiber-demo/releases/latest) and double-click it. Nothing to install: it opens the dashboard in your browser in simulation mode. Windows may warn that the app is unrecognised (it isn't signed): click **More info → Run anyway**. Close its window to stop it.
 
+**On Linux (x86-64):** download **M580-Machine-Health-Demo-linux** from the same release, then in a terminal:
+```bash
+chmod +x M580-Machine-Health-Demo-linux && ./M580-Machine-Health-Demo-linux
+```
+It runs on Ubuntu 22.04 or newer and similar distros. Ctrl+C stops it. On an older or ARM Linux PC, or on a Mac, take **M580-Machine-Health-Demo-linux-python.tar.gz** instead; it needs only the Python 3 that's already on the machine: `tar xzf M580-Machine-Health-Demo-linux-python.tar.gz`, then `./m580-dashboard/start-dashboard.sh`.
+
 ## What's in here
 
 | Folder / file | What it is |
@@ -28,7 +34,7 @@ The dashboard also runs **without any hardware**, in simulation mode, so anyone 
    ```
 3. Start it:
    - **Windows:** double-click `dashboard\Start Dashboard.bat`
-   - **Mac / Linux:** `cd dashboard` then `python3 server.py`
+   - **Mac / Linux:** run `dashboard/start-dashboard.sh` (or `cd dashboard` then `python3 server.py`)
 4. Your browser opens at <http://127.0.0.1:8780> in **simulation mode**. Use the demo controls at the top to add unbalance, heat, knocks, pull a cable, and so on.
 
 Nothing else needs installing. Your settings are saved to `dashboard/settings.json` on first change (it isn't part of the repo, so every new install starts from the defaults).
