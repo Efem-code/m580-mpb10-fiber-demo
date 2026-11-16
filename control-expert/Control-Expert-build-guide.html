@@ -195,9 +195,16 @@ xRing_Closed   := BMEP58_ECPU_EXT.REDUNDANCY_STATUS;</pre>
 <tr><td><code>aAlmCmd[0]</code></td><td>Acknowledge bits: bit 0 is alarm 1. Reset after each scan</td></tr>
 <tr><td><code>aAlmCmd[1]</code></td><td>Write 1 to clear the history</td></tr>
 <tr><td><code>aEnableCmd</code> at <code>%MW1286</code></td><td>[0] <code>xDemoEnable</code>, [1] <code>xDashboardAllowed</code>: 1 on, 2 off, cleared after each scan. The dashboard’s selectors use these. Both start FALSE after a download</td></tr>
+<tr><td><code>aClkSet</code> at <code>%MW1292</code></td><td>Sets the CPU clock: [1] days since 2000-01-01, [2] hours, [3] minutes, [4] seconds, then [0] = 1. Cleared after each scan</td></tr>
 <tr><td><code>aLimits</code> at <code>%MW1280</code></td><td>Live limits: [0] warning, [1] alarm, mm/s × 100; [2] temperature, °C × 10. 0 keeps the current value</td></tr>
 </table></div>
-<p>Timestamps come from the CPU’s clock, read with <code>RRTC_DT</code>, so set it first: a CPU with an empty clock reads 1980. The dashboard’s Alarms tab warns if it isn’t set.</p>
+<p>Timestamps come from the CPU’s clock, read with <code>RRTC_DT</code>, so set it first: a CPU with an empty clock reads 1980. The dashboard’s Alarms tab warns if it isn’t set, or if it is more than a minute off the laptop’s.</p>
+<p>Two ways to set it:</p>
+<ul>
+  <li><b>From the dashboard:</b> Alarms tab → <b>Set PLC clock from this laptop</b> (live mode, on the laptop running the dashboard). It writes <code>aClkSet</code> at <code>%MW1292</code>: [1] days since 1 January 2000, [2] hours, [3] minutes, [4] seconds, then [0] = 1. <code>06_Alarms</code> builds the date with <code>ADD_DT_TIME</code>, writes it with <code>WRTC_DT</code> and puts [0] back to 0. The dashboard then reads the clock back and says if it didn’t take.</li>
+  <li><b>From Control Expert:</b> connected to the PLC, PLC → <b>Debug Screen</b>, <b>Real-Time Clock</b> tab, <b>Update</b> under PC Date and Time.</li>
+</ul>
+<p>The CPU keeps its time through a power cut. It doesn’t change for daylight saving on its own, so press the button again after the clocks change.</p>
 
 <h2><span class="n">8</span>History in the PLC</h2>
 <p><code>07_History</code> keeps the last <b>3 days</b> in the CPU, one sample a minute, 4320 samples, the oldest overwritten. Each sample holds the highest vibration on each axis in that minute, the temperature and speed at its end, and flags for anything that happened in it: vibration warning or alarm, temperature warning, shock, sensor data lost, drive running, drive fault. A one-second knock still shows, because the flags and the highest values are kept over the whole minute.</p>

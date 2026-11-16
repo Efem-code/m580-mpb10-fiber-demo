@@ -4,6 +4,7 @@ section's logic for simulation mode and the stand-in PLC. See ../control-expert/
 import time
 
 BASE, CMD_BASE, LIMITS_BASE, ENABLE_BASE = 1300, 1290, 1280, 1286
+CLOCK_BASE = 1292                    # aClkSet: set the PLC clock from a screen
 SIZE = 444                           # words in the block
 SLOTS = 64                           # history lines
 LOG_START, STAMPS_START = 60, 10
@@ -28,6 +29,20 @@ def clock_words(t=None):
     """The PC's clock as the four BCD words the PLC reads from %SW53..%SW50."""
     t = time.localtime(t)
     return [bcd(t.tm_year), bcd(t.tm_mon * 100 + t.tm_mday), bcd(t.tm_hour * 100 + t.tm_min), bcd(t.tm_sec)]
+
+
+def clock_set_words(t=None):
+    """aClkSet for this PC's local time: [1, days since 2000-01-01, hours, minutes, seconds]."""
+    import datetime
+    d = datetime.datetime.fromtimestamp(time.time() if t is None else t)
+    return [1, (d.date() - datetime.date(2000, 1, 1)).days, d.hour, d.minute, d.second]
+
+
+def from_clock_set(w):
+    """The time aClkSet asks for, as seconds since the epoch (the stand-in PLC uses it)."""
+    import datetime
+    d = datetime.datetime(2000, 1, 1) + datetime.timedelta(days=w[1], hours=w[2], minutes=w[3], seconds=w[4])
+    return time.mktime(d.timetuple())
 
 
 def stamp(words):
@@ -71,13 +86,14 @@ class AlarmLog:
         self.since = {}
         self.active, self.unack = set(), set()
         self.seq, self.head = 0, 0
+        self.clock_ofs = 0.0             # the stand-in PLC's clock, relative to this PC's
 
     def update(self, conds, now, ack_mask=0, clear=False):
         """conds: the numbers of the alarms whose condition is true now."""
         if clear:
             self.b[LOG_START:] = [0] * (SIZE - LOG_START)
             self.seq, self.head = 0, 0
-        clock = clock_words(now)
+        clock = clock_words(now + self.clock_ofs)
         for n, _, _ in ALARMS:
             if n in conds:
                 self.since.setdefault(n, now)

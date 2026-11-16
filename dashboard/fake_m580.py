@@ -1,7 +1,7 @@
 """Stand-in for the M580 on the bench: serves the dashboard's Modbus map and obeys its command block
 the way the Control Expert program does (watchdog, enable, CiA402-style drive state).
 
-  python fake_m580.py [port] [--no-enable] [--hist-empty] [--hist-period=60]
+  python fake_m580.py [port] [--no-enable] [--hist-empty] [--hist-period=60] [--clock-unset]
   then in the dashboard: IP addresses tab -> M580 = 127.0.0.1, Setup -> Live, port 5020
 
 --hist-empty   starts the historian empty instead of with 3 made-up days; --hist-period sets its seconds per sample.
@@ -29,6 +29,8 @@ if "--hist-empty" not in sys.argv:            # as if it had been running for 3 
     import server
     hist.backfill(time.time(), server.sim_history_sample)
 store.write("holding", alarms.CMD_BASE, [0, 0])
+if "--clock-unset" in sys.argv:                 # starts at 1980, like a CPU whose clock was never set
+    alarm_log.clock_ofs = time.mktime((1980, 1, 1, 0, 0, 0, 0, 0, -1)) - time.time()
 hb = 0
 speed = 0.0
 last_dash_hb, dash_changed = None, 0.0
@@ -68,6 +70,10 @@ while True:
     ack, clear = store.read("holding", alarms.CMD_BASE, 2)
     store.write("holding", alarms.CMD_BASE, [0, 0])
     conds = {n for n, on in ((6, "--alarm-demo" in sys.argv and now % 20 < 10), (7, v >= 2.8), (8, v >= 4.5)) if on}
+    clk = store.read("holding", alarms.CLOCK_BASE, 5)       # aClkSet: a screen sets the clock
+    if clk[0] == 1 and 7300 <= clk[1] <= 32000:
+        alarm_log.clock_ofs = alarms.from_clock_set(clk) - now
+    store.write("holding", alarms.CLOCK_BASE, [0])
     store.write("holding", alarms.BASE, alarm_log.update(conds, now, ack, clear == 1))
     # the historian, S07_History: answer a request, then publish the header and the window
     hist.request(*store.read("holding", history.REQ, 2))

@@ -953,6 +953,30 @@ class Engine:
                 return "not connected to the PLC"
         return None
 
+    def set_clock(self):
+        """Copy this laptop's clock to the PLC through aClkSet (06_Alarms), then check it took."""
+        if self.cfg["mode"] == "sim":
+            return None, "Simulation uses this laptop's clock: nothing to set."
+        with self.lock:
+            if not self.plc:
+                return "not connected to the PLC", None
+            client = self.plc.client
+            t = time.time()
+            client.write_registers(alarms.CLOCK_BASE, alarms.clock_set_words(t))
+        time.sleep(0.4)
+        with self.lock:
+            if client.read_holding(alarms.CLOCK_BASE, 1)[0] != 0:
+                return "The PLC didn't take the request: load the S06_Alarms section with aClkSet first", None
+            clock = alarms.stamp(client.read_holding(alarms.BASE + 6, 4))
+            self.alarm_read = 0.0
+        try:
+            off = time.mktime(time.strptime(clock, "%Y-%m-%d %H:%M:%S")) - time.time()
+        except (TypeError, ValueError):
+            off = None
+        if off is None or abs(off) > 5:
+            return f"The PLC clock still reads {clock}: it may not accept the new time (WRTC_DT)", None
+        return None, f"PLC clock set to {clock}"
+
     def snapshot(self):
         with self.lock:
             return dict(self.state, events=list(self.events)[:14], reach=self.reach, marks=list(self.marks))
@@ -1109,6 +1133,12 @@ class Handler(BaseHTTPRequestHandler):
             except (OSError, TypeError, ValueError) as e:
                 err = f"couldn't reach the PLC: {e}"
             return self._json({"error": err} if err else {"ok": True}, 409 if err else 200)
+        if path == "/api/clock":
+            try:
+                err, msg = eng.set_clock()
+            except OSError as e:
+                err, msg = f"couldn't reach the PLC: {e}", None
+            return self._json({"error": err} if err else {"ok": True, "message": msg}, 409 if err else 200)
         if path == "/api/hist":
             err = eng.hist_command(b.get("action", ""))
             return self._json({"error": err} if err else {"ok": True}, 409 if err else 200)

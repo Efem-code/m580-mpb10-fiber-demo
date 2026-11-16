@@ -14,6 +14,8 @@
    To acknowledge from a screen: xAlmAckAll TRUE (it resets itself), or set a bit in
    aAlmCmd[0] (bit 0 = alarm 1). aAlmCmd[1] = 1 clears the history.
 
+   aClkSet AT %MW1292: set the clock from a screen (see below).
+
    aAlm AT %MW1300 : ARRAY[0..443] OF INT, for screens that read over Modbus
      [0] events so far    [1] active bits    [2] unacknowledged bits
      [3] active count     [4] unacknowledged count     [5] next history slot (0-63)
@@ -55,6 +57,27 @@ aAlmCond[10] := xDashboardAllowed AND NOT xDashOK;
 tofAlmShock(IN := xShock, PT := t#5s);           (* a shock is short: hold it past the on-delay *)
 aAlmCond[11] := tofAlmShock.Q;
 aAlmCond[12] := FALSE;                           (* spare: our own condition goes here *)
+
+(* ---- setting the clock from a screen ----
+   aClkSet AT %MW1292: [1] days since 2000-01-01, [2] hours, [3] minutes, [4] seconds, local time;
+   then [0] := 1. The PLC writes its clock and puts [0] back to 0. Built from DT#2000-01-01 with
+   ADD_DT_TIME, 20 days at a time, because a TIME holds 24 days at most. *)
+IF aClkSet[0] = 1 THEN
+    IF (aClkSet[1] >= 7300) AND (aClkSet[1] <= 32000) AND (aClkSet[2] >= 0) AND (aClkSet[2] <= 23)
+       AND (aClkSet[3] >= 0) AND (aClkSet[3] <= 59) AND (aClkSet[4] >= 0) AND (aClkSet[4] <= 59) THEN
+        dtClkNew := DT#2000-01-01-00:00:00;
+        iClkDays := aClkSet[1];
+        WHILE iClkDays >= 20 DO
+            dtClkNew := ADD_DT_TIME(dtClkNew, t#20d);
+            iClkDays := iClkDays - 20;
+        END_WHILE;
+        diClkMs := INT_TO_DINT(iClkDays) * 86400000 + INT_TO_DINT(aClkSet[2]) * 3600000
+                   + INT_TO_DINT(aClkSet[3]) * 60000 + INT_TO_DINT(aClkSet[4]) * 1000;
+        dtClkNew := ADD_DT_TIME(dtClkNew, DINT_TO_TIME(diClkMs));
+        WRTC_DT(dtClkNew);
+    END_IF;
+END_IF;
+aClkSet[0] := 0;
 
 (* ---- the clock, local time, BCD: [0] seconds, [1] HHMM, [2] MMDD, [3] year (Schneider FAQ FA230499) ---- *)
 RRTC_DT(OUT => dtAlmNow);

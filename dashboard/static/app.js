@@ -367,9 +367,27 @@ function renderAlarms(a) {
     || `<tr><td colspan="5" class="sub">No alarms.</td></tr>`;
   $("almLog").innerHTML = a.log.map(e => `<tr><td class="t">${e.at || "–"}</td><td>${esc(e.text)}</td><td>${e.type}</td></tr>`).join("")
     || `<tr><td colspan="3" class="sub">Nothing yet.</td></tr>`;
+  let diff = null;
+  if (a.clock) {
+    const p = a.clock.match(/(\d+)-(\d+)-(\d+) (\d+):(\d+):(\d+)/);
+    if (p) diff = Math.round(new Date(+p[1], p[2] - 1, +p[3], +p[4], +p[5], +p[6]).getTime() / 1000 - Date.now() / 1000);
+  }
+  const off = diff != null && Math.abs(diff) > 60;
   $("almNote").textContent = !a.clock ? "The PLC isn't filling the alarm block yet: load the S06_Alarms section."
-    : a.clock_set ? `PLC clock ${a.clock}.` : `The PLC's clock isn't set (it reads ${a.clock}), so timestamps will be wrong until it is.`;
+    : !a.clock_set ? `The PLC's clock isn't set (it reads ${a.clock}), so timestamps will be wrong until it is.`
+    : off ? `PLC clock ${a.clock}: ${Math.abs(diff) >= 3600 ? (Math.abs(diff) / 3600).toFixed(1) + " h" : Math.round(Math.abs(diff) / 60) + " min"} ${diff > 0 ? "ahead of" : "behind"} this laptop.`
+    : `PLC clock ${a.clock}.`;
+  $("almNote").parentElement.classList.toggle("unset", !!a.clock && (!a.clock_set || off));
+  $("almClock").style.display = last && last.mode === "live" && local && a.clock ? "" : "none";
 }
+$("almClock").onclick = async () => {
+  if (!confirm("Set the PLC clock to this laptop's time, " + new Date().toLocaleString() + "?")) return;
+  $("almClock").disabled = true;
+  try {
+    const r = await post("/api/clock", {});
+    alert(r.error || r.message);
+  } finally { $("almClock").disabled = false; }
+};
 
 $("almAckAll").onclick = () => post("/api/alarm", { action: "ack" });
 $("almRows").onclick = e => { const n = e.target.dataset.ack; if (n) post("/api/alarm", { action: "ack", id: +n }); };
@@ -756,7 +774,7 @@ function histStatus(mode) {
   let cls = "msg ok", text;
   if (!s.ok && s.error) { cls = "msg bad"; text = `Can't copy the history from the PLC: ${s.error}`; }
   else if (s.copying) { cls = "msg warn"; text = "Copying the history from the PLC…"; }
-  else if (!s.clock_set) { cls = "msg warn"; text = "The PLC clock isn't set, so the samples are dated from this laptop's clock and not saved to the files. Set it in Control Expert: PLC > Debug screen > PLC Screen, Real-Time Clock, Update."; }
+  else if (!s.clock_set) { cls = "msg warn"; text = "The PLC clock isn't set, so the samples are dated from this laptop's clock and not saved to the files. Set it with the button on the Alarms tab, or in Control Expert: PLC > Debug Screen, Real-Time Clock, Update."; }
   else text = (mode === "sim" ? "Simulation: 3 made-up days, then one new sample a minute. " : "") +
     `The PLC holds ${s.samples} of ${s.slots} samples, one every ${s.period} s. Last copied ${when}.` +
     (mode === "sim" ? "" : ` Saved in ${s.folder} (${s.files} day file${s.files === 1 ? "" : "s"}).`);
