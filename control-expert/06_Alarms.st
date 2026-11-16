@@ -74,14 +74,14 @@ IF aClkSet[0] = 1 THEN
         diClkMs := INT_TO_DINT(iClkDays) * 86400000 + INT_TO_DINT(aClkSet[2]) * 3600000
                    + INT_TO_DINT(aClkSet[3]) * 60000 + INT_TO_DINT(aClkSet[4]) * 1000;
         dtClkNew := ADD_DT_TIME(dtClkNew, DINT_TO_TIME(diClkMs));
-        WRTC_DT(dtClkNew);
+        WRTC_DT(IN := dtClkNew);
     END_IF;
 END_IF;
 aClkSet[0] := 0;
 
 (* ---- the clock, local time, BCD: [0] seconds, [1] HHMM, [2] MMDD, [3] year (Schneider FAQ FA230499) ---- *)
 RRTC_DT(OUT => dtAlmNow);
-DT_TO_ARINT(dtAlmNow, aAlmClk);
+DT_TO_ARINT(IN := dtAlmNow, OUT => aAlmClk);
 
 (* ---- commands from a screen ---- *)
 wAlmAckMask := INT_TO_WORD(aAlmCmd[0]);
