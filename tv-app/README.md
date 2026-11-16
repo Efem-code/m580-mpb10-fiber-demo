@@ -30,6 +30,13 @@ the run request drops, and the PLC's 1 s watchdog stops the motor if the writes 
 
 Limit sliders and alarm acknowledge write to the PLC at any time.
 
+## Email alerts
+
+Setup tab, **Email & text alerts**: the same as on the laptop (`dashboard/alerts.py`, here `Alerter.java`). The TV needs a way
+to the internet as well as its cable to the PLC, for example Wi-Fi to the building network. If the laptop is sending too, the
+two take turns through %MW1297-1299, so each alert comes once. The mail password is kept in the app's settings and never
+sent back to the page.
+
 ## Build
 
 `python build.py <folder holding sdk\ and jdk-17*\>`, using Android platform 30, build-tools 34.0.0 and JDK 17.

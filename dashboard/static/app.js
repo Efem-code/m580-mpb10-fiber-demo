@@ -89,6 +89,7 @@ function applyCfg(c) {
   $("mapBody").innerHTML = MAP.map(([o, t]) => row(o, t, c.base)).join("");
   $("cmdMapBody").innerHTML = CMD_MAP.map(([o, t]) => row(o, t, c.cmd_base)).join("");
   showIpMsgs([], c._warnings || []);
+  mailLoad(c);
   drawBands();
   drawCharts();
 }
@@ -103,6 +104,45 @@ async function saveCfg(body, note) {
   setTimeout(() => note.textContent = "", 2500);
   return true;
 }
+// ------------------------------------------------------------ email alerts (alerts.py, Alerter.java on the TV)
+const MAIL = { "m-host": "smtp_host", "m-port": "smtp_port", "m-sec": "smtp_security", "m-user": "smtp_user",
+  "m-from": "mail_from", "m-to": "mail_to", "m-hour": "summary_hour" };
+$("m-hour").innerHTML = `<option value="-1">Off</option>` +
+  Array.from({ length: 24 }, (_, h) => `<option value="${h}">${String(h).padStart(2, "0")}:00</option>`).join("");
+function mailLoad(c) {
+  if (c.smtp_host === undefined) return;
+  for (const [id, k] of Object.entries(MAIL)) $(id).value = c[k];
+  $("m-on").checked = !!c.alerts_on; $("m-warn").checked = !!c.alert_warnings; $("m-clr").checked = !!c.alert_cleared;
+  $("m-pass").value = "";
+  $("m-pass").placeholder = c.smtp_password_set ? "saved (type to change)" : "";
+}
+function mailBody() {
+  const b = { alerts_on: $("m-on").checked, alert_warnings: $("m-warn").checked, alert_cleared: $("m-clr").checked };
+  for (const [id, k] of Object.entries(MAIL)) b[k] = $(id).value;
+  if ($("m-pass").value) b.smtp_password = $("m-pass").value;
+  return b;
+}
+$("m-sec").onchange = () => { $("m-port").value = { starttls: 587, ssl: 465, none: 25 }[$("m-sec").value]; };
+$("m-save").onclick = () => saveCfg(mailBody(), $("m-saved"));
+$("m-test").onclick = async () => {
+  if (!await saveCfg(mailBody(), $("m-saved"))) return;
+  $("m-test").disabled = true; $("m-saved").textContent = "Sending…";
+  try {
+    const r = await post("/api/alerts", { action: "test" });
+    $("m-saved").textContent = r.error ? "" : "Sent: check the inbox";
+    if (r.error) alert("The test email didn't go: " + r.error);
+  } finally { $("m-test").disabled = false; }
+};
+function renderMail(a) {
+  const el = $("m-status");
+  if (!a || (!a.on && !a.sent && !a.error)) { el.style.display = "none"; return; }
+  el.style.display = "";
+  const when = t => new Date(t * 1000).toLocaleString([], { weekday: "short", hour: "2-digit", minute: "2-digit", hourCycle: "h23" });
+  if (a.error && (!a.last_sent || a.error_at > a.last_sent)) { el.className = "msg bad"; el.textContent = `Last try failed (${when(a.error_at)}): ${a.error}`; }
+  else if (a.last_sent) { el.className = "msg ok"; el.textContent = `${a.sent} sent since start. Last: “${a.last_subject}”, ${when(a.last_sent)}.`; }
+  else { el.className = "msg ok"; el.textContent = "On. Nothing to send yet."; }
+}
+
 $("save").onclick = () => {
   const body = { allow_control: $("c-allow").checked };
   for (const [id, k] of Object.entries(FIELDS)) body[k] = $(id).value;
@@ -272,6 +312,7 @@ function render(s) {
   $("simbar").style.display = s.mode === "sim" && local ? "" : "none";
 
   renderAlarms(s.alarms);
+  renderMail(s.alerts);
   const cm = s.mpb;
   $("cV").textContent = fmt(cm.v); $("cX").textContent = fmt(cm.vx); $("cY").textContent = fmt(cm.vy); $("cZ").textContent = fmt(cm.vz);
   $("cT").textContent = fmt(cm.temp, 1); $("cS").textContent = cm.shocks ?? "–";

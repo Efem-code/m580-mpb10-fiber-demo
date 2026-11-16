@@ -194,6 +194,19 @@ class HistReader {
         return cal.getTimeInMillis() / 1000;
     }
 
+    List<List<Object>> rows(double hours) {
+        long cut = (long) (System.currentTimeMillis() / 1000.0 - hours * 3600);
+        synchronized (lock) {
+            return new ArrayList<List<Object>>(rows.tailMap(cut).values());
+        }
+    }
+
+    int period() {
+        synchronized (lock) {
+            return (Integer) status.get("period");
+        }
+    }
+
     String json(double hours) {
         long cut = (long) (System.currentTimeMillis() / 1000.0 - hours * 3600);
         synchronized (lock) {

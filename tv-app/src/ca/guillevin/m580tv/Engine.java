@@ -64,6 +64,7 @@ class Engine {
     private boolean limitsDirty = true;
     // the PLC's historian (S07_History)
     final HistReader hist;
+    final Alerter alerter = new Alerter();
 
     private static double now() {
         return System.currentTimeMillis() / 1000.0;
@@ -109,6 +110,18 @@ class Engine {
         c.put("sequence", new ArrayList<Object>(Arrays.asList(step("fwd", 600, 8), step("fwd", 1200, 8), step("fwd", 300, 6),
                 step("stop", 0, 6), step("rev", 900, 8), step("rev", 1500, 6), step("stop", 0, 6))));
         c.put("seq_loop", true);
+        // email alerts (Alerter.java, dashboard/alerts.py)
+        c.put("alerts_on", false);
+        c.put("smtp_host", "");
+        c.put("smtp_port", 587);
+        c.put("smtp_security", "starttls");
+        c.put("smtp_user", "");
+        c.put("smtp_password", "");
+        c.put("mail_from", "");
+        c.put("mail_to", "");
+        c.put("alert_warnings", true);
+        c.put("alert_cleared", false);
+        c.put("summary_hour", 7);
         return c;
     }
 
@@ -139,6 +152,11 @@ class Engine {
                 synchronized (lock) {
                     return new Object[] {String.valueOf(cfg.get("plc_host")), i("plc_port"), i("unit_id")};
                 }
+            }
+        });
+        thread("alerts", new Runnable() {
+            @Override public void run() {
+                alertLoop();
             }
         });
     }
@@ -234,6 +252,8 @@ class Engine {
     Map<String, Object> config() {
         synchronized (lock) {
             Map<String, Object> c = new LinkedHashMap<String, Object>(cfg);
+            c.put("smtp_password_set", !String.valueOf(cfg.get("smtp_password")).isEmpty());
+            c.remove("smtp_password");                 // the page never gets the mail password back
             c.put("_warnings", new ArrayList<Object>());
             c.put("_local", true);
             c.put("_app", true);
@@ -245,6 +265,7 @@ class Engine {
         synchronized (lock) {
             Map<String, Object> trial = new LinkedHashMap<String, Object>(cfg);
             for (Map.Entry<String, Object> e : changes.entrySet()) {
+                if (e.getKey().equals("smtp_password") && String.valueOf(e.getValue()).isEmpty()) continue;   // blank: keep it
                 if (cfg.containsKey(e.getKey()) && !e.getKey().equals("mode")) trial.put(e.getKey(), coerce(e.getKey(), e.getValue()));
             }
             boolean source = false;
@@ -914,8 +935,54 @@ class Engine {
             s.put("events", events.subList(0, Math.min(14, events.size())));
             s.put("reach", reach);
             s.put("marks", new ArrayList<Object>(marks));
+            s.put("alerts", alerter.status(truthy(cfg.get("alerts_on"))));
             return Json.write(s);
         }
+    }
+
+    /** Every 2 s: anything to email? Its own connection to the PLC, for claiming in %MW1297-1299. */
+    private void alertLoop() {
+        PlcClient c = null;
+        String where = null;
+        while (running) {
+            sleep(2000);
+            Map<String, Object> cf, st;
+            synchronized (lock) {
+                cf = new LinkedHashMap<String, Object>(cfg);
+                st = new LinkedHashMap<String, Object>(state);
+            }
+            String key = cf.get("plc_host") + ":" + cf.get("plc_port") + ":" + cf.get("unit_id");
+            try {
+                if (!key.equals(where)) {
+                    if (c != null) c.close();
+                    c = new PlcClient(String.valueOf(cf.get("plc_host")), ((Number) cf.get("plc_port")).intValue(), ((Number) cf.get("unit_id")).intValue());
+                    where = key;
+                }
+                alerter.tick(cf, st, c, new Alerter.Rows() {
+                    @Override public List<List<Object>> rows24h() {
+                        return hist.rows(24);
+                    }
+
+                    @Override public int period() {
+                        return hist.period();
+                    }
+                });
+            } catch (IOException | RuntimeException e) {
+                alerter.failed(e);
+                if (c != null) c.close();
+                c = null;
+                where = null;
+            }
+        }
+    }
+
+    String alertTest() {
+        Map<String, Object> cf, st;
+        synchronized (lock) {
+            cf = new LinkedHashMap<String, Object>(cfg);
+            st = new LinkedHashMap<String, Object>(state);
+        }
+        return alerter.test(cf, st);
     }
 
     String historyJson() {

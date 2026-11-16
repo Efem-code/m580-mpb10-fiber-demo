@@ -61,6 +61,7 @@ from collections import deque
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 import alarms
+import alerts
 import history
 from modbus import ModbusClient
 
@@ -106,6 +107,7 @@ DEFAULTS = {
     ],
     "seq_loop": True,
 }
+DEFAULTS.update(alerts.SETTINGS)          # email alerts (alerts.py)
 DEVICE_KEYS = ("laptop_ip", "plc_host", "noc_host", "cra_host", "sig300_host", "atv_host", "ap_host", "cobot_host")
 CONTROL_KEYS = ("laptop_ip", "plc_host", "cra_host")      # on the CPU's network
 FIELD_KEYS = ("noc_host", "sig300_host", "atv_host", "ap_host", "cobot_host")   # on the NOC's network
@@ -431,6 +433,8 @@ class Engine:
         self.hist_live = history.Reader(HISTORY_DIR)       # the real PLC: also into the CSV files
         self.hist_action = None                            # "copy" or "clear", for the history thread
         threading.Thread(target=self._hist_loop, daemon=True, name="history").start()
+        self.alerter = alerts.Alerter(alerts.LAPTOP)
+        threading.Thread(target=self._alert_loop, daemon=True, name="alerts").start()
         threading.Thread(target=self._loop, daemon=True, name="poll").start()
         threading.Thread(target=self._reach_loop, daemon=True, name="reach").start()
 
@@ -438,6 +442,8 @@ class Engine:
     def configure(self, new):
         with self.lock:
             trial = dict(self.cfg)
+            if not new.get("smtp_password"):
+                new = {k: v for k, v in new.items() if k != "smtp_password"}   # blank: keep the one we have
             trial.update({k: coerce(k, v) for k, v in new.items() if k in DEFAULTS})
             errors, warns = check_ip_plan(trial)
             if errors:
@@ -886,6 +892,42 @@ class Engine:
                     client.close()
                 client, where = None, None
 
+    def _alert_loop(self):
+        """Every 2 s: anything to email? Its own Modbus connection, for claiming in %MW1297-1299."""
+        client, where = None, None
+        while True:
+            time.sleep(2)
+            with self.lock:
+                cfg, state = dict(self.cfg), dict(self.state)
+            reader = self.hist_reader()
+
+            def rows_24h():
+                st, rows = reader.query(24)
+                return rows, st.get("period") or 60
+            try:
+                if cfg["mode"] == "live":
+                    key = (cfg["plc_host"], cfg["plc_port"], cfg["unit_id"])
+                    if key != where:
+                        if client:
+                            client.close()
+                        client = ModbusClient(cfg["plc_host"], int(cfg["plc_port"]), int(cfg["unit_id"]), timeout=1.0)
+                        where = key
+                else:
+                    if client:
+                        client.close()
+                    client, where = None, None
+                self.alerter.tick(cfg, state, client, rows_24h)
+            except Exception as e:  # noqa: BLE001 - the PLC is out of reach: shown in Setup, tried again
+                self.alerter._failed(e)
+                if client:
+                    client.close()
+                client, where = None, None
+
+    def alert_test(self):
+        with self.lock:
+            cfg, state = dict(self.cfg), dict(self.state)
+        return self.alerter.test(cfg, state)
+
     def hist_command(self, action):
         if action not in ("copy", "clear"):
             return "unknown history command"
@@ -979,7 +1021,8 @@ class Engine:
 
     def snapshot(self):
         with self.lock:
-            return dict(self.state, events=list(self.events)[:14], reach=self.reach, marks=list(self.marks))
+            return dict(self.state, events=list(self.events)[:14], reach=self.reach, marks=list(self.marks),
+                        alerts=dict(self.alerter.status, on=self.cfg["alerts_on"]))
 
 
 def sim_history_sample(t):
@@ -1004,8 +1047,10 @@ def sim_history_sample(t):
 
 
 def public_cfg(cfg):
-    """The settings as the page sees them."""
-    return dict(cfg)
+    """The settings as the page sees them: never the mail password, only whether there is one."""
+    out = {k: v for k, v in cfg.items() if k != "smtp_password"}
+    out["smtp_password_set"] = bool(cfg.get("smtp_password"))
+    return out
 
 
 def cia402_state(eta):
@@ -1132,6 +1177,9 @@ class Handler(BaseHTTPRequestHandler):
                 err = eng.alarm_command(b.get("action", ""), b.get("id"))
             except (OSError, TypeError, ValueError) as e:
                 err = f"couldn't reach the PLC: {e}"
+            return self._json({"error": err} if err else {"ok": True}, 409 if err else 200)
+        if path == "/api/alerts":
+            err = eng.alert_test() if b.get("action") == "test" else "unknown alerts command"
             return self._json({"error": err} if err else {"ok": True}, 409 if err else 200)
         if path == "/api/clock":
             try:

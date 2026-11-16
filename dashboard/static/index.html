@@ -744,6 +744,31 @@
       <p class="note">Default zones: ISO 10816-3, group 2 machines (15–300 kW) on rigid foundations. With drive control off, live mode only reads the PLC. With it on, it also writes the 5-word command block. Only this laptop can change settings or send commands; TVs and iPads opened with <code>--lan</code> are view-only.</p>
     </div>
     <div class="card">
+      <h2>Email &amp; text alerts</h2>
+      <div class="form">
+        <label for="m-on">Send alerts</label><input id="m-on" type="checkbox">
+        <h3>Mail server (the account that sends)</h3>
+        <label for="m-host">SMTP server</label><input id="m-host" placeholder="smtp.gmail.com">
+        <label for="m-port">Port</label><input id="m-port" type="number">
+        <label for="m-sec">Security</label>
+        <select id="m-sec"><option value="starttls">STARTTLS (port 587)</option><option value="ssl">SSL/TLS (port 465)</option><option value="none">None (local test server only)</option></select>
+        <label for="m-user">User name</label><input id="m-user" autocomplete="off">
+        <label for="m-pass">Password</label><input id="m-pass" type="password" autocomplete="new-password">
+        <label for="m-from">From address</label><input id="m-from" placeholder="the same as the user name if blank">
+        <h3>Who gets them</h3>
+        <label for="m-to">To (commas between)</label><input id="m-to" placeholder="name@company.com, 5195551234@txt.bell.ca">
+        <label for="m-warn">Also warnings</label><input id="m-warn" type="checkbox">
+        <label for="m-clr">Also when alarms clear</label><input id="m-clr" type="checkbox">
+        <label for="m-hour">Daily summary at</label><select id="m-hour"></select>
+        <span></span><div><button class="btn orange" id="m-save">Save</button> <button class="btn" id="m-test">Send test email</button> <span class="note" id="m-saved"></span></div>
+      </div>
+      <div class="msg" id="m-status" style="display:none"></div>
+      <p class="note">Critical alarms go straight away; warnings are gathered and sent at most every 15 minutes. The daily summary covers the last 24 hours of the PLC's history, with the samples attached as CSV.
+        For a text message, add the phone's email-to-text address (Bell <code>number@txt.bell.ca</code>, Rogers <code>@pcs.rogers.com</code>, Telus <code>@msg.telus.com</code>).
+        Gmail needs an <b>app password</b> (Google Account → Security → 2-Step Verification → App passwords), not the normal one.
+        The laptop and the TV can both send: they take turns through %MW1297–1299 in the PLC, so each alert comes once.</p>
+    </div>
+    <div class="card">
       <h2>Modbus map in the M580</h2>
       <table class="map"><tr><th style="width:110px">%MW (read)</th><th>Status block</th></tr><tbody id="mapBody"></tbody></table>
       <table class="map"><tr><th style="width:110px">%MW (write)</th><th>Command block (only when drive control is on)</th></tr><tbody id="cmdMapBody"></tbody></table>

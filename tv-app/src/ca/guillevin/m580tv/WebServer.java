@@ -150,6 +150,8 @@ class WebServer {
                     m.put("warnings", new java.util.ArrayList<Object>());
                     json(o, 400, m);
                 }
+            } else if (path.equals("/api/alerts")) {
+                result(o, "test".equals(action) ? eng.alertTest() : "unknown alerts command");
             } else if (path.equals("/api/hist")) {
                 eng.hist.copyAll();
                 result(o, null);
