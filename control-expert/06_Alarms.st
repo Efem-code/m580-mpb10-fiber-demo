@@ -81,7 +81,7 @@ aClkSet[0] := 0;
 
 (* ---- the clock, local time, BCD: [0] seconds, [1] HHMM, [2] MMDD, [3] year (Schneider FAQ FA230499) ---- *)
 RRTC_DT(OUT => dtAlmNow);
-DT_TO_ARINT(IN := dtAlmNow, OUT => aAlmClk);
+aAlmClk := DT_TO_ARINT(dtAlmNow);
 
 (* ---- commands from a screen ---- *)
 wAlmAckMask := INT_TO_WORD(aAlmCmd[0]);
