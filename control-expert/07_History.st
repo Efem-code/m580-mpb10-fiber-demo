@@ -3,7 +3,8 @@
    A historian inside the PLC: one sample a minute, kept for 3 days (4320 samples),
    the oldest overwritten. The dashboard, or the TV app, copies it off and keeps it.
 
-   Each sample, 8 INTs (aHistBuf[slot, 0..7]):
+   Each sample, 8 INTs (slots 0-2159 in aHistBufA[slot, 0..7], 2160-4319 in aHistBufB[slot - 2160, 0..7],
+   because Control Expert caps one variable at 64 KB):
      [0] date MMDD (BCD)   [1] time HHMM (BCD)
      [2] vibration X  [3] Y  [4] Z: the highest in the minute, mm/s x 100
      [5] temperature at the end of the minute, degC x 10
@@ -63,22 +64,31 @@ iHistPeriod := LIMIT(1, iHistPeriod, 3600);
 
 IF iHistSec >= iHistPeriod THEN
     iHistSec := 0;
-    aHistBuf[iHistHead, 0] := aAlmClk[2];
-    aHistBuf[iHistHead, 1] := aAlmClk[1];
+    aHistSample[0] := aAlmClk[2];
+    aHistSample[1] := aAlmClk[1];
     IF xHistGot THEN
-        aHistBuf[iHistHead, 2] := REAL_TO_INT(LIMIT(0.0, rHistVx * 100.0, 32000.0));
-        aHistBuf[iHistHead, 3] := REAL_TO_INT(LIMIT(0.0, rHistVy * 100.0, 32000.0));
-        aHistBuf[iHistHead, 4] := REAL_TO_INT(LIMIT(0.0, rHistVz * 100.0, 32000.0));
-        aHistBuf[iHistHead, 5] := REAL_TO_INT(LIMIT(-3000.0, rHistTemp * 10.0, 3000.0));
+        aHistSample[2] := REAL_TO_INT(LIMIT(0.0, rHistVx * 100.0, 32000.0));
+        aHistSample[3] := REAL_TO_INT(LIMIT(0.0, rHistVy * 100.0, 32000.0));
+        aHistSample[4] := REAL_TO_INT(LIMIT(0.0, rHistVz * 100.0, 32000.0));
+        aHistSample[5] := REAL_TO_INT(LIMIT(-3000.0, rHistTemp * 10.0, 3000.0));
     ELSE
-        aHistBuf[iHistHead, 2] := -32768;
-        aHistBuf[iHistHead, 3] := -32768;
-        aHistBuf[iHistHead, 4] := -32768;
-        aHistBuf[iHistHead, 5] := -32768;
+        aHistSample[2] := -32768;
+        aHistSample[3] := -32768;
+        aHistSample[4] := -32768;
+        aHistSample[5] := -32768;
     END_IF;
-    aHistBuf[iHistHead, 6] := iATV_Speed;
-    aHistBuf[iHistHead, 7] := WORD_TO_INT(SHL(INT_TO_WORD(aAlmClk[0]) AND 16#00FF, 8) OR (wHistFlags AND 16#00FF));
+    aHistSample[6] := iATV_Speed;
+    aHistSample[7] := WORD_TO_INT(SHL(INT_TO_WORD(aAlmClk[0]) AND 16#00FF, 8) OR (wHistFlags AND 16#00FF));
     iHistYear := aAlmClk[3];
+
+    (* slots 0-2159 live in aHistBufA, 2160-4319 in aHistBufB: one array can't hold all 3 days *)
+    FOR iHistJ := 0 TO 7 DO
+        IF iHistHead < 2160 THEN
+            aHistBufA[iHistHead, iHistJ] := aHistSample[iHistJ];
+        ELSE
+            aHistBufB[iHistHead - 2160, iHistJ] := aHistSample[iHistJ];
+        END_IF;
+    END_FOR;
 
     iHistHead := (iHistHead + 1) MOD 4320;
     IF iHistCount < 4320 THEN
@@ -105,7 +115,11 @@ IF aHistReq[1] <> iHistReqLast THEN
         FOR iHistI := 0 TO 13 DO
             iHistSrc := (iHistSlot + iHistI) MOD 4320;
             FOR iHistJ := 0 TO 7 DO
-                aHistWin[8 * iHistI + iHistJ] := aHistBuf[iHistSrc, iHistJ];
+                IF iHistSrc < 2160 THEN
+                    aHistWin[8 * iHistI + iHistJ] := aHistBufA[iHistSrc, iHistJ];
+                ELSE
+                    aHistWin[8 * iHistI + iHistJ] := aHistBufB[iHistSrc - 2160, iHistJ];
+                END_IF;
             END_FOR;
         END_FOR;
         aHistHdr[6] := iHistSlot;

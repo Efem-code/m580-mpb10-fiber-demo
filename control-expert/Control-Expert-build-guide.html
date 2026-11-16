@@ -211,7 +211,7 @@ xRing_Closed   := BMEP58_ECPU_EXT.REDUNDANCY_STATUS;</pre>
 <p>The dashboard’s <b>History</b> tab copies new samples every 15 seconds and adds them to one CSV file a day in the <code>history</code> folder next to the dashboard (next to the .exe for the single-file version). So the PLC holds 3 days, and the laptop keeps everything it has copied. A first copy of all 3 days takes about 15–30 seconds.</p>
 <div class="wrap"><table>
 <tr><th style="width:30%">Variable</th><th>What it is</th></tr>
-<tr><td><code>aHistBuf</code></td><td>The buffer, <code>ARRAY[0..4319, 0..7] OF INT</code>, unlocated. Kept through a power cut (warm start), cleared by a cold start or a download</td></tr>
+<tr><td><code>aHistBufA</code>, <code>aHistBufB</code></td><td>The buffer, two <code>ARRAY[0..2159, 0..7] OF INT</code> (slots 0–2159, then 2160–4319), unlocated. Two halves because one variable can’t be over 64 KB. Kept through a power cut (warm start), cleared by a cold start or a download</td></tr>
 <tr><td><code>iHistPeriod</code></td><td>Seconds per sample, 60 by default. 30 gives 1.5 days at twice the detail</td></tr>
 <tr><td><code>aHistHdr</code> at <code>%MW1900</code></td><td>[0] next slot, [1] samples kept, [2] seconds per sample, [3] samples taken, [4] year of the newest, [5] 4320, [6]–[7] the window answered, [8] 14, [9] layout version 1</td></tr>
 <tr><td><code>aHistReq</code> at <code>%MW1910</code></td><td>A screen writes [0] the first slot it wants and [1] a new request number. [0] = −1 clears the history</td></tr>

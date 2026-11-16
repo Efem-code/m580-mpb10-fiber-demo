@@ -136,7 +136,9 @@ dtClkNew;DT;;;The new clock value being built (06_Alarms)
 iClkDays;INT;;;Days left to add while building the new clock value
 diClkMs;DINT;;;Milliseconds left to add while building the new clock value
 wNetLinks;WORD;;;CPU ETH2 and ETH3 link bits
-aHistBuf;ARRAY[0..4319,0..7] OF INT;;;Historian: 4320 samples of 8 words, 3 days at one a minute (07_History)
+aHistBufA;ARRAY[0..2159,0..7] OF INT;;;Historian slots 0-2159, 8 words each (07_History)
+aHistBufB;ARRAY[0..2159,0..7] OF INT;;;Historian slots 2160-4319, 8 words each (07_History)
+aHistSample;ARRAY[0..7] OF INT;;;The sample being written
 aHistHdr;ARRAY[0..9] OF INT;%MW1900;;Historian header: next slot, count, period, samples so far, year, slots, window slot, request answered
 aHistReq;ARRAY[0..1] OF INT;%MW1910;;Historian request from a screen: [0] first slot (-1 clears), [1] new request number
 aHistWin;ARRAY[0..111] OF INT;%MW1912;;Historian window: 14 samples copied for a screen to read
