@@ -777,9 +777,9 @@ function histStatus(mode) {
   else if (!s.clock_set) { cls = "msg warn"; text = "The PLC clock isn't set, so the samples are dated from this laptop's clock and not saved to the files. Set it with the button on the Alarms tab, or in Control Expert: PLC > Debug Screen, Real-Time Clock, Update."; }
   else text = (mode === "sim" ? "Simulation: 3 made-up days, then one new sample a minute. " : "") +
     `The PLC holds ${s.samples} of ${s.slots} samples, one every ${s.period} s. Last copied ${when}.` +
-    (mode === "sim" ? "" : ` Saved in ${s.folder} (${s.files} day file${s.files === 1 ? "" : "s"}).`);
+    (mode === "sim" || !s.folder ? "" : ` Saved in ${s.folder} (${s.files} day file${s.files === 1 ? "" : "s"}).`);
   el.style.display = ""; el.className = cls; el.textContent = text;
-  $("hCopy").style.display = mode === "sim" ? "none" : "";
+  $("hCopy").style.display = mode === "sim" || !s.folder ? "none" : "";
   $("hCsv").disabled = !hRows.length;
 }
 const dur = mins => mins < 60 ? `${mins} min` : `${Math.floor(mins / 60)} h ${String(mins % 60).padStart(2, "0")}`;

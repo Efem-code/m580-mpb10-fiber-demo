@@ -150,6 +150,9 @@ class WebServer {
                     m.put("warnings", new java.util.ArrayList<Object>());
                     json(o, 400, m);
                 }
+            } else if (path.equals("/api/hist")) {
+                eng.hist.copyAll();
+                result(o, null);
             } else if (path.equals("/api/clear")) {
                 eng.clear();
                 result(o, null);
@@ -160,6 +163,20 @@ class WebServer {
         }
         if (path.equals("/api/state") || path.equals("/api/history")) {
             byte[] b = (path.equals("/api/state") ? eng.snapshotJson() : eng.historyJson()).getBytes(StandardCharsets.UTF_8);
+            head(o, 200, "application/json", b.length);
+            o.write(b);
+            o.flush();
+        } else if (path.equals("/api/hist")) {
+            double hours = 24;
+            for (String kv : (req[1].contains("?") ? req[1].substring(req[1].indexOf('?') + 1) : "").split("&")) {
+                if (kv.startsWith("hours=")) {
+                    try {
+                        hours = Math.max(0.1, Math.min(24 * 8, Double.parseDouble(kv.substring(6))));
+                    } catch (NumberFormatException ignored) {
+                    }
+                }
+            }
+            byte[] b = eng.hist.json(hours).getBytes(StandardCharsets.UTF_8);
             head(o, 200, "application/json", b.length);
             o.write(b);
             o.flush();

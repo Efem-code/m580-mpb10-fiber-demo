@@ -62,6 +62,8 @@ class Engine {
     private int[] alarmBlock;
     private double alarmRead;
     private boolean limitsDirty = true;
+    // the PLC's historian (S07_History)
+    final HistReader hist;
 
     private static double now() {
         return System.currentTimeMillis() / 1000.0;
@@ -130,6 +132,13 @@ class Engine {
         thread("reach", new Runnable() {
             @Override public void run() {
                 reachLoop();
+            }
+        });
+        hist = new HistReader(new HistReader.Host() {
+            @Override public Object[] plc() {
+                synchronized (lock) {
+                    return new Object[] {String.valueOf(cfg.get("plc_host")), i("plc_port"), i("unit_id")};
+                }
             }
         });
     }

@@ -203,13 +203,14 @@ class Reader:
 
     # ---- the PLC
     def _window(self, client, slot):
-        self.req = self.req % 30000 + 1
-        client.write_registers(REQ, [slot, self.req])
-        for _ in range(40):                       # the PLC answers within a scan or two
-            b = client.read_holding(BASE, WORDS)
-            if b[7] == self.req and b[6] == slot:
-                return b
-            time.sleep(0.025)
+        for _ in range(3):                        # the TV may ask at the same moment: ask again
+            self.req = self.req % 30000 + 1
+            client.write_registers(REQ, [slot, self.req])
+            for _ in range(15):                   # the PLC answers within a scan or two
+                b = client.read_holding(BASE, WORDS)
+                if b[7] == self.req and b[6] == slot:
+                    return b
+                time.sleep(0.025)
         raise TimeoutError("the PLC didn't answer the history request: is S07_History loaded?")
 
     def poll(self, client, now=None, full=False):

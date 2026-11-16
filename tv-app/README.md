@@ -5,7 +5,7 @@ with no laptop. The page is the dashboard's own (`dashboard/static`, copied in a
 `WebServer.java` do what `dashboard/server.py` does, in the app, and talk straight to the M580 over Modbus TCP.
 Change the status or command maps in both places.
 
-It has the same tabs as the dashboard, except the Cobot tab, which needs the laptop. It's live mode only.
+It has the same tabs as the dashboard, except the Cobot tab, which needs the laptop. It's live mode only. The History tab reads the PLC's historian (S07_History) and keeps it in memory: no CSV files on the TV, the laptop dashboard keeps those.
 
 ## Install
 
