@@ -766,7 +766,10 @@
       <p class="note">Critical alarms go straight away; warnings are gathered and sent at most every 15 minutes. The daily summary covers the last 24 hours of the PLC's history, with the samples attached as CSV.
         For a text message, add the phone's email-to-text address (Bell <code>number@txt.bell.ca</code>, Rogers <code>@pcs.rogers.com</code>, Telus <code>@msg.telus.com</code>).
         Gmail needs an <b>app password</b> (Google Account → Security → 2-Step Verification → App passwords), not the normal one.
-        The laptop and the TV can both send: they take turns through %MW1297–1299 in the PLC, so each alert comes once.</p>
+        The laptop and the TV can both send: they take turns through %MW1297–1299 in the PLC, so each alert comes once.
+        Everything here except the user name and password is kept in the PLC too (aMailCfg, %MW1746), so every screen gets the same settings;
+        the password stays on each screen, because anything in the PLC can be read over Modbus. The PLC is also the outbox: a screen that
+        connects sends what was raised in the last 24 hours while nothing was sending.</p>
     </div>
     <div class="card">
       <h2>Modbus map in the M580</h2>

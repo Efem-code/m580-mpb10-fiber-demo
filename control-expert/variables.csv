@@ -131,6 +131,7 @@ iSltLevel;INT;;;SLT060 level sent to SIG300 port S2, 0-100 %
 dtAlmNow;DT;;;PLC clock, for alarm timestamps
 aAlmClk;ARRAY[0..3] OF INT;;;PLC clock, BCD: [0] seconds, [1] HHMM, [2] MMDD, [3] year
 aNetDiag;ARRAY[0..1] OF INT;%MW1288;;Ring diagnostics: [0] CPU ETH2 and ETH3 links, [1] port status bytes
+aMailCfg;ARRAY[0..153] OF INT;%MW1746;;Email alert settings the screens share (dashboard/alerts.py): flags, port, security, summary hour, then server, from and recipients as text. Not the password
 aClkSet;ARRAY[0..4] OF INT;%MW1292;;Set the PLC clock from a screen: [1] days since 2000-01-01, [2] hours, [3] minutes, [4] seconds, then [0] = 1
 dtClkNew;DT;;;The new clock value being built (06_Alarms)
 iClkDays;INT;;;Days left to add while building the new clock value

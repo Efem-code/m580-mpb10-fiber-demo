@@ -120,6 +120,43 @@ class Alerts(unittest.TestCase):
         self.assertEqual(len(INBOX), 3, [m["Subject"] for m in INBOX])
         self.assertEqual(c1.read_holding(alerts.CLAIM, 1)[0], 23)
 
+    def test_shared_settings_go_through_the_plc(self):
+        c1, c2 = ModbusClient("127.0.0.1", 5035, 255), ModbusClient("127.0.0.1", 5035, 255)
+        c1.write_registers(alerts.MAIL_BASE, [0] * 6)
+        laptop, tv = alerts.MailSync(), alerts.MailSync()
+        mine = dict(CFG, smtp_host="smtp.gmail.com", mail_to="ops@example.com, 5195551234@txt.bell.ca", smtp_user="me@gmail.com")
+        self.assertIsNone(laptop.tick(mine, c1, dirty=False))           # an empty PLC gets ours
+        fresh_tv = dict(alerts.SETTINGS)
+        got = tv.tick(fresh_tv, c2, dirty=False)
+        self.assertEqual(got["mail_to"], mine["mail_to"])
+        self.assertEqual(got["smtp_host"], "smtp.gmail.com")
+        self.assertNotIn("smtp_user", got)                               # never through the PLC
+        self.assertNotIn("smtp_password", got)
+        fresh_tv.update(got, summary_hour=18)
+        tv.tick(fresh_tv, c2, dirty=True)                                # the TV changes the summary hour
+        laptop.next_read = 0
+        self.assertEqual(laptop.tick(mine, c1, dirty=False)["summary_hour"], 18)
+        with self.assertRaises(ValueError):
+            alerts.check_text("mail_to", "x" * 201)
+
+    def test_outbox_sends_what_nobody_sent(self):
+        c = ModbusClient("127.0.0.1", 5035, 255)
+        c.write_registers(alerts.CLAIM, [40, 1, 0])                      # sent up to event 40, then every screen went away
+        now = time.time()
+        at = lambda ago: time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(now - ago))   # noqa: E731
+        log = [dict(ev(44, 7), at=at(60)), dict(ev(43, 8), at=at(600)), dict(ev(42, 7, "cleared"), at=at(900)),
+               dict(ev(41, 8), at=at(2 * 86400)), dict(ev(40, 8), at=at(3 * 86400))]
+        a = alerts.Alerter(alerts.TV)
+        a.tick(CFG, state(44, log), c, lambda: ([], 60), now=now)
+        self.assertEqual(len(INBOX), 1)
+        m = INBOX[0]
+        self.assertIn("While no screen was sending", m["Subject"])
+        self.assertIn("2 alarm events", m["Subject"])                    # 43 and 44: 41 is too old, 42 is a clear
+        self.assertEqual(c.read_holding(alerts.CLAIM, 1)[0], 44)
+        a2 = alerts.Alerter(alerts.LAPTOP)                               # the next screen to start owes nothing
+        a2.tick(CFG, state(44, log), c, lambda: ([], 60), now=now)
+        self.assertEqual(len(INBOX), 1)
+
     def test_daily_summary_once_between_two_screens(self):
         lap, tv = alerts.Alerter(alerts.LAPTOP), alerts.Alerter(alerts.TV)
         c1, c2 = ModbusClient("127.0.0.1", 5035, 255), ModbusClient("127.0.0.1", 5035, 255)

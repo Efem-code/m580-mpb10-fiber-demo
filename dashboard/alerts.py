@@ -7,6 +7,16 @@ message in three spare PLC words before sending, and skips it if the other scree
     %MW1299  the day the last daily summary went out, MMDD
 No PLC code uses them. The TV app (tv-app/.../Alerter.java) does the same; keep the two in step.
 
+The PLC is also the outbox: %MW1297 says how far the alerts have gone, so a screen that connects sends
+what was raised while no screen was sending (the last 24 h), in one email.
+
+The settings everyone shares (not the mail user name or password, which any Modbus client could read) live
+in the PLC too, in aMailCfg at %MW1746 (154 words), so every screen picks them up:
+    [0] 16#4D41 once written   [1] bit 0 alerts on, bit 1 warnings, bit 2 clears   [2] port
+    [3] security 0 STARTTLS, 1 SSL, 2 none   [4] summary hour (-1 off)   [5] changes so far
+    [6..29] mail server, [30..53] from address, [54..153] recipients: ASCII, low byte first (as a
+    Control Expert STRING), zero-padded
+
 When: a critical alarm raised goes straight away. Warnings (and clears, if ticked) are gathered and sent at
 most every 15 minutes. The summary goes once a day after summary_hour, with the last 24 h of history as CSV.
 """
@@ -20,6 +30,12 @@ from email.message import EmailMessage
 import history
 
 CLAIM = 1297
+MAIL_BASE, MAIL_WORDS, MARK = 1746, 154, 0x4D41
+SHARED = ("alerts_on", "alert_warnings", "alert_cleared", "smtp_port", "smtp_security", "summary_hour",
+          "smtp_host", "mail_from", "mail_to")
+TEXT = {"smtp_host": (6, 24), "mail_from": (30, 24), "mail_to": (54, 100)}      # word offset, words
+SECURITY = ["starttls", "ssl", "none"]
+BACKLOG_S = 24 * 3600
 LAPTOP, TV = 1, 2
 BATCH_S = 15 * 60
 SETTINGS = {                       # added to the dashboard's settings
@@ -32,6 +48,86 @@ SETTINGS = {                       # added to the dashboard's settings
 def newer(a, b):
     """Alarm event number a came after b (they count to 29999, then start again)."""
     return 0 < (a - b) % 30000 < 15000
+
+
+def check_text(k, v):
+    """The shared text settings must fit their PLC words, in plain ASCII."""
+    if k in TEXT:
+        if not v.isascii():
+            raise ValueError(f"{k.replace('_', ' ')}: plain letters only (no accents)")
+        if len(v) > 2 * TEXT[k][1]:
+            raise ValueError(f"{k.replace('_', ' ')} is too long: {2 * TEXT[k][1]} characters at most")
+    return v
+
+
+def pack(text, words):
+    b = text.encode("ascii")[:2 * words].ljust(2 * words, b"\0")
+    return [b[2 * i] | b[2 * i + 1] << 8 for i in range(words)]
+
+
+def unpack(words):
+    b = bytes(x for w in words for x in (w & 0xFF, w >> 8 & 0xFF))
+    return b.split(b"\0", 1)[0].decode("ascii", "replace")
+
+
+def to_block(cfg, counter):
+    flags = bool(cfg["alerts_on"]) | bool(cfg["alert_warnings"]) << 1 | bool(cfg["alert_cleared"]) << 2
+    hdr = [MARK, flags, int(cfg["smtp_port"]) & 0xFFFF, SECURITY.index(cfg["smtp_security"]) if cfg["smtp_security"] in SECURITY else 0,
+           int(cfg["summary_hour"]) & 0xFFFF, counter & 0x7FFF]
+    return hdr + pack(cfg["smtp_host"], 24) + pack(cfg["mail_from"], 24) + pack(cfg["mail_to"], 100)
+
+
+def from_block(b):
+    if b[0] != MARK:
+        return None
+    hour = b[4] - 0x10000 if b[4] & 0x8000 else b[4]
+    out = {"alerts_on": bool(b[1] & 1), "alert_warnings": bool(b[1] & 2), "alert_cleared": bool(b[1] & 4),
+           "smtp_port": b[2], "smtp_security": SECURITY[b[3]] if b[3] < 3 else "starttls", "summary_hour": max(-1, min(23, hour))}
+    for k, (ofs, n) in TEXT.items():
+        out[k] = unpack(b[ofs:ofs + n])
+    return out
+
+
+class MailSync:
+    """Keeps the shared alert settings the same here and in the PLC (aMailCfg). The newest change wins:
+    ours when we've just saved, the PLC's when its change count moves."""
+
+    def __init__(self):
+        self.counter = None
+        self.next_read = 0.0
+
+    @staticmethod
+    def _read(client):
+        return client.read_holding(MAIL_BASE, 100) + client.read_holding(MAIL_BASE + 100, MAIL_WORDS - 100)
+
+    def write(self, client, cfg):
+        cur = client.read_holding(MAIL_BASE, 6)
+        counter = ((cur[5] if cur[0] == MARK else 0) + 1) & 0x7FFF
+        b = to_block(cfg, counter)
+        client.write_registers(MAIL_BASE + 6, b[6:100])
+        client.write_registers(MAIL_BASE + 100, b[100:])
+        client.write_registers(MAIL_BASE, b[:6])            # the header last: the block is whole when it changes
+        self.counter = counter
+
+    def tick(self, cfg, client, dirty, now=None):
+        """-> the PLC's settings if they changed there, else None. dirty: ours changed, send them."""
+        now = now or time.time()
+        if dirty:
+            self.write(client, cfg)
+            return None
+        if now < self.next_read:
+            return None
+        self.next_read = now + 10
+        hdr = client.read_holding(MAIL_BASE, 6)
+        if hdr[0] != MARK:
+            if cfg.get("smtp_host") or cfg.get("mail_to"):
+                self.write(client, cfg)                     # an empty PLC: give it ours
+            return None
+        if hdr[5] == self.counter:
+            return None
+        self.counter = hdr[5]
+        theirs = from_block(self._read(client))
+        return theirs if theirs and any(theirs[k] != cfg.get(k) for k in theirs) else None
 
 
 def recipients(cfg):
@@ -137,8 +233,14 @@ class Alerter:
         if not cfg.get("alerts_on") or not a:
             self.last_seq = a["seq"] if a else self.last_seq
             return
+        backlog = []
         if self.last_seq is None:
-            self.last_seq = a["seq"]               # start: don't mail the old history
+            self.last_seq = a["seq"]               # start: what was there is history, except what nobody sent
+            if client is not None:
+                done = client.read_holding(CLAIM, 1)[0]
+                if done:                           # 0: alerts never went out from here, nothing is owed
+                    backlog = [e for e in a["log"] if newer(e["seq"], done) and not newer(e["seq"], a["seq"])
+                               and self._recent(e, now) and self._wanted(e, cfg)]
         if a["seq"] != self.last_seq and not newer(a["seq"], self.last_seq):
             self.last_seq = a["seq"]               # the history was cleared
         new = sorted((e for e in a["log"] if newer(e["seq"], self.last_seq) and not newer(e["seq"], a["seq"])),
@@ -153,6 +255,13 @@ class Alerter:
         tag = "[SIMULATION] " if state.get("mode") == "sim" else ""
         asset = cfg.get("asset", "Demo motor")
         try:
+            if backlog:
+                backlog.sort(key=lambda e: (e["seq"] - a["seq"] - 1) % 30000)      # oldest first, the newest last
+                if self._claim(client, 0, backlog[-1]["seq"]):
+                    subject = f"{tag}While no screen was sending, on {asset}: {len(backlog)} alarm event" + ("s" if len(backlog) > 1 else "")
+                    self.send(cfg, subject, "Nothing could send these when they happened (no screen with internet was connected).\n\n"
+                              + self._body(a, state, backlog))
+                    self._sent(subject)
             if urgent:
                 top = max(e["seq"] for e in new)
                 if self._claim(client, 0, top):
@@ -188,6 +297,19 @@ class Alerter:
                     self._sent(subject)
         except Exception as e:  # noqa: BLE001 - shown in Setup; the next event tries again
             self._failed(e)
+
+    @staticmethod
+    def _recent(e, now):
+        try:
+            return now - time.mktime(time.strptime(e["at"] or "", "%Y-%m-%d %H:%M:%S")) <= BACKLOG_S
+        except ValueError:
+            return False
+
+    @staticmethod
+    def _wanted(e, cfg):
+        if e["type"] == "raised":
+            return e["prio"] == 1 or bool(cfg.get("alert_warnings"))
+        return e["type"] == "cleared" and bool(cfg.get("alert_cleared"))
 
     @staticmethod
     def _active(a):

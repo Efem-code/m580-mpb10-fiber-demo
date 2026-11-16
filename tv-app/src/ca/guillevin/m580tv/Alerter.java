@@ -30,8 +30,15 @@ import javax.net.ssl.SSLSocketFactory;
  * (1 laptop, 2 TV), [2] MMDD of the last summary.
  */
 class Alerter {
-    static final int CLAIM = 1297, ME = 2;
-    private static final double BATCH_S = 15 * 60;
+    static final int CLAIM = 1297, ME = 2, MAIL_BASE = 1746, MAIL_WORDS = 154, MARK = 0x4D41;
+    private static final double BATCH_S = 15 * 60, BACKLOG_S = 24 * 3600;
+    static final String[] SHARED = {"alerts_on", "alert_warnings", "alert_cleared", "smtp_port", "smtp_security", "summary_hour",
+        "smtp_host", "mail_from", "mail_to"};
+    static final String[] TEXT = {"smtp_host", "mail_from", "mail_to"};
+    private static final int[][] TEXT_AT = {{6, 24}, {30, 24}, {54, 100}};
+    private static final String[] SECURITY = {"starttls", "ssl", "none"};
+    private Integer mailCounter;
+    private double mailNextRead;
 
     private Integer lastSeq;
     private final List<Map<String, Object>> queue = new ArrayList<Map<String, Object>>();
@@ -74,6 +81,113 @@ class Alerter {
 
     private static int seq(Map<String, Object> e) {
         return ((Number) e.get("seq")).intValue();
+    }
+
+    // ---- the shared settings in the PLC (aMailCfg at %MW1746), as in alerts.py
+    /** Throws if a shared text setting won't fit its PLC words. */
+    static String checkText(String k, String v) {
+        for (int i = 0; i < TEXT.length; i++) {
+            if (!TEXT[i].equals(k)) continue;
+            for (char ch : v.toCharArray()) {
+                if (ch > 126 || ch < 32) throw new IllegalArgumentException(k.replace('_', ' ') + ": plain letters only (no accents)");
+            }
+            if (v.length() > 2 * TEXT_AT[i][1]) {
+                throw new IllegalArgumentException(k.replace('_', ' ') + " is too long: " + 2 * TEXT_AT[i][1] + " characters at most");
+            }
+        }
+        return v;
+    }
+
+    private static int[] block(Map<String, Object> cfg, int counter) {
+        int[] b = new int[MAIL_WORDS];
+        b[0] = MARK;
+        b[1] = (on(cfg, "alerts_on") ? 1 : 0) | (on(cfg, "alert_warnings") ? 2 : 0) | (on(cfg, "alert_cleared") ? 4 : 0);
+        b[2] = ((Number) cfg.get("smtp_port")).intValue() & 0xFFFF;
+        b[3] = 0;
+        for (int i = 0; i < 3; i++) if (SECURITY[i].equals(s(cfg, "smtp_security"))) b[3] = i;
+        b[4] = ((Number) cfg.get("summary_hour")).intValue() & 0xFFFF;
+        b[5] = counter & 0x7FFF;
+        for (int t = 0; t < TEXT.length; t++) {
+            byte[] chars = s(cfg, TEXT[t]).getBytes(StandardCharsets.US_ASCII);
+            for (int i = 0; i < TEXT_AT[t][1]; i++) {
+                int lo = 2 * i < chars.length ? chars[2 * i] & 0xFF : 0, hi = 2 * i + 1 < chars.length ? chars[2 * i + 1] & 0xFF : 0;
+                b[TEXT_AT[t][0] + i] = lo | hi << 8;             // low byte first, as a Control Expert STRING
+            }
+        }
+        return b;
+    }
+
+    private static Map<String, Object> fromBlock(int[] b) {
+        Map<String, Object> m = new LinkedHashMap<String, Object>();
+        m.put("alerts_on", (b[1] & 1) != 0);
+        m.put("alert_warnings", (b[1] & 2) != 0);
+        m.put("alert_cleared", (b[1] & 4) != 0);
+        m.put("smtp_port", b[2]);
+        m.put("smtp_security", b[3] < 3 ? SECURITY[b[3]] : "starttls");
+        int hour = b[4] >= 0x8000 ? b[4] - 0x10000 : b[4];
+        m.put("summary_hour", Math.max(-1, Math.min(23, hour)));
+        for (int t = 0; t < TEXT.length; t++) {
+            StringBuilder sb = new StringBuilder();
+            for (int i = 0; i < TEXT_AT[t][1]; i++) {
+                int w = b[TEXT_AT[t][0] + i], lo = w & 0xFF, hi = w >> 8 & 0xFF;
+                if (lo == 0) break;
+                sb.append((char) lo);
+                if (hi == 0) break;
+                sb.append((char) hi);
+            }
+            m.put(TEXT[t], sb.toString());
+        }
+        return m;
+    }
+
+    private void mailWrite(PlcClient c, Map<String, Object> cfg) throws IOException {
+        int[] cur = c.read(MAIL_BASE, 6);
+        int counter = ((cur[0] == MARK ? cur[5] : 0) + 1) & 0x7FFF;
+        int[] b = block(cfg, counter);
+        c.write(MAIL_BASE + 6, java.util.Arrays.copyOfRange(b, 6, 100));
+        c.write(MAIL_BASE + 100, java.util.Arrays.copyOfRange(b, 100, MAIL_WORDS));
+        c.write(MAIL_BASE, java.util.Arrays.copyOfRange(b, 0, 6));      // the header last
+        mailCounter = counter;
+    }
+
+    /** The PLC's shared settings if they changed there, else null. dirty: ours changed, send them. */
+    Map<String, Object> mailSync(Map<String, Object> cfg, PlcClient c, boolean dirty) throws IOException {
+        double now = System.currentTimeMillis() / 1000.0;
+        if (dirty) {
+            mailWrite(c, cfg);
+            return null;
+        }
+        if (now < mailNextRead) return null;
+        mailNextRead = now + 10;
+        int[] hdr = c.read(MAIL_BASE, 6);
+        if (hdr[0] != MARK) {
+            if (!s(cfg, "smtp_host").isEmpty() || !s(cfg, "mail_to").isEmpty()) mailWrite(c, cfg);
+            return null;
+        }
+        if (mailCounter != null && hdr[5] == mailCounter) return null;
+        mailCounter = hdr[5];
+        int[] all = new int[MAIL_WORDS];
+        System.arraycopy(c.read(MAIL_BASE, 100), 0, all, 0, 100);
+        System.arraycopy(c.read(MAIL_BASE + 100, MAIL_WORDS - 100), 0, all, 100, MAIL_WORDS - 100);
+        Map<String, Object> theirs = fromBlock(all);
+        for (Map.Entry<String, Object> e : theirs.entrySet()) {
+            if (!String.valueOf(e.getValue()).equals(String.valueOf(cfg.get(e.getKey())))) return theirs;
+        }
+        return null;
+    }
+
+    private static boolean recent(Map<String, Object> e, double now) {
+        try {
+            Date d = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.US).parse(s(e, "at"));
+            return now - d.getTime() / 1000.0 <= BACKLOG_S;
+        } catch (java.text.ParseException x) {
+            return false;
+        }
+    }
+
+    private static boolean wanted(Map<String, Object> e, Map<String, Object> cfg) {
+        if ("raised".equals(e.get("type"))) return ((Number) e.get("prio")).intValue() == 1 || on(cfg, "alert_warnings");
+        return "cleared".equals(e.get("type")) && on(cfg, "alert_cleared");
     }
 
     // ---- claiming in the PLC
@@ -133,7 +247,32 @@ class Alerter {
             return;
         }
         int now = ((Number) a.get("seq")).intValue();
+        double clock = System.currentTimeMillis() / 1000.0;
+        List<Map<String, Object>> backlog = new ArrayList<Map<String, Object>>();
+        if (lastSeq == null) {                                   // start: send only what nobody sent (the PLC is the outbox)
+            int done = c.read(CLAIM, 1)[0];
+            if (done != 0) {
+                for (Map<String, Object> e : l(a.get("log"))) {
+                    if (newer(seq(e), done) && !newer(seq(e), now) && recent(e, clock) && wanted(e, cfg)) backlog.add(0, e);
+                }
+            }
+        }
         if (lastSeq == null || (now != lastSeq && !newer(now, lastSeq))) lastSeq = now;   // start, or the history was cleared
+        if (!backlog.isEmpty()) {
+            final int newest = now;
+            java.util.Collections.sort(backlog, new java.util.Comparator<Map<String, Object>>() {
+                @Override public int compare(Map<String, Object> x, Map<String, Object> y) {
+                    return ((seq(x) - newest - 1) % 30000 + 30000) % 30000 - ((seq(y) - newest - 1) % 30000 + 30000) % 30000;
+                }
+            });
+            if (claim(c, 0, seq(backlog.get(backlog.size() - 1)))) {
+                String subject = "While no screen was sending, on " + s(cfg, "asset") + ": " + backlog.size() + " alarm event"
+                        + (backlog.size() > 1 ? "s" : "");
+                send(cfg, subject, "Nothing could send these when they happened (no screen with internet was connected).\n\n"
+                        + body(a, state, backlog), null, null);
+                sent(subject);
+            }
+        }
         List<Map<String, Object>> fresh = new ArrayList<Map<String, Object>>();
         for (Map<String, Object> e : l(a.get("log"))) {
             if (newer(seq(e), lastSeq) && !newer(seq(e), now)) fresh.add(0, e);           // the log is newest first

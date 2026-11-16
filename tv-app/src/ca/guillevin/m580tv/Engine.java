@@ -65,6 +65,7 @@ class Engine {
     // the PLC's historian (S07_History)
     final HistReader hist;
     final Alerter alerter = new Alerter();
+    private boolean mailDirty;
 
     private static double now() {
         return System.currentTimeMillis() / 1000.0;
@@ -212,7 +213,7 @@ class Engine {
         if (def instanceof Boolean) return truthy(v);
         if (def instanceof Integer) return (int) Double.parseDouble(String.valueOf(v));
         if (def instanceof Double) return Double.parseDouble(String.valueOf(v));
-        return String.valueOf(v);
+        return Alerter.checkText(k, String.valueOf(v).trim());
     }
 
     private static List<Object> cleanSequence(Object v) {
@@ -271,6 +272,7 @@ class Engine {
             boolean source = false;
             for (String k : new String[] {"plc_host", "plc_port", "unit_id", "base", "cmd_base"}) source |= !trial.get(k).equals(cfg.get(k));
             for (String k : new String[] {"zone_bc", "zone_cd", "temp_warn"}) limitsDirty |= !trial.get(k).equals(cfg.get(k));
+            for (String k : Alerter.SHARED) mailDirty |= !trial.get(k).equals(cfg.get(k));
             boolean was = allowed(), is = truthy(trial.get("allow_control"));
             if (is && !was) event("warn", "Drive control from the TV switched ON");
             if (!is && was) {
@@ -957,6 +959,28 @@ class Engine {
                     if (c != null) c.close();
                     c = new PlcClient(String.valueOf(cf.get("plc_host")), ((Number) cf.get("plc_port")).intValue(), ((Number) cf.get("unit_id")).intValue());
                     where = key;
+                }
+                boolean dirty;
+                synchronized (lock) {
+                    dirty = mailDirty;
+                    mailDirty = false;
+                }
+                Map<String, Object> theirs;
+                try {
+                    theirs = alerter.mailSync(cf, c, dirty);
+                } catch (IOException | RuntimeException x) {
+                    synchronized (lock) {
+                        mailDirty |= dirty;
+                    }
+                    throw x;
+                }
+                if (theirs != null) {
+                    synchronized (lock) {
+                        cfg.putAll(theirs);
+                        save();
+                        cf = new LinkedHashMap<String, Object>(cfg);
+                        event("info", "Alert settings updated from the PLC (another screen changed them)");
+                    }
                 }
                 alerter.tick(cf, st, c, new Alerter.Rows() {
                     @Override public List<List<Object>> rows24h() {

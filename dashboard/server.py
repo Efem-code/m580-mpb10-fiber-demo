@@ -155,6 +155,8 @@ def coerce(k, v):
     if k == "sequence":
         return clean_sequence(v)
     t = type(DEFAULTS[k])
+    if k in alerts.TEXT:
+        return alerts.check_text(k, str(v).strip())
     if t is bool:
         return v if isinstance(v, bool) else str(v).lower() in ("1", "true", "on", "yes")
     return t(v)
@@ -434,6 +436,8 @@ class Engine:
         self.hist_action = None                            # "copy" or "clear", for the history thread
         threading.Thread(target=self._hist_loop, daemon=True, name="history").start()
         self.alerter = alerts.Alerter(alerts.LAPTOP)
+        self.mail_sync = alerts.MailSync()         # the shared alert settings in the PLC (aMailCfg)
+        self.mail_dirty = False
         threading.Thread(target=self._alert_loop, daemon=True, name="alerts").start()
         threading.Thread(target=self._loop, daemon=True, name="poll").start()
         threading.Thread(target=self._reach_loop, daemon=True, name="reach").start()
@@ -450,6 +454,7 @@ class Engine:
                 return {"errors": errors, "warnings": warns}
             changed_source = any(trial[k] != self.cfg[k] for k in ("mode", "plc_host", "plc_port", "unit_id", "base", "cmd_base"))
             self.limits_dirty = self.limits_dirty or any(trial[k] != self.cfg[k] for k in ("zone_bc", "zone_cd", "temp_warn"))
+            self.mail_dirty = self.mail_dirty or any(trial[k] != self.cfg[k] for k in alerts.SHARED)
             if trial["allow_control"] and not self.cfg["allow_control"]:
                 self.event("warn", "Drive control from the dashboard switched ON")
             if not trial["allow_control"] and self.cfg["allow_control"]:
@@ -916,6 +921,21 @@ class Engine:
                     if client:
                         client.close()
                     client, where = None, None
+                if client:
+                    with self.lock:
+                        dirty, self.mail_dirty = self.mail_dirty, False
+                    try:
+                        theirs = self.mail_sync.tick(cfg, client, dirty)
+                    except Exception:
+                        with self.lock:
+                            self.mail_dirty = self.mail_dirty or dirty    # send them again next time
+                        raise
+                    if theirs:
+                        with self.lock:
+                            self.cfg = dict(self.cfg, **theirs)
+                            save_settings(self.cfg)
+                            cfg = dict(self.cfg)
+                        self.event("info", "Alert settings updated from the PLC (another screen changed them)")
                 self.alerter.tick(cfg, state, client, rows_24h)
             except Exception as e:  # noqa: BLE001 - the PLC is out of reach: shown in Setup, tried again
                 self.alerter._failed(e)
