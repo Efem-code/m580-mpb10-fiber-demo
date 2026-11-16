@@ -49,6 +49,7 @@ COMMAND MAP (written, offset from the command base, default %MW1100)
 import argparse
 import ipaddress
 import json
+import math
 import os
 import random
 import socket
@@ -60,6 +61,7 @@ from collections import deque
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 import alarms
+import history
 from modbus import ModbusClient
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -68,6 +70,7 @@ SETTINGS = os.path.join(HERE, "settings.json")
 if getattr(sys, "frozen", False):          # the single .exe: page inside it, settings next to it
     STATIC = os.path.join(sys._MEIPASS, "static")
     SETTINGS = os.path.join(os.path.dirname(sys.executable), "settings.json")
+HISTORY_DIR = os.path.join(os.path.dirname(SETTINGS), "history")     # one CSV file a day, copied from the PLC
 NA = -32768
 BLOCK = 32
 CMD_WORDS = 5
@@ -421,6 +424,13 @@ class Engine:
         self.alarm_read = 0.0
         self.limits_dirty = True            # our vibration and temperature limits need sending to the PLC
         self.marks = deque(maxlen=60)      # speed-change markers for the charts: [t, label]
+        # the PLC's historian (S07_History): a stand-in in simulation, filled with 3 made-up days
+        self.hist_buf = history.HistBuf()
+        self.hist_buf.backfill(time.time(), sim_history_sample)
+        self.hist_sim = history.Reader()                   # simulation: kept in memory only
+        self.hist_live = history.Reader(HISTORY_DIR)       # the real PLC: also into the CSV files
+        self.hist_action = None                            # "copy" or "clear", for the history thread
+        threading.Thread(target=self._hist_loop, daemon=True, name="history").start()
         threading.Thread(target=self._loop, daemon=True, name="poll").start()
         threading.Thread(target=self._reach_loop, daemon=True, name="reach").start()
 
@@ -670,6 +680,8 @@ class Engine:
                 self._writer_check()
                 self.state = self._decode(regs, err, now, cmd)
                 self._alarms_tick(now)
+                if cfg["mode"] == "sim":
+                    self._hist_sim_tick(now)
                 self._diff_events()
                 self._seq_tick(now, cmd)
                 self.state["prog"] = self._seq_state(now)
@@ -828,6 +840,59 @@ class Engine:
                 self.event("warn", f"Temperature high: {s['mpb']['temp']:.1f} °C")
         self.prev = s
 
+    # ---- the historian
+    def _hist_sim_tick(self, now):
+        s = self.state
+        m, d, L = s["mpb"], s["drive"], s["links"]
+        ok = m["vx"] is not None
+        flags = history.HistBuf.flags_of(m["warn"], m["alarm"], m["temp_warn"], now < self.sim.shock_until,
+                                         not L["iolink"], d["running"], d["fault"])
+        self.hist_buf.update(now, [m["vx"], m["vy"], m["vz"]] if ok else None, m["temp"], d["speed"] or 0, flags)
+
+    def hist_reader(self):
+        return self.hist_sim if self.cfg["mode"] == "sim" else self.hist_live
+
+    def _hist_loop(self):
+        """Every 15 s, copy any new samples. A full copy takes about 15 s over the network."""
+        client, where, next_poll = None, None, 0.0
+        while True:
+            time.sleep(0.5)
+            with self.lock:
+                cfg = dict(self.cfg)
+                action, self.hist_action = self.hist_action, None
+            now = time.time()
+            if not action and now < next_poll:
+                continue
+            next_poll = now + 15
+            reader = self.hist_sim if cfg["mode"] == "sim" else self.hist_live
+            try:
+                key = (cfg["mode"], cfg["plc_host"], cfg["plc_port"], cfg["unit_id"])
+                if key != where:
+                    if client:
+                        client.close()
+                    client = (history.BufClient(self.hist_buf) if cfg["mode"] == "sim" else
+                              ModbusClient(cfg["plc_host"], int(cfg["plc_port"]), int(cfg["unit_id"]), timeout=1.0))
+                    where = key
+                    reader.last_seq = None
+                if action == "clear":
+                    reader.clear_plc(client)
+                    time.sleep(0.3)
+                n = reader.poll(client, full=action == "copy")
+                if n and cfg["mode"] == "live":
+                    self.event("info", f"History: copied {n} new samples from the PLC")
+            except Exception as e:  # noqa: BLE001 - shown on the History tab
+                reader.fail(str(e) or e.__class__.__name__)
+                if client and cfg["mode"] == "live":
+                    client.close()
+                client, where = None, None
+
+    def hist_command(self, action):
+        if action not in ("copy", "clear"):
+            return "unknown history command"
+        with self.lock:
+            self.hist_action = action
+        return None
+
     # ---- alarms: the same block whether it comes from the PLC or from the simulation
     def _alarms_tick(self, now):
         s = self.state
@@ -893,6 +958,27 @@ class Engine:
             return dict(self.state, events=list(self.events)[:14], reach=self.reach, marks=list(self.marks))
 
 
+def sim_history_sample(t):
+    """Three made-up days for the simulation's historian: day shifts at 1200 rpm, a bearing slowly
+    getting worse, a few knocks. Returns (vibration xyz, temperature, speed, flags)."""
+    lt = time.localtime(t)
+    hour = lt.tm_hour + lt.tm_min / 60
+    rnd = random.Random(int(t) // 60)
+    run = 7 <= hour < 17 and lt.tm_wday < 6
+    age = (t % (3 * 86400)) / (3 * 86400)                  # 0..1 across the three days
+    if run:
+        v = 1.1 + 1.4 * age + 0.25 * math.sin(hour * 1.7) + rnd.uniform(-0.1, 0.25)
+        if 13.5 <= hour < 14.2 and age > 0.5:               # an afternoon unbalance episode
+            v += 2.0
+        temp, speed = 38 + 8 * min(1.0, (hour - 7) / 2) + rnd.uniform(-0.4, 0.4), 1200
+    else:
+        v, temp, speed = 0.12 + rnd.uniform(0, 0.05), 24 + rnd.uniform(-0.3, 0.3), 0
+    shock = run and rnd.random() < 0.004
+    vxyz = [round(v * 0.85, 2), round(v * 0.6, 2), round(v, 2)]
+    flags = history.HistBuf.flags_of(v >= 2.8, v >= 4.5, temp >= 70, shock, False, run, False)
+    return vxyz, round(temp, 1), speed, flags
+
+
 def public_cfg(cfg):
     """The settings as the page sees them."""
     return dict(cfg)
@@ -941,6 +1027,23 @@ class Handler(BaseHTTPRequestHandler):
         if path == "/api/history":
             with eng.lock:
                 return self._json(list(eng.history))
+        if path in ("/api/hist", "/api/hist.csv"):
+            q = dict(kv.split("=", 1) for kv in self.path.partition("?")[2].split("&") if "=" in kv)
+            try:
+                hours = max(0.1, min(24 * 8, float(q.get("hours", 24))))
+            except ValueError:
+                hours = 24
+            status, rows = eng.hist_reader().query(hours)
+            if path == "/api/hist":
+                return self._json({"status": status, "rows": rows, "mode": eng.cfg["mode"]})
+            body = history.to_csv(rows).encode("utf-8")
+            self.send_response(200)
+            self.send_header("Content-Type", "text/csv; charset=utf-8")
+            self.send_header("Content-Disposition", f'attachment; filename="machine-history-{time.strftime("%Y-%m-%d")}.csv"')
+            self.send_header("Content-Length", str(len(body)))
+            self.end_headers()
+            self.wfile.write(body)
+            return
         if path == "/api/config":
             errors, warns = check_ip_plan(eng.cfg)
             return self._json(dict(public_cfg(eng.cfg), _warnings=warns, _local=self._is_local()))
@@ -1005,6 +1108,9 @@ class Handler(BaseHTTPRequestHandler):
                 err = eng.alarm_command(b.get("action", ""), b.get("id"))
             except (OSError, TypeError, ValueError) as e:
                 err = f"couldn't reach the PLC: {e}"
+            return self._json({"error": err} if err else {"ok": True}, 409 if err else 200)
+        if path == "/api/hist":
+            err = eng.hist_command(b.get("action", ""))
             return self._json({"error": err} if err else {"ok": True}, 409 if err else 200)
         if path == "/api/config":
             try:

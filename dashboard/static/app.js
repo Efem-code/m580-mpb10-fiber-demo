@@ -733,6 +733,162 @@ function drawCharts() {
 }
 window.addEventListener("resize", drawCharts);
 
+// ------------------------------------------------------------ history (the PLC's historian, S07_History)
+// rows: [t, vx, vy, vz, temp, speed, flags]; flags bit 0 vib warning, 1 vib alarm, 2 temp warning,
+// 3 shock, 4 MPB10 data lost, 5 running, 6 drive fault
+let hRows = [], hHours = 24, hStat = null, hBusy = false;
+const histOn = () => $("tab-history").classList.contains("on");
+async function histLoad() {
+  if (hBusy) return;
+  hBusy = true;
+  try {
+    const r = await fetch(`/api/hist?hours=${hHours}`).then(r => r.json());
+    hRows = r.rows; hStat = r.status;
+    histStatus(r.mode); histTiles(); histDraw();
+  } catch (e) {
+    hStat = null; $("hStatus").style.display = ""; $("hStatus").className = "msg bad";
+    $("hStatus").textContent = "The dashboard server isn't answering.";
+  } finally { hBusy = false; }
+}
+function histStatus(mode) {
+  const s = hStat, el = $("hStatus");
+  const when = s.last_copy ? hhmmss(s.last_copy) : "not yet";
+  let cls = "msg ok", text;
+  if (!s.ok && s.error) { cls = "msg bad"; text = `Can't copy the history from the PLC: ${s.error}`; }
+  else if (s.copying) { cls = "msg warn"; text = "Copying the history from the PLC…"; }
+  else if (!s.clock_set) { cls = "msg warn"; text = "The PLC clock isn't set, so the samples are dated from this laptop's clock and not saved to the files. Set it in Control Expert: PLC > Debug screen > PLC Screen, Real-Time Clock, Update."; }
+  else text = (mode === "sim" ? "Simulation: 3 made-up days, then one new sample a minute. " : "") +
+    `The PLC holds ${s.samples} of ${s.slots} samples, one every ${s.period} s. Last copied ${when}.` +
+    (mode === "sim" ? "" : ` Saved in ${s.folder} (${s.files} day file${s.files === 1 ? "" : "s"}).`);
+  el.style.display = ""; el.className = cls; el.textContent = text;
+  $("hCopy").style.display = mode === "sim" ? "none" : "";
+  $("hCsv").disabled = !hRows.length;
+}
+const dur = mins => mins < 60 ? `${mins} min` : `${Math.floor(mins / 60)} h ${String(mins % 60).padStart(2, "0")}`;
+function histTiles() {
+  const per = (hStat && hStat.period || 60) / 60;
+  let max = null, maxT = null, warn = 0, alarm = 0, shock = 0, run = 0;
+  for (const r of hRows) {
+    const v = Math.max(r[1] ?? -1, r[2] ?? -1, r[3] ?? -1);
+    if (v >= 0 && (max == null || v > max)) { max = v; maxT = r[0]; }
+    if (r[6] & 2) alarm++; else if (r[6] & 1) warn++;
+    if (r[6] & 8) shock++;
+    if (r[6] & 32) run++;
+  }
+  $("hMax").textContent = max == null ? "–" : max.toFixed(2) + " mm/s";
+  $("hMaxAt").textContent = maxT ? new Date(maxT * 1000).toLocaleString([], { weekday: "short", hour: "2-digit", minute: "2-digit", hourCycle: "h23" }) : "";
+  $("hWarn").textContent = dur(Math.round(warn * per));
+  $("hAlarm").textContent = dur(Math.round(alarm * per));
+  $("hShock").textContent = shock;
+  $("hRun").textContent = dur(Math.round(run * per));
+}
+function hchart(id, series, left, right, limits, bands) {
+  const c = $(id), W = c.clientWidth, H = 300, dpr = window.devicePixelRatio || 1;
+  if (!W) return null;
+  c.width = W * dpr; c.height = H * dpr;
+  const g = c.getContext("2d"); g.scale(dpr, dpr);
+  const pl = 52, pr = 58, pt = 14, pb = 26, w = W - pl - pr, h = H - pt - pb;
+  const t1 = Date.now() / 1000, t0 = t1 - hHours * 3600, gap = 3 * (hStat && hStat.period || 60);
+  const X = t => pl + (t - t0) / (t1 - t0) * w;
+  const Y = (v, ax) => pt + h - (v - ax.min) / (ax.max - ax.min) * h;
+  // flag bands behind everything
+  const bw = Math.max(1.5, w / (hHours * 60) * ((hStat && hStat.period || 60) / 60));
+  for (const [bit, col] of bands) {
+    g.fillStyle = col;
+    for (const r of hRows) if (r[6] & bit) g.fillRect(X(r[0]) - bw, pt, bw, h);
+  }
+  g.font = "12px Segoe UI, Arial"; g.fillStyle = "#5F646A"; g.strokeStyle = "#ECEEF0"; g.lineWidth = 1;
+  for (let i = 0; i <= 4; i++) {
+    const y = pt + h * i / 4;
+    g.beginPath(); g.moveTo(pl, y); g.lineTo(pl + w, y); g.stroke();
+    g.textAlign = "right"; g.fillText((left.max - (left.max - left.min) * i / 4).toFixed(left.dp ?? 1), pl - 6, y + 4);
+    if (right) { g.textAlign = "left"; g.fillText(Math.round(right.max - (right.max - right.min) * i / 4), pl + w + 6, y + 4); }
+  }
+  // time axis: whole hours, at a step that leaves room for the labels
+  const step = ([1, 2, 3, 6, 12, 24].find(s => hHours / s <= 8) || 24) * 3600;
+  g.textAlign = "center";
+  const d0 = new Date(t0 * 1000); d0.setMinutes(0, 0, 0);
+  for (let t = d0.getTime() / 1000; t <= t1; t += 3600) {
+    const d = new Date(t * 1000);
+    if (t < t0 || (d.getHours() * 3600) % step) continue;
+    const label = d.getHours() === 0 ? d.toLocaleDateString([], { weekday: "short", day: "numeric" })
+      : d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hourCycle: "h23" });
+    g.strokeStyle = "#F0F1F2"; g.beginPath(); g.moveTo(X(t), pt); g.lineTo(X(t), pt + h); g.stroke();
+    g.fillStyle = d.getHours() === 0 ? "#1F2326" : "#5F646A"; g.fillText(label, X(t), H - 6);
+  }
+  for (const [lim, col] of limits) {
+    if (lim == null || lim >= left.max) continue;
+    g.strokeStyle = col; g.setLineDash([6, 5]); g.lineWidth = 1.5;
+    g.beginPath(); g.moveTo(pl, Y(lim, left)); g.lineTo(pl + w, Y(lim, left)); g.stroke();
+  }
+  g.setLineDash([]);
+  for (const [idx, ax, col, width] of series) {
+    g.strokeStyle = col; g.lineWidth = width; g.beginPath();
+    let on = false, prev = null;
+    for (const r of hRows) {
+      if (r[idx] == null || (prev != null && r[0] - prev > gap)) on = false;
+      prev = r[0];
+      if (r[idx] == null || r[0] < t0) continue;
+      const x = X(r[0]), y = Y(Math.max(ax.min, Math.min(ax.max, r[idx])), ax);
+      if (on) g.lineTo(x, y); else g.moveTo(x, y);
+      on = true;
+    }
+    g.stroke();
+  }
+  return { g, X, pt };
+}
+function histDraw() {
+  if (!histOn()) return;
+  const vmax = Math.max((cfg.zone_cd || 4.5) * 1.3, ...hRows.map(r => Math.max(r[1] || 0, r[2] || 0, r[3] || 0) * 1.1));
+  const vax = { min: 0, max: Math.ceil(vmax), dp: 1 };
+  const k = hchart("hVib", [[1, vax, "#1F9CAD", 1.6], [2, vax, "#5B5BD6", 1.6], [3, vax, "#F06A2A", 2]], vax, null,
+    [[cfg.zone_bc, "#D98A00"], [cfg.zone_cd, "#C8322B"]], [[1, "rgba(232,160,32,.16)"], [2, "rgba(200,50,43,.18)"]]);
+  if (k) {
+    k.g.fillStyle = "#C8322B";
+    for (const r of hRows) if (r[6] & 8) {
+      const x = k.X(r[0]);
+      k.g.beginPath(); k.g.moveTo(x, k.pt); k.g.lineTo(x - 5, k.pt + 9); k.g.lineTo(x + 5, k.pt + 9); k.g.fill();
+    }
+  }
+  const tmax = Math.max(cfg.temp_warn || 70, ...hRows.map(r => r[4] || 0)) * 1.1;
+  const tax = { min: 0, max: Math.ceil(tmax / 10) * 10, dp: 0 };
+  const top = Math.ceil(Math.max(cfg.max_rpm || 1500, ...hRows.map(r => Math.abs(r[5] || 0))) * 1.1 / 200) * 200;
+  const sax = { min: hRows.some(r => r[5] < -1) ? -top : 0, max: top };
+  hchart("hTemp", [[5, sax, "#9AA0A6", 1.6], [4, tax, "#C8322B", 2.2]], tax, sax, [[cfg.temp_warn, "#D98A00"]], [[4, "rgba(200,50,43,.14)"]]);
+}
+function histHover(id, readId, text) {
+  const c = $(id);
+  c.addEventListener("mousemove", e => {
+    if (!hRows.length) return;
+    const w = c.clientWidth - 52 - 58, t1 = Date.now() / 1000, t0 = t1 - hHours * 3600;
+    const t = t0 + (e.offsetX - 52) / w * (t1 - t0);
+    let best = null;
+    for (const r of hRows) if (!best || Math.abs(r[0] - t) < Math.abs(best[0] - t)) best = r;
+    if (!best || Math.abs(best[0] - t) > 600) { $(readId).textContent = ""; return; }
+    const when = new Date(best[0] * 1000).toLocaleString([], { weekday: "short", hour: "2-digit", minute: "2-digit", hourCycle: "h23" });
+    const f = best[6], tags = [f & 2 ? "vibration alarm" : f & 1 ? "vibration warning" : "", f & 8 ? "shock" : "",
+      f & 4 ? "temperature warning" : "", f & 16 ? "sensor data lost" : "", f & 64 ? "drive fault" : ""].filter(Boolean);
+    $(readId).textContent = `${when}   ${text(best)}${tags.length ? "   · " + tags.join(", ") : ""}`;
+  });
+  c.addEventListener("mouseleave", () => { $(readId).textContent = ""; });
+}
+histHover("hVib", "hVibRead", r => r[1] == null ? "no sensor data" : `X ${fmt(r[1])}  Y ${fmt(r[2])}  Z ${fmt(r[3])} mm/s`);
+histHover("hTemp", "hTempRead", r => `${r[4] == null ? "–" : r[4].toFixed(1)} °C   ${r[5]} rpm`);
+document.querySelectorAll("#hRange .btn").forEach(b => b.onclick = () => {
+  document.querySelectorAll("#hRange .btn").forEach(x => x.classList.toggle("on", x === b));
+  hHours = +b.dataset.h; histLoad();
+});
+$("hCsv").onclick = () => { location.href = `/api/hist.csv?hours=${hHours}`; };
+$("hCopy").onclick = async () => {
+  const r = await post("/api/hist", { action: "copy" });
+  if (r.error) alert(r.error);
+  setTimeout(histLoad, 1500);
+};
+document.querySelector("nav button[data-tab=history]").addEventListener("click", histLoad);
+window.addEventListener("resize", histDraw);
+setInterval(() => { if (histOn()) histLoad(); }, 20000);
+if (histOn()) histLoad();
+
 // ------------------------------------------------------------ start
 (async () => {
   applyCfg(await fetch("/api/config").then(r => r.json()));

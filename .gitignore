@@ -8,3 +8,4 @@ tv-app/keystore.jks
 tv-app/*.apk
 tv-app/*.idsig
 tv-app/assets/
+dashboard/history/

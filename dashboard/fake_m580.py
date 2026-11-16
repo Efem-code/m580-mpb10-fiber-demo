@@ -1,9 +1,10 @@
 """Stand-in for the M580 on the bench: serves the dashboard's Modbus map and obeys its command block
 the way the Control Expert program does (watchdog, enable, CiA402-style drive state).
 
-  python fake_m580.py [port] [--no-enable]
+  python fake_m580.py [port] [--no-enable] [--hist-empty] [--hist-period=60]
   then in the dashboard: IP addresses tab -> M580 = 127.0.0.1, Setup -> Live, port 5020
 
+--hist-empty   starts the historian empty instead of with 3 made-up days; --hist-period sets its seconds per sample.
 --no-enable  starts with xDashboardAllowed = FALSE, to check the dashboard refuses to run.
 """
 import math
@@ -11,6 +12,7 @@ import sys
 import time
 
 import alarms
+import history
 from modbus import DataStore, ModbusServer
 
 BASE, CMD = 1000, 1100
@@ -22,6 +24,10 @@ ModbusServer("127.0.0.1", port, store).start()
 print(f"Fake M580 on 127.0.0.1:{port}: status %MW{BASE}, commands %MW{CMD}, dashboard allowed = {allowed}")
 
 alarm_log = alarms.AlarmLog()
+hist = history.HistBuf(period=int(next((a.split("=")[1] for a in sys.argv if a.startswith("--hist-period=")), 60)))
+if "--hist-empty" not in sys.argv:            # as if it had been running for 3 days
+    import server
+    hist.backfill(time.time(), server.sim_history_sample)
 store.write("holding", alarms.CMD_BASE, [0, 0])
 hb = 0
 speed = 0.0
@@ -63,3 +69,10 @@ while True:
     store.write("holding", alarms.CMD_BASE, [0, 0])
     conds = {n for n, on in ((6, "--alarm-demo" in sys.argv and now % 20 < 10), (7, v >= 2.8), (8, v >= 4.5)) if on}
     store.write("holding", alarms.BASE, alarm_log.update(conds, now, ack, clear == 1))
+    # the historian, S07_History: answer a request, then publish the header and the window
+    hist.request(*store.read("holding", history.REQ, 2))
+    hist.update(now, [v * 0.85, v, v * 0.4], 30 + 12 * s, speed,
+                history.HistBuf.flags_of(v >= 2.8, v >= 4.5, False, False, False, running, False))
+    blk = hist.block()
+    store.write("holding", history.BASE, blk[:10])
+    store.write("holding", history.WIN, blk[12:])

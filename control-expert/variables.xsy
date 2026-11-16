@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <VariablesExchangeFile>
-<fileHeader company="Schneider Automation" product="EcoStruxure Control Expert" dateTime="date_and_time#2026-11-05-14:32:53" content="Variable source file" DTDVersion="41"></fileHeader>
-<contentHeader name="M580 MPB10 demo" version="0.0.000" dateTime="date_and_time#2026-11-05-14:32:53"></contentHeader>
+<fileHeader company="Schneider Automation" product="EcoStruxure Control Expert" dateTime="date_and_time#2026-11-16-10:19:42" content="Variable source file" DTDVersion="41"></fileHeader>
+<contentHeader name="M580 MPB10 demo" version="0.0.000" dateTime="date_and_time#2026-11-16-10:19:42"></contentHeader>
 <dataBlock>
 <variables name="aDash" typeName="ARRAY[0..31] OF INT" topologicalAddress="%MW1000">
 <comment>Status block read by the dashboard</comment>
@@ -432,6 +432,83 @@
 </variables>
 <variables name="wNetLinks" typeName="WORD">
 <comment>CPU ETH2 and ETH3 link bits</comment>
+</variables>
+<variables name="aHistBuf" typeName="ARRAY[0..4319,0..7] OF INT">
+<comment>Historian: 4320 samples of 8 words, 3 days at one a minute (07_History)</comment>
+</variables>
+<variables name="aHistHdr" typeName="ARRAY[0..9] OF INT" topologicalAddress="%MW1900">
+<comment>Historian header: next slot, count, period, samples so far, year, slots, window slot, request answered</comment>
+</variables>
+<variables name="aHistReq" typeName="ARRAY[0..1] OF INT" topologicalAddress="%MW1910">
+<comment>Historian request from a screen: [0] first slot (-1 clears), [1] new request number</comment>
+</variables>
+<variables name="aHistWin" typeName="ARRAY[0..111] OF INT" topologicalAddress="%MW1912">
+<comment>Historian window: 14 samples copied for a screen to read</comment>
+</variables>
+<variables name="iHistPeriod" typeName="INT">
+<comment>Seconds per historian sample (1-3600)</comment>
+<variableInit value="60"></variableInit>
+</variables>
+<variables name="iHistSec" typeName="INT">
+<comment>Seconds into the current sample</comment>
+<variableInit value="0"></variableInit>
+</variables>
+<variables name="iHistHead" typeName="INT">
+<comment>Next historian slot</comment>
+<variableInit value="0"></variableInit>
+</variables>
+<variables name="iHistCount" typeName="INT">
+<comment>Historian samples kept</comment>
+<variableInit value="0"></variableInit>
+</variables>
+<variables name="iHistSeq" typeName="INT">
+<comment>Historian samples taken (counts to 29999)</comment>
+<variableInit value="0"></variableInit>
+</variables>
+<variables name="iHistYear" typeName="INT">
+<comment>Year of the newest sample, BCD</comment>
+<variableInit value="0"></variableInit>
+</variables>
+<variables name="iHistReqLast" typeName="INT">
+<comment>Last request number answered</comment>
+<variableInit value="0"></variableInit>
+</variables>
+<variables name="iHistSlot" typeName="INT">
+<comment>First slot of the window being copied</comment>
+</variables>
+<variables name="iHistSrc" typeName="INT">
+<comment>Slot being copied</comment>
+</variables>
+<variables name="iHistI" typeName="INT">
+<comment>Loop index</comment>
+</variables>
+<variables name="iHistJ" typeName="INT">
+<comment>Loop index</comment>
+</variables>
+<variables name="rtHistTick" typeName="R_TRIG">
+<comment>1 s tick for the historian</comment>
+</variables>
+<variables name="wHistNow" typeName="WORD">
+<comment>What is happening now (historian flag bits)</comment>
+</variables>
+<variables name="wHistFlags" typeName="WORD">
+<comment>What happened in this minute (historian flag bits)</comment>
+</variables>
+<variables name="xHistGot" typeName="BOOL">
+<comment>A valid MPB10 value arrived this minute</comment>
+<variableInit value="FALSE"></variableInit>
+</variables>
+<variables name="rHistVx" typeName="REAL">
+<comment>Highest vibration X this minute</comment>
+</variables>
+<variables name="rHistVy" typeName="REAL">
+<comment>Highest vibration Y this minute</comment>
+</variables>
+<variables name="rHistVz" typeName="REAL">
+<comment>Highest vibration Z this minute</comment>
+</variables>
+<variables name="rHistTemp" typeName="REAL">
+<comment>Latest temperature this minute</comment>
 </variables>
 </dataBlock>
 </VariablesExchangeFile>

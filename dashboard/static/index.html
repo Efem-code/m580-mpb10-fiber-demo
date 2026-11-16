@@ -73,8 +73,14 @@
   .lim { display: block; margin: 10px 0 14px; font-size: 15px; } .lim input { display: block; width: 100%; margin-top: 6px; }
   .cobotbar { display: flex; gap: 22px; align-items: center; flex-wrap: wrap; margin-bottom: 12px; font-size: 16px; }
   .cobotbar b { font-size: 22px; font-variant-numeric: tabular-nums; }
+  .hbar { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-bottom: 12px; }
+  .hbar .seg { display: inline-flex; border-radius: 8px; overflow: hidden; }
+  .hbar .seg .btn { border-radius: 0; } .hbar .seg .btn.on { background: var(--ink); color: #fff; }
+  .htiles { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; margin-bottom: 14px; }
+  .htiles .card b { display: block; font: 600 30px/1.1 "Segoe UI Semibold", "Segoe UI", sans-serif; font-variant-numeric: tabular-nums; }
+  .hread { min-height: 20px; font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; margin-top: 4px; }
   #cobotFrame { width: 100%; height: calc(100vh - 210px); min-height: 480px; border: 1px solid var(--rule); border-radius: 12px; background: #fff; }
-  body.app nav button[data-tab=cobot], body.app #almCsv, body.app #c-mode, body.app label[for=c-mode] { display: none; }
+  body.app nav button[data-tab=cobot], body.app nav button[data-tab=history], body.app #almCsv, body.app #c-mode, body.app label[for=c-mode] { display: none; }
   .sels { margin-top: 12px; padding-top: 8px; border-top: 1px solid var(--rule); }
   .sels div { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 5px 0; }
   .sels button { min-width: 74px; }
@@ -202,6 +208,7 @@
   <nav>
     <button data-tab="machine" class="on">Machine health</button>
     <button data-tab="alarms">Alarms<span class="badge" id="almBadge">0</span></button>
+    <button data-tab="history">History</button>
     <button data-tab="drive">Drive (ATV930)</button>
     <button data-tab="vfd">VFD control</button>
     <button data-tab="network">SIG300 &amp; network</button>
@@ -317,6 +324,40 @@
       <tbody id="almLog"></tbody>
     </table></div>
   </div>
+</section>
+
+<section class="tab" id="tab-history">
+  <div class="hbar">
+    <div class="seg" id="hRange">
+      <button class="btn" data-h="1">1 h</button><button class="btn" data-h="6">6 h</button><button class="btn on" data-h="24">24 h</button><button class="btn" data-h="72">3 days</button><button class="btn" data-h="168">7 days</button>
+    </div>
+    <span class="spacer"></span>
+    <button class="btn" id="hCopy">Copy all from the PLC again</button>
+    <button class="btn orange" id="hCsv">Save as CSV</button>
+  </div>
+  <div class="msg" id="hStatus" style="display:none"></div>
+  <div class="htiles">
+    <div class="card"><h2>Highest vibration</h2><b id="hMax">–</b><span class="sub" id="hMaxAt"></span></div>
+    <div class="card"><h2>Time in warning</h2><b id="hWarn">–</b><span class="sub">vibration over the warning limit</span></div>
+    <div class="card"><h2>Time in alarm</h2><b id="hAlarm">–</b><span class="sub">vibration over the alarm limit</span></div>
+    <div class="card"><h2>Shocks</h2><b id="hShock">–</b><span class="sub">minutes with a knock</span></div>
+    <div class="card"><h2>Running</h2><b id="hRun">–</b><span class="sub">motor turning</span></div>
+  </div>
+  <div class="card" style="margin-bottom:14px">
+    <h2>Vibration · highest in each minute, mm/s RMS</h2>
+    <canvas id="hVib" height="300"></canvas>
+    <div class="legend"><span style="--c:#1F9CAD">X</span><span style="--c:#5B5BD6">Y</span><span style="--c:#F06A2A">Z</span>
+      <span style="--c:rgba(232,160,32,.5)">warning</span><span style="--c:rgba(200,50,43,.45)">alarm</span><span style="--c:#C8322B">▲ shock</span></div>
+    <div class="hread" id="hVibRead"></div>
+  </div>
+  <div class="card">
+    <h2>Temperature and speed</h2>
+    <canvas id="hTemp" height="300"></canvas>
+    <div class="legend"><span style="--c:#C8322B">temperature, °C (left)</span><span style="--c:#9AA0A6">speed, rpm (right)</span></div>
+    <div class="hread" id="hTempRead"></div>
+  </div>
+  <p class="note" id="hNote">The PLC keeps the last 3 days, one sample a minute (S07_History). The dashboard copies new samples every 15 seconds and,
+    with the real PLC, keeps them in one CSV file a day in the <code>history</code> folder next to the dashboard, so nothing is lost when the PLC's 3 days roll over.</p>
 </section>
 
 <section class="tab" id="tab-drive">

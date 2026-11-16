@@ -55,9 +55,9 @@
 
 <h2><span class="n">1</span>What’s in the folder</h2>
 <div class="flow">
-  <span class="edit">00_IO_Map</span><i>→</i><span>01_MPB10_Decode</span><i>→</i><span>02_Dashboard_In</span><i>→</i><span>03_ATV930_Control</span><i>→</i><span>04_Dashboard_Out</span><i>→</i><span class="edit">05_IO_Out</span><i>→</i><span>06_Alarms</span>
+  <span class="edit">00_IO_Map</span><i>→</i><span>01_MPB10_Decode</span><i>→</i><span>02_Dashboard_In</span><i>→</i><span>03_ATV930_Control</span><i>→</i><span>04_Dashboard_Out</span><i>→</i><span class="edit">05_IO_Out</span><i>→</i><span>06_Alarms</span><i>→</i><span>07_History</span>
 </div>
-<p>All seven run in the <b>MAST</b> task, in that order. The safety CPU’s <b>SAFE</b> task stays empty: the safety I/O on the board isn’t used by this demo. Only the two orange sections name the device DDTs Control Expert generates (SIG300, ATV930, and the RIO drop’s status), so they are the only ones we edit for our project. The others work on plain variables.</p>
+<p>All eight run in the <b>MAST</b> task, in that order. The safety CPU’s <b>SAFE</b> task stays empty: the safety I/O on the board isn’t used by this demo. Only the two orange sections name the device DDTs Control Expert generates (SIG300, ATV930, and the RIO drop’s status), so they are the only ones we edit for our project. The others work on plain variables.</p>
 <div class="wrap"><table>
 <tr><th style="width:26%">File</th><th>Does</th></tr>
 <tr><td>00_IO_Map.st</td><td>Copies the SIG300 and ATV930 device-DDT inputs (health bits, input bytes, ETA, RFRD, LCR, OTR, THR, LFT) and the RIO drop’s health and ring status into plain variables. Ships “unmapped” (health FALSE) so it compiles and nothing runs.</td></tr>
@@ -67,6 +67,7 @@
 <tr><td>04_Dashboard_Out.st</td><td>Works out the stack-light state and fills the status block at %MW1000 for the dashboard (word 29 = RIO, enable and stack-light bits, words 30–31 = ramps in use).</td></tr>
 <tr><td>05_IO_Out.st</td><td>Writes CMD, LFRD and the ramps into the ATV930 device DDT, and a vibration bar to the SICK SLT060 on SIG300 port S2 (set it to Level Meter Mode, ISDU 120 = 1; segment colors, ISDU 262, 1–8 green, 9–16 yellow, 17–20 red; style, ISDU 263, all continuous).</td></tr>
 <tr><td>06_Alarms.st</td><td>Latched alarms with acknowledge, timestamps and a 64-event history. Fills <code>%MW1300</code> for the dashboard’s Alarms tab, and plain variables for anyone building a screen (section 7).</td></tr>
+<tr><td>07_History.st</td><td>A historian in the PLC: one sample a minute (vibration X, Y, Z, temperature, speed, warning and shock flags), the last 3 days. The dashboard copies it off at <code>%MW1900</code> into a CSV file a day (section 8).</td></tr>
 <tr><td>variables.csv</td><td>Every variable: name, type, located address, initial value, comment. Open it in Excel next to the Data Editor.</td></tr>
 </table></div>
 
@@ -150,7 +151,7 @@
 <ol class="steps">
   <li>Variables: import <code>variables.xsy</code> (Data Editor → right-click → <b>Import</b>, or File → Import), which holds every row of <code>variables.csv</code>. If our version refuses it, create them by hand from <code>variables.csv</code>; after editing the CSV, <code>python make_xsy.py</code> rebuilds the import file.</li>
   <li>Check every row of <code>variables.csv</code> is there. Give <code>aDash</code> the address <code>%MW1000</code> and <code>aCmd</code> <code>%MW1100</code>, and set the initial values shown (limits, <code>iMaxSpeed</code>, the placeholders).</li>
-  <li>Program → Tasks → MAST → Sections: create seven <b>ST</b> sections, in this order: <code>S00_IO_Map</code>, <code>S01_MPB10_Decode</code>, <code>S02_Dashboard_In</code>, <code>S03_ATV930_Control</code>, <code>S04_Dashboard_Out</code>, <code>S05_IO_Out</code>, <code>S06_Alarms</code>. (A section name can’t start with a digit, so each gets an S in front of its file name.)</li>
+  <li>Program → Tasks → MAST → Sections: create eight <b>ST</b> sections, in this order: <code>S00_IO_Map</code>, <code>S01_MPB10_Decode</code>, <code>S02_Dashboard_In</code>, <code>S03_ATV930_Control</code>, <code>S04_Dashboard_Out</code>, <code>S05_IO_Out</code>, <code>S06_Alarms</code>, <code>S07_History</code>. (A section name can’t start with a digit, so each gets an S in front of its file name.)</li>
   <li>Paste each file’s text into its section. Build → Analyze. It should compile with zero errors before we map anything.</li>
 </ol>
 
@@ -198,7 +199,21 @@ xRing_Closed   := BMEP58_ECPU_EXT.REDUNDANCY_STATUS;</pre>
 </table></div>
 <p>Timestamps come from the CPU’s clock, read with <code>RRTC_DT</code>, so set it first: a CPU with an empty clock reads 1980. The dashboard’s Alarms tab warns if it isn’t set.</p>
 
-<h2><span class="n">8</span>Commission it, in this order</h2>
+<h2><span class="n">8</span>History in the PLC</h2>
+<p><code>07_History</code> keeps the last <b>3 days</b> in the CPU, one sample a minute, 4320 samples, the oldest overwritten. Each sample holds the highest vibration on each axis in that minute, the temperature and speed at its end, and flags for anything that happened in it: vibration warning or alarm, temperature warning, shock, sensor data lost, drive running, drive fault. A one-second knock still shows, because the flags and the highest values are kept over the whole minute.</p>
+<p>The dashboard’s <b>History</b> tab copies new samples every 15 seconds and adds them to one CSV file a day in the <code>history</code> folder next to the dashboard (next to the .exe for the single-file version). So the PLC holds 3 days, and the laptop keeps everything it has copied. A first copy of all 3 days takes about 15–30 seconds.</p>
+<div class="wrap"><table>
+<tr><th style="width:30%">Variable</th><th>What it is</th></tr>
+<tr><td><code>aHistBuf</code></td><td>The buffer, <code>ARRAY[0..4319, 0..7] OF INT</code>, unlocated. Kept through a power cut (warm start), cleared by a cold start or a download</td></tr>
+<tr><td><code>iHistPeriod</code></td><td>Seconds per sample, 60 by default. 30 gives 1.5 days at twice the detail</td></tr>
+<tr><td><code>aHistHdr</code> at <code>%MW1900</code></td><td>[0] next slot, [1] samples kept, [2] seconds per sample, [3] samples taken, [4] year of the newest, [5] 4320, [6]–[7] the window answered, [8] 14, [9] layout version 1</td></tr>
+<tr><td><code>aHistReq</code> at <code>%MW1910</code></td><td>A screen writes [0] the first slot it wants and [1] a new request number. [0] = −1 clears the history</td></tr>
+<tr><td><code>aHistWin</code> at <code>%MW1912</code></td><td>The 14 samples asked for, 8 words each. One Modbus read of 124 words at <code>%MW1900</code> gets the header and the window together</td></tr>
+</table></div>
+<div class="warn"><b>Check the %MW size first.</b> The block runs to <code>%MW2023</code>. In the CPU’s configuration (double-click the CPU in the rack, Configuration tab, Memory), %MW must be at least <b>2048</b> words, or the build fails on the located addresses. The buffer needs about 70 KB of the CPU’s data memory, well inside a BMEP584040S.</div>
+<p>Samples are dated with the CPU clock (see section 7). If it isn’t set, the History tab says so, dates the samples from the laptop’s clock and doesn’t save them to the files.</p>
+
+<h2><span class="n">9</span>Commission it, in this order</h2>
 <h3>RIO drop over fiber</h3>
 <ol class="steps">
   <li>Power both racks. The fiber link LEDs on both BMXNRP0200s come on, the CRA takes its address and <code>xDrop_Health</code> goes TRUE.</li>
@@ -249,7 +264,7 @@ xRing_Closed   := BMEP58_ECPU_EXT.REDUNDANCY_STATUS;</pre>
 </table></div>
 <p>The bridge caps the speed reference at 300 rpm until we pass <code>--max-rpm</code> (for example <code>python drive_bridge.py --max-rpm 1750</code>). If the drive doesn’t answer, try <code>--drive-unit 248</code> or <code>255</code>. <code>--no-ramps</code> keeps the keypad ramps. Leave <code>xSimBridge</code>’s initial value FALSE, so the real M580 always uses the DDT.</p>
 
-<h2><span class="n">9</span>Confirm on our hardware</h2>
+<h2><span class="n">10</span>Confirm on our hardware</h2>
 <div class="warn"><ul style="margin:0">
   <li>Control Expert has the Safety (XLS) license, and the project’s CPU firmware (3.10) matches the CPU.</li>
   <li>The drop’s health bit and the CPU’s RIO main-ring status bit (element names in the Data Editor), and that pulling one fiber link leaves the drop running.</li>

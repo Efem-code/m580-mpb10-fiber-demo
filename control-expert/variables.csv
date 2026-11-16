@@ -132,3 +132,26 @@ dtAlmNow;DT;;;PLC clock, for alarm timestamps
 aAlmClk;ARRAY[0..3] OF INT;;;PLC clock, BCD: [0] seconds, [1] HHMM, [2] MMDD, [3] year
 aNetDiag;ARRAY[0..1] OF INT;%MW1288;;Ring diagnostics: [0] CPU ETH2 and ETH3 links, [1] port status bytes
 wNetLinks;WORD;;;CPU ETH2 and ETH3 link bits
+aHistBuf;ARRAY[0..4319,0..7] OF INT;;;Historian: 4320 samples of 8 words, 3 days at one a minute (07_History)
+aHistHdr;ARRAY[0..9] OF INT;%MW1900;;Historian header: next slot, count, period, samples so far, year, slots, window slot, request answered
+aHistReq;ARRAY[0..1] OF INT;%MW1910;;Historian request from a screen: [0] first slot (-1 clears), [1] new request number
+aHistWin;ARRAY[0..111] OF INT;%MW1912;;Historian window: 14 samples copied for a screen to read
+iHistPeriod;INT;;60;Seconds per historian sample (1-3600)
+iHistSec;INT;;0;Seconds into the current sample
+iHistHead;INT;;0;Next historian slot
+iHistCount;INT;;0;Historian samples kept
+iHistSeq;INT;;0;Historian samples taken (counts to 29999)
+iHistYear;INT;;0;Year of the newest sample, BCD
+iHistReqLast;INT;;0;Last request number answered
+iHistSlot;INT;;;First slot of the window being copied
+iHistSrc;INT;;;Slot being copied
+iHistI;INT;;;Loop index
+iHistJ;INT;;;Loop index
+rtHistTick;R_TRIG;;;1 s tick for the historian
+wHistNow;WORD;;;What is happening now (historian flag bits)
+wHistFlags;WORD;;;What happened in this minute (historian flag bits)
+xHistGot;BOOL;;FALSE;A valid MPB10 value arrived this minute
+rHistVx;REAL;;;Highest vibration X this minute
+rHistVy;REAL;;;Highest vibration Y this minute
+rHistVz;REAL;;;Highest vibration Z this minute
+rHistTemp;REAL;;;Latest temperature this minute
