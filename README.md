@@ -21,6 +21,7 @@ It runs on Ubuntu 22.04 or newer and similar distros. Ctrl+C stops it. On an old
 | `dashboard/` | The customer dashboard (Python 3, standard library only) and a stand-in PLC for testing |
 | `control-expert/` | The M580 program: Structured Text sections, variable list and a step-by-step Control Expert build guide |
 | `M580-MPB10-fiber-build-guide.html` | Bench build guide: parts, wiring diagram, IP plan, build steps, checklist, troubleshooting |
+| `IPC-setup-guide.html` | The Phoenix Contact VL3 PPC as the always-on alert station: email alerts, history kept for good, touchscreen. Set-up script in `dashboard/ipc/` |
 
 ## Install and run the dashboard
 
