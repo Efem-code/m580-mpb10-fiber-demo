@@ -948,6 +948,159 @@ window.addEventListener("resize", histDraw);
 setInterval(() => { if (histOn()) histLoad(); }, 20000);
 if (histOn()) histLoad();
 
+// ------------------------------------------------------------ maintenance outlook (maintenance.py)
+let mOut = null, mBusy = false;
+const maintOn = () => $("tab-maint").classList.contains("on");
+const M_STATE = { ok: "Normal", watch: "Keep an eye on it", act: "Plan maintenance", learning: "Learning" };
+const M_COL = ["#1F9CAD", "#5B5BD6", "#F06A2A"];
+function mWhen(d) {
+  if (d == null) return "not heading for it";
+  if (d <= 0) return "now";
+  if (d < 1.5) return "about a day";
+  if (d < 14) return `about ${Math.round(d)} days`;
+  if (d < 70) return `about ${Math.round(d / 7)} weeks`;
+  return "over two months";
+}
+async function maintLoad() {
+  if (mBusy) return;
+  mBusy = true;
+  try {
+    mOut = await fetch("/api/maintenance").then(r => r.json());
+    maintShow();
+  } catch (e) {
+    $("mState").textContent = "–"; $("mSub").textContent = "The dashboard server isn't answering.";
+  } finally { mBusy = false; }
+}
+function maintShow() {
+  const o = mOut;
+  if (!o) return;
+  $("mHead").className = "mhead " + o.status;
+  $("mState").textContent = M_STATE[o.status] || o.status;
+  const conf = { good: "good confidence", fair: "fair confidence", low: "low confidence", none: "" }[o.confidence];
+  $("mSub").textContent = (o.mode === "sim" ? "Simulation: six made-up weeks, a bearing starting to go in the last two. " : "") +
+    `${o.days} day${o.days === 1 ? "" : "s"} of running, ${o.running_hours} h in all` +
+    (o.baseline ? `; normal learnt ${o.baseline.from === o.baseline.to ? "on " + o.baseline.from : `from ${o.baseline.from} to ${o.baseline.to}`}` : "") +
+    (o.worst_speed ? `; limits forecast at ${o.worst_speed}, where it vibrates most` : "") + (conf ? ` · ${conf}` : "") + ".";
+  $("mFind").innerHTML = o.findings.map(f => `<li>${f.replace(/&/g, "&amp;").replace(/</g, "&lt;")}</li>`).join("");
+  ["x", "y", "z"].forEach(ax => {
+    const a = o.axes[ax], el = $("m" + ax.toUpperCase());
+    el.className = "card " + (a ? a.status : "");
+    el.querySelector("b").textContent = a ? `${a.change_pct > 0 ? "+" : ""}${a.change_pct} %` : "–";
+    el.querySelector(".sub").textContent = a ? `${fmt(a.level)} mm/s now, normal ${fmt(a.normal)} · ${a.per_week >= 0 ? "+" : ""}${fmt(a.per_week, 2)} mm/s a week` : "against normal";
+    el.querySelector(".eta").textContent = a ? `Warning: ${mWhen(a.days_to_warning)}` : "";
+  });
+  const t = o.temp, s = o.shocks;
+  $("mT").className = "card " + (t ? t.status : "");
+  $("mT").querySelector("b").textContent = t ? `${t.above_normal > 0 ? "+" : ""}${t.above_normal.toFixed(1)} °C` : "–";
+  $("mT").querySelector(".sub").textContent = t ? `against normal for the speed · ${t.per_week >= 0 ? "+" : ""}${t.per_week.toFixed(1)} °C a week` : "against normal";
+  $("mT").querySelector(".eta").textContent = t ? `${o.limits.temp} °C: ${mWhen(t.days_to_warning)}` : "";
+  $("mS").className = "card " + (s ? s.status : "");
+  $("mS").querySelector("b").textContent = s ? `${s.per_hour.toFixed(1)}/h` : "–";
+  $("mS").querySelector(".sub").textContent = s ? `last 7 days (${s.last_7_days}); normally ${s.normal_per_hour.toFixed(1)}/h` : "per running hour";
+  $("mS").querySelector(".eta").textContent = "";
+  $("mDone").disabled = !local; $("mUndo").disabled = !local;
+  $("mUndo").style.display = o.maint_since ? "" : "none";
+  $("mSince").textContent = o.maint_since ? `Last maintenance: ${o.maint_since}. Normal is learnt from then on.` : "";
+  maintDraw();
+}
+function maintDraw() {
+  const o = mOut, c = $("mChart");
+  if (!o || !maintOn()) return;
+  const W = c.clientWidth, H = 320, dpr = window.devicePixelRatio || 1;
+  if (!W) return;
+  c.width = W * dpr; c.height = H * dpr;
+  const g = c.getContext("2d"); g.scale(dpr, dpr);
+  g.clearRect(0, 0, W, H);
+  const pl = 48, pr = 16, pt = 14, pb = 26, w = W - pl - pr, h = H - pt - pb;
+  const ser = o.series || [];
+  if (ser.length < 2) {
+    g.fillStyle = "#5F646A"; g.font = "14px Segoe UI, Arial"; g.textAlign = "center";
+    g.fillText("Not enough days yet: the chart starts after two days of running.", W / 2, H / 2);
+    return;
+  }
+  const day = d => new Date(d + "T12:00:00").getTime() / 86400000;
+  const d0 = day(ser[0].day), dLast = day(ser[ser.length - 1].day);
+  // forecast: as far as the nearest warning, at least a week, at most 8 weeks ahead
+  const etas = Object.values(o.axes).map(a => a.days_to_warning).filter(v => v != null && v > 0);
+  const ahead = Math.max(7, Math.min(56, etas.length ? Math.min(...etas) * 1.1 : 14));
+  const d1 = dLast + ahead;
+  const top = Math.ceil(Math.max(o.limits.alarm * 1.1, ...ser.flatMap(s => s.level.map(v => v || 0))) * 2) / 2;
+  const X = d => pl + (d - d0) / (d1 - d0) * w, Y = v => pt + h - Math.min(v, top) / top * h;
+  g.fillStyle = "rgba(46,158,69,.10)";
+  const base = ser.filter(s => s.baseline);
+  if (base.length) g.fillRect(X(day(base[0].day) - 0.5), pt, X(day(base[base.length - 1].day) + 0.5) - X(day(base[0].day) - 0.5), h);
+  g.fillStyle = "rgba(0,0,0,.035)"; g.fillRect(X(dLast), pt, X(d1) - X(dLast), h);
+  g.font = "12px Segoe UI, Arial"; g.strokeStyle = "#ECEEF0"; g.lineWidth = 1;
+  for (let i = 0; i <= 4; i++) {
+    const v = top * (4 - i) / 4, y = Y(v);
+    g.beginPath(); g.moveTo(pl, y); g.lineTo(pl + w, y); g.stroke();
+    g.fillStyle = "#5F646A"; g.textAlign = "right"; g.fillText(v.toFixed(1), pl - 6, y + 4);
+  }
+  const step = [1, 2, 7, 14].find(s => (d1 - d0) / s <= 10) || 28;
+  g.textAlign = "center";
+  for (let d = Math.ceil(d0); d <= d1; d++) {
+    if ((d - Math.ceil(d0)) % step) continue;
+    const dt = new Date(d * 86400000);
+    g.fillStyle = d > dLast ? "#9AA0A6" : "#5F646A";
+    g.fillText(dt.toLocaleDateString([], { month: "short", day: "numeric" }), X(d), H - 6);
+  }
+  for (const [lim, col] of [[o.limits.warning, "#D98A00"], [o.limits.alarm, "#C8322B"]]) {
+    if (lim >= top) continue;
+    g.strokeStyle = col; g.setLineDash([6, 5]); g.lineWidth = 1.5;
+    g.beginPath(); g.moveTo(pl, Y(lim)); g.lineTo(pl + w, Y(lim)); g.stroke();
+  }
+  ["x", "y", "z"].forEach((ax, i) => {
+    g.setLineDash([]); g.strokeStyle = M_COL[i]; g.lineWidth = ax === "z" ? 2.4 : 1.8; g.beginPath();
+    let on = false;
+    for (const s of ser) {
+      const v = s.level[i];
+      if (v == null) { on = false; continue; }
+      if (on) g.lineTo(X(day(s.day)), Y(v)); else g.moveTo(X(day(s.day)), Y(v));
+      on = true;
+    }
+    g.stroke();
+    g.fillStyle = M_COL[i];
+    for (const s of ser) if (s.level[i] != null) { g.beginPath(); g.arc(X(day(s.day)), Y(s.level[i]), 2.2, 0, 7); g.fill(); }
+    const a = o.axes[ax];
+    if (a && a.per_week > 0.005) {
+      g.setLineDash([5, 4]); g.strokeStyle = M_COL[i]; g.globalAlpha = 0.6; g.lineWidth = 1.6; g.beginPath();
+      g.moveTo(X(dLast), Y(a.level)); g.lineTo(X(d1), Y(a.level + a.per_week / 7 * (d1 - dLast))); g.stroke();
+      g.globalAlpha = 1;
+    }
+  });
+  g.setLineDash([]);
+  g.fillStyle = "#5F646A"; g.textAlign = "left"; g.fillText("today", X(dLast) + 4, pt + 12);
+}
+$("mChart").addEventListener("mousemove", e => {
+  const o = mOut;
+  if (!o || !o.series || o.series.length < 2) return;
+  const ser = o.series, day = d => new Date(d + "T12:00:00").getTime() / 86400000;
+  const d0 = day(ser[0].day), dLast = day(ser[ser.length - 1].day);
+  const etas = Object.values(o.axes).map(a => a.days_to_warning).filter(v => v != null && v > 0);
+  const d1 = dLast + Math.max(7, Math.min(56, etas.length ? Math.min(...etas) * 1.1 : 14));
+  const d = d0 + (e.offsetX - 48) / ($("mChart").clientWidth - 64) * (d1 - d0);
+  const s = ser.reduce((b, x) => Math.abs(day(x.day) - d) < Math.abs(day(b.day) - d) ? x : b);
+  if (Math.abs(day(s.day) - d) > 0.7) { $("mRead").textContent = ""; return; }
+  $("mRead").textContent = `${new Date(s.day + "T12:00:00").toLocaleDateString([], { weekday: "short", month: "short", day: "numeric" })}` +
+    `   X ${fmt(s.level[0])}  Y ${fmt(s.level[1])}  Z ${fmt(s.level[2])} mm/s at ${o.worst_speed}` +
+    `   · ${s.temp_delta == null ? "" : (s.temp_delta > 0 ? "+" : "") + s.temp_delta.toFixed(1) + " °C against normal"}` +
+    `   · ${Math.round(s.minutes / 6) / 10} h running${s.shocks ? `, ${s.shocks} shock${s.shocks === 1 ? "" : "s"}` : ""}${s.baseline ? "   · learning normal" : ""}`;
+});
+$("mChart").addEventListener("mouseleave", () => { $("mRead").textContent = ""; });
+$("mDone").onclick = async () => {
+  if (!confirm("Maintenance done? The outlook forgets the old normal and learns a new one from today's running. It takes a few days of running to forecast again.")) return;
+  const r = await post("/api/maintenance", { action: "done" });
+  if (r.error) alert(r.error); else maintLoad();
+};
+$("mUndo").onclick = async () => {
+  const r = await post("/api/maintenance", { action: "undo" });
+  if (r.error) alert(r.error); else maintLoad();
+};
+document.querySelector("nav button[data-tab=maint]").addEventListener("click", maintLoad);
+window.addEventListener("resize", maintDraw);
+setInterval(() => { if (maintOn()) maintLoad(); }, 60000);
+if (maintOn()) maintLoad();
+
 // ------------------------------------------------------------ start
 (async () => {
   applyCfg(await fetch("/api/config").then(r => r.json()));

@@ -200,6 +200,7 @@ class Alerter:
         self.queue = []                # warnings and clears waiting for the next batch
         self.last_batch = 0.0
         self.summary_day = None
+        self.outlook = None                 # set by the dashboard: a function returning the maintenance outlook text
         self.lock = threading.Lock()
         self.status = {"sent": 0, "last_sent": None, "last_subject": "", "error": "", "error_at": None}
 
@@ -291,8 +292,14 @@ class Alerter:
                 if self._claim(client, 2, day):
                     rows, period = rows_24h()
                     subject = f"{tag}Daily summary for {asset}, {time.strftime('%a %d %b', lt)}"
+                    outlook = ""
+                    if self.outlook:
+                        try:
+                            outlook = f"Maintenance outlook:\n{self.outlook()}\n\n"
+                        except Exception:  # noqa: BLE001 - the summary still goes without it
+                            outlook = ""
                     body = (f"The last 24 hours on {asset}, from the PLC's history:\n\n{summary_text(rows, period)}\n\n"
-                            f"Now:\n{readings(state)}\n\nActive alarms: {self._active(a)}\n\nThe samples are attached as CSV.")
+                            f"{outlook}Now:\n{readings(state)}\n\nActive alarms: {self._active(a)}\n\nThe samples are attached as CSV.")
                     self.send(cfg, subject, body, (f"machine-history-{time.strftime('%Y-%m-%d', lt)}.csv", history.to_csv(rows)))
                     self._sent(subject)
         except Exception as e:  # noqa: BLE001 - shown in Setup; the next event tries again

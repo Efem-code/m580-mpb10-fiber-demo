@@ -80,9 +80,22 @@
   .hbar .seg .btn { border-radius: 0; } .hbar .seg .btn.on { background: var(--ink); color: #fff; }
   .htiles { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; margin-bottom: 14px; }
   .htiles .card b { display: block; font: 600 30px/1.1 "Segoe UI Semibold", "Segoe UI", sans-serif; font-variant-numeric: tabular-nums; }
+  .mhead { display: flex; gap: 18px; align-items: center; flex-wrap: wrap; padding: 16px 20px; border-radius: 12px; border: 2px solid var(--rule); background: #fff; margin-bottom: 14px; }
+  .mhead .state { font: 600 28px/1.1 "Segoe UI Semibold", "Segoe UI", sans-serif; }
+  .mhead .sub { color: var(--muted); font-size: 14px; flex: 1; min-width: 240px; }
+  .mhead.ok { background: var(--good-bg); border-color: var(--good); } .mhead.ok .state { color: var(--good); }
+  .mhead.watch { background: var(--warn-bg); border-color: var(--warn); } .mhead.watch .state { color: #9A6100; }
+  .mhead.act { background: var(--bad-bg); border-color: var(--bad); } .mhead.act .state { color: var(--bad); }
+  .mhead.learning .state { color: var(--muted); }
+  #mFind { margin: 0 0 14px; padding-left: 20px; font-size: 15px; } #mFind li { margin: 4px 0; }
+  .mtiles .card { border-top: 4px solid var(--off); } .mtiles .card.ok { border-top-color: var(--good); }
+  .mtiles .card.watch { border-top-color: var(--warn); } .mtiles .card.act { border-top-color: var(--bad); }
+  .mtiles .card .sub { display: block; font-size: 13px; color: var(--muted); margin-top: 4px; }
+  .mtiles .card .eta { display: block; font-weight: 600; margin-top: 6px; font-size: 14px; }
+  .mfoot { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin: 14px 0 6px; }
   .hread { min-height: 20px; font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; margin-top: 4px; }
   #cobotFrame { width: 100%; height: calc(100vh - 210px); min-height: 480px; border: 1px solid var(--rule); border-radius: 12px; background: #fff; }
-  body.app nav button[data-tab=cobot], body.app #hCsv, body.app #almCsv, body.app #almClock, body.app #c-mode, body.app label[for=c-mode] { display: none; }
+  body.app nav button[data-tab=cobot], body.app nav button[data-tab=maint], body.app #hCsv, body.app #almCsv, body.app #almClock, body.app #c-mode, body.app label[for=c-mode] { display: none; }
   .sels { margin-top: 12px; padding-top: 8px; border-top: 1px solid var(--rule); }
   .sels div { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 5px 0; }
   .sels button { min-width: 74px; }
@@ -211,6 +224,7 @@
     <button data-tab="machine" class="on">Machine health</button>
     <button data-tab="alarms">Alarms<span class="badge" id="almBadge">0</span></button>
     <button data-tab="history">History</button>
+    <button data-tab="maint">Maintenance</button>
     <button data-tab="drive">Drive (ATV930)</button>
     <button data-tab="vfd">VFD control</button>
     <button data-tab="network">SIG300 &amp; network</button>
@@ -360,6 +374,37 @@
   </div>
   <p class="note" id="hNote">The PLC keeps the last 3 days, one sample a minute (S07_History). The dashboard copies new samples every 15 seconds and,
     with the real PLC, keeps them in one CSV file a day in the <code>history</code> folder next to the dashboard, so nothing is lost when the PLC's 3 days roll over.</p>
+</section>
+
+<section class="tab" id="tab-maint">
+  <div class="mhead learning" id="mHead"><span class="state" id="mState">–</span><span class="sub" id="mSub">Working it out…</span></div>
+  <ul id="mFind"></ul>
+  <div class="htiles mtiles">
+    <div class="card" id="mX"><h2>X axis</h2><b>–</b><span class="sub"></span><span class="eta"></span></div>
+    <div class="card" id="mY"><h2>Y axis</h2><b>–</b><span class="sub"></span><span class="eta"></span></div>
+    <div class="card" id="mZ"><h2>Z axis</h2><b>–</b><span class="sub"></span><span class="eta"></span></div>
+    <div class="card" id="mT"><h2>Temperature</h2><b>–</b><span class="sub"></span><span class="eta"></span></div>
+    <div class="card" id="mS"><h2>Shocks</h2><b>–</b><span class="sub"></span><span class="eta"></span></div>
+  </div>
+  <div class="card">
+    <h2 id="mChartTitle">Vibration each day, against normal at the same speed · mm/s</h2>
+    <canvas id="mChart" height="320"></canvas>
+    <div class="legend"><span style="--c:#1F9CAD">X</span><span style="--c:#5B5BD6">Y</span><span style="--c:#F06A2A">Z</span>
+      <span style="--c:rgba(46,158,69,.35)">learning normal</span><span style="--c:#9AA0A6">forecast at today's rate</span>
+      <span style="--c:rgba(232,160,32,.6)">warning</span><span style="--c:rgba(200,50,43,.55)">alarm</span></div>
+    <div class="hread" id="mRead"></div>
+  </div>
+  <div class="mfoot">
+    <button class="btn orange" id="mDone">Maintenance done: learn a new normal from today</button>
+    <button class="btn" id="mUndo" style="display:none">Undo: use the first days as normal again</button>
+    <span class="note" id="mSince"></span>
+  </div>
+  <p class="note">How it works: from the minutes the motor was running, the dashboard learns what each axis and the temperature
+    normally read at each speed (first days of the history, or since the last maintenance). Each day is then compared with normal
+    <i>at the same speed</i>, so a day at a higher speed doesn't look like wear, and the last two weeks' trend is turned into days until the
+    warning and alarm limits at the speed where the machine vibrates most. It shows <i>that</i> the machine is getting worse and how
+    fast, not <i>why</i>: telling a bearing from misalignment or looseness needs the sensor's spectrum, which isn't logged.
+    It needs a few days of running to start and about two weeks to be reliable. It reads every day file in the history folder.</p>
 </section>
 
 <section class="tab" id="tab-drive">

@@ -63,6 +63,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import alarms
 import alerts
 import history
+import maintenance
 from modbus import ModbusClient
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -106,6 +107,7 @@ DEFAULTS = {
         {"dir": "stop", "rpm": 0, "hold": 6},
     ],
     "seq_loop": True,
+    "maint_since": "",                   # "maintenance done" on this day (YYYY-MM-DD): a new normal from then
 }
 DEFAULTS.update(alerts.SETTINGS)          # email alerts (alerts.py)
 DEVICE_KEYS = ("laptop_ip", "plc_host", "noc_host", "cra_host", "sig300_host", "atv_host", "ap_host", "cobot_host")
@@ -434,8 +436,11 @@ class Engine:
         self.hist_sim = history.Reader()                   # simulation: kept in memory only
         self.hist_live = history.Reader(HISTORY_DIR)       # the real PLC: also into the CSV files
         self.hist_action = None                            # "copy" or "clear", for the history thread
+        self.maint_files = maintenance.FileRows(HISTORY_DIR)   # every day file, for the maintenance outlook
+        self.maint_cache = (None, 0.0, None)                   # key, when, result
         threading.Thread(target=self._hist_loop, daemon=True, name="history").start()
         self.alerter = alerts.Alerter(alerts.LAPTOP)
+        self.alerter.outlook = lambda: maintenance.email_text(self.maintenance())
         self.mail_sync = alerts.MailSync()         # the shared alert settings in the PLC (aMailCfg)
         self.mail_dirty = False
         threading.Thread(target=self._alert_loop, daemon=True, name="alerts").start()
@@ -948,6 +953,39 @@ class Engine:
             cfg, state = dict(self.cfg), dict(self.state)
         return self.alerter.test(cfg, state)
 
+    def maintenance(self):
+        """The maintenance outlook (maintenance.py): all the day files plus what's in memory, or the
+        made-up 6 weeks in simulation. Worked out again at most once a minute."""
+        with self.lock:
+            cfg = dict(self.cfg)
+        now = time.time()
+        since = maint_since(cfg)
+        key = (cfg["mode"], since, cfg["zone_bc"], cfg["zone_cd"], cfg["temp_warn"])
+        k, at, res = self.maint_cache
+        if k == key and now - at < 60:
+            return res
+        if cfg["mode"] == "sim":
+            rows = maintenance.demo_rows(now)
+        else:
+            merged = {r[0]: r for r in self.maint_files.rows()}
+            merged.update({r[0]: r for r in self.hist_live.query(24 * 8)[1]})
+            rows = list(merged.values())
+        res = maintenance.analyse(rows, cfg, now, since)
+        res.update(mode=cfg["mode"], maint_since=cfg["maint_since"])
+        self.maint_cache = (key, now, res)
+        return res
+
+    def maint_command(self, action):
+        if action not in ("done", "undo"):
+            return "unknown maintenance command"
+        with self.lock:
+            self.cfg = dict(self.cfg, maint_since=time.strftime("%Y-%m-%d") if action == "done" else "")
+            save_settings(self.cfg)
+            self.maint_cache = (None, 0.0, None)
+        self.event("info", "Maintenance done: learning a new normal from today" if action == "done"
+                   else "Maintenance outlook: back to the first days as normal")
+        return None
+
     def hist_command(self, action):
         if action not in ("copy", "clear"):
             return "unknown history command"
@@ -1066,6 +1104,14 @@ def sim_history_sample(t):
     return vxyz, round(temp, 1), speed, flags
 
 
+def maint_since(cfg):
+    """The "maintenance done" day as epoch seconds (its local midnight), or None."""
+    try:
+        return time.mktime(time.strptime(cfg.get("maint_since") or "", "%Y-%m-%d"))
+    except ValueError:
+        return None
+
+
 def public_cfg(cfg):
     """The settings as the page sees them: never the mail password, only whether there is one."""
     out = {k: v for k, v in cfg.items() if k != "smtp_password"}
@@ -1133,6 +1179,8 @@ class Handler(BaseHTTPRequestHandler):
             self.end_headers()
             self.wfile.write(body)
             return
+        if path == "/api/maintenance":
+            return self._json(eng.maintenance())
         if path == "/api/config":
             errors, warns = check_ip_plan(eng.cfg)
             return self._json(dict(public_cfg(eng.cfg), _warnings=warns, _local=self._is_local()))
@@ -1207,6 +1255,9 @@ class Handler(BaseHTTPRequestHandler):
             except OSError as e:
                 err, msg = f"couldn't reach the PLC: {e}", None
             return self._json({"error": err} if err else {"ok": True, "message": msg}, 409 if err else 200)
+        if path == "/api/maintenance":
+            err = eng.maint_command(b.get("action", ""))
+            return self._json({"error": err} if err else {"ok": True}, 409 if err else 200)
         if path == "/api/hist":
             err = eng.hist_command(b.get("action", ""))
             return self._json({"error": err} if err else {"ok": True}, 409 if err else 200)
