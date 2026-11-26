@@ -1,0 +1,53 @@
+# Builds the Windows .exe from the branch picked, checks it serves the page, and keeps it as a run artifact.
+# With a tag given, it also replaces the .exe on that release.
+name: Windows build
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Release tag to put the .exe on (blank = only keep it as a run artifact)
+        required: false
+        default: ""
+
+permissions:
+  contents: write
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Build the .exe
+        working-directory: dashboard
+        run: |
+          python -m pip install pyinstaller
+          pyinstaller --onefile --name M580-Machine-Health-Demo --add-data "static;static" server.py
+
+      - name: Check it serves the dashboard
+        shell: pwsh
+        run: |
+          $p = Start-Process dashboard\dist\M580-Machine-Health-Demo.exe -ArgumentList "--no-browser","--port","8790" -PassThru
+          $ok = $false
+          foreach ($i in 1..30) {
+            try { if ((Invoke-WebRequest http://127.0.0.1:8790/ -UseBasicParsing).Content -match "<html") { $ok = $true; break } } catch { }
+            Start-Sleep 1
+          }
+          Stop-Process -Id $p.Id -Force
+          if (-not $ok) { throw "the .exe didn't serve the page" }
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: M580-Machine-Health-Demo-exe
+          path: dashboard/dist/M580-Machine-Health-Demo.exe
+
+      - name: Put it on the release
+        if: inputs.tag != ''
+        run: gh release upload "${{ inputs.tag }}" --clobber dashboard/dist/M580-Machine-Health-Demo.exe
