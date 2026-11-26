@@ -87,8 +87,9 @@ DEFAULTS = {
     "laptop_ip": "192.168.10.100", "plc_host": "192.168.10.10", "noc_host": "192.168.20.10",
     "cra_host": "192.168.10.20", "cra_drop": 3,
     "sig300_host": "192.168.20.20", "atv_host": "192.168.20.30", "netmask": "255.255.255.0",
-    # also on the device network: the D-Link router as a Wi-Fi access point (DHCP pool .150-.199) and the cobot
-    "ap_host": "192.168.20.1", "cobot_host": "192.168.20.94",
+    # also on the device network: the D-Link router as a Wi-Fi access point (DHCP pool .150-.199)
+    "ap_host": "192.168.20.1",
+    "cobot_host": "192.168.10.94",        # the Lexium cobot, on the control network (the switch on CPU ETH1)
     "gateway": "",                        # none: the rig is isolated
     # Modbus
     "plc_port": 502, "unit_id": 255, "base": 1000, "cmd_base": 1100,
@@ -111,8 +112,8 @@ DEFAULTS = {
 }
 DEFAULTS.update(alerts.SETTINGS)          # email alerts (alerts.py)
 DEVICE_KEYS = ("laptop_ip", "plc_host", "noc_host", "cra_host", "sig300_host", "atv_host", "ap_host", "cobot_host")
-CONTROL_KEYS = ("laptop_ip", "plc_host", "cra_host")      # on the CPU's network
-FIELD_KEYS = ("noc_host", "sig300_host", "atv_host", "ap_host", "cobot_host")   # on the NOC's network
+CONTROL_KEYS = ("laptop_ip", "plc_host", "cra_host", "cobot_host")      # on the CPU's network
+FIELD_KEYS = ("noc_host", "sig300_host", "atv_host", "ap_host")   # on the NOC's network
 # what the IP tab checks from this laptop, and on which TCP port
 REACH = {"plc_host": 502, "noc_host": 502, "cra_host": 502, "sig300_host": 80, "atv_host": 502,
          "ap_host": 80}      # not the cobot: its controller limits connections
@@ -125,6 +126,8 @@ def load_settings():
             saved = json.load(f)
         if "sig200_host" in saved and "sig300_host" not in saved:     # the rig moved from a SIG200 to a SIG300
             saved["sig300_host"] = saved["sig200_host"]
+        if saved.get("cobot_host") == "192.168.20.94":                   # the cobot moved to the control network
+            saved["cobot_host"] = DEFAULTS["cobot_host"]
         cfg.update({k: v for k, v in saved.items() if k in DEFAULTS})   # old keys (the NUA's, OPC UA) drop out
     except (OSError, ValueError):
         pass

@@ -91,7 +91,7 @@ class Engine {
         c.put("atv_host", "192.168.20.30");
         c.put("netmask", "255.255.255.0");
         c.put("ap_host", "192.168.20.1");
-        c.put("cobot_host", "192.168.20.94");
+        c.put("cobot_host", "192.168.10.94");
         c.put("gateway", "");
         c.put("plc_port", 502);
         c.put("unit_id", 255);

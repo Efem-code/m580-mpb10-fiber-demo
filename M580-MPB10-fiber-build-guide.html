@@ -64,7 +64,7 @@
 
 <h2><span class="n">1</span>What we’re building</h2>
 <div class="card">
-<svg viewBox="0 0 1000 560" role="img" aria-label="Wiring diagram: M580 main rack with BMEP584040S, BMEP58CPROS3, BMENOC0311, BMXNRP0200 and safety I/O; fiber RIO ring through two BMXNRP0200s to a BMECRA31210 drop with redundant power supplies; NOC ETH3 to the SIG300 and MPB10, ETH2 to the ATV930, ETH1 to the D-Link and cobot">
+<svg viewBox="0 0 1000 560" role="img" aria-label="Wiring diagram: M580 main rack with BMEP584040S, BMEP58CPROS3, BMENOC0311, BMXNRP0200 and safety I/O; fiber RIO ring through two BMXNRP0200s to a BMECRA31210 drop with redundant power supplies; NOC ETH3 to the SIG300 and MPB10, ETH2 to the ATV930, ETH1 to the D-Link">
   <rect x="10" y="10" width="605" height="540" rx="12" fill="#F7F8FA" stroke="#DDE0E4"/>
   <text x="28" y="40" font-family="Segoe UI" font-size="14" font-weight="600" fill="#5F646A">DEMO BOARD</text>
   <rect x="625" y="10" width="195" height="540" rx="12" fill="#F7F8FA" stroke="#DDE0E4"/>
@@ -154,7 +154,7 @@
   <text x="652" y="322" font-family="Segoe UI" font-size="10.5" fill="#5F646A">E-stop → STO</text>
   <rect x="640" y="346" width="165" height="54" rx="8" fill="#fff" stroke="#9AA0A6"/>
   <text x="652" y="368" font-family="Segoe UI" font-size="13" font-weight="600" fill="#282A2E">D-Link Wi-Fi AP</text>
-  <text x="652" y="386" font-family="Segoe UI" font-size="10.5" fill="#5F646A">+ Lexium cobot, iPads</text>
+  <text x="652" y="386" font-family="Segoe UI" font-size="10.5" fill="#5F646A">+ laptops, iPads</text>
 
   <!-- asset -->
   <rect x="850" y="150" width="120" height="66" rx="8" fill="#fff" stroke="#F06A2A" stroke-width="2"/>
@@ -193,7 +193,7 @@
 <tr><td>Altivar ATV930 · <b>ATV930U07M3</b></td><td>0.75 kW / 1 HP, IP21, with the graphic keypad. <b>Input 200–240 V three-phase, 50/60 Hz</b> (it will not run from a 120 V outlet). Output 0–240 V, <b>4.6 A</b> max. Embedded Ethernet port to the BMENOC0311 <b>ETH2</b> (EtherNet/IP). Shielded motor cable to the motor.</td></tr>
 <tr><td>Motor + unbalance weight</td><td>Three-phase motor that suits the ATV930U07M3: 208–230 V, <b>1 HP or less, full-load current 4.6 A or less</b>. A 4-pole motor on 60 Hz runs at about 1750 rpm. The MPB10 bolts near the drive-end bearing; a guarded clip-on offset weight on the shaft or a disc makes vibration on cue.</td></tr>
 <tr><td>E-stop</td><td>Wired to the ATV930 <b>STO</b> inputs per its safety manual. It never goes through the PLC or the dashboard.</td></tr>
-<tr><td>D-Link Wi-Fi router</td><td>Ours, already serving the cobot. Used as a Wi-Fi access point on the device network, so a laptop or iPad can reach the drive, the SIG300 and the cobot without a cable.</td></tr>
+<tr><td>D-Link Wi-Fi router</td><td>Ours. Used as a Wi-Fi access point on the device network, so a laptop or iPad can reach the drive and the SIG300 without a cable. (The cobot is on the control network, <code>192.168.10.94</code>.)</td></tr>
 <tr><td>Laptop</td><td>EcoStruxure Control Expert with the <b>Safety (XLS)</b> license (a BMEP584040S project needs it), the SICK SIG300 EDS file and the Altivar DTM library; SOPAS ET optional; a mini-B USB cable for the CPU’s first connection.</td></tr>
 </table></div>
 
@@ -205,13 +205,15 @@
 <tr><th colspan="3">Control network · 192.168.10.x</th></tr>
 <tr><td>M580 CPU BMEP584040S</td><td><code>192.168.10.10</code></td><td>Control Expert → CPU → IPConfig. <code>.11</code> is its IP address A in the project, so keep it free</td></tr>
 <tr><td>RIO drop BMECRA31210</td><td><code>192.168.10.20</code></td><td>Control Expert → drop IPConfig; drop 3 on the CRA rotary switches</td></tr>
-<tr><td>Laptop, built-in Ethernet</td><td><code>192.168.10.100</code></td><td>Windows adapter settings, no gateway. Plugs into the CPU service port ETH1</td></tr>
+<tr><td>IPC (Phoenix Contact VL3 PPC)</td><td><code>192.168.10.50</code></td><td>Windows adapter settings, no gateway. The always-on dashboard: see the IPC guide</td></tr>
+<tr><td>Lexium cobot</td><td><code>192.168.10.94</code></td><td>Cobot Expert network settings, no gateway. Shares the network; the M580 doesn’t control it</td></tr>
+<tr><td>Laptop, built-in Ethernet</td><td><code>192.168.10.100</code></td><td>Windows adapter settings, no gateway. All of these plug into a small switch on the CPU service port ETH1</td></tr>
+<tr><td>TV (Android)</td><td><code>192.168.10.201</code></td><td>The TV’s network settings, no gateway</td></tr>
 <tr><th colspan="3">Device network · 192.168.20.x</th></tr>
 <tr><td>BMENOC0311</td><td><code>192.168.20.10</code></td><td>Control Expert → NOC DTM → TCP/IP, <b>backplane port disabled</b></td></tr>
 <tr><td>SICK SIG300</td><td><code>192.168.20.20</code></td><td>SIG300 web UI (from its factory address)</td></tr>
 <tr><td>Altivar ATV930</td><td><code>192.168.20.30</code></td><td>Drive keypad → Communication → Embedded Ethernet (fixed IP)</td></tr>
 <tr><td>D-Link router (Wi-Fi access point)</td><td><code>192.168.20.1</code></td><td>Its web page. LAN port to the NOC’s ETH1, WAN port empty, DHCP pool <code>.150</code>–<code>.199</code></td></tr>
-<tr><td>Lexium cobot</td><td><code>192.168.20.94</code></td><td>Cobot Expert network settings (or a DHCP reservation in the D-Link). Shares the network; the M580 doesn’t control it</td></tr>
 <tr><td>Laptops and iPads on the Wi-Fi</td><td><code>.150</code>–<code>.199</code></td><td>From the D-Link’s DHCP</td></tr>
 <tr><td>BMXNRP0200 pair</td><td>none</td><td>Transparent</td></tr>
 </table></div>
@@ -239,11 +241,11 @@
   <li>Patch BMENOC0311 <b>ETH3</b> to one of the SIG300’s Ethernet ports with the RJ45-to-M12 cable.</li>
   <li>Bolt the MPB10 to the motor and run the M12 sensor cable to SIG300 port <b>S1</b>.</li>
 </ol>
-<h3>Wi-Fi and the cobot</h3>
+<h3>Wi-Fi</h3>
 <ol class="steps">
-  <li>On the D-Link’s web page (<code>http://192.168.20.1</code>): LAN address <code>192.168.20.1</code> / 24, DHCP pool <code>192.168.20.150</code> to <code>.199</code>. Give the cobot a reservation at <code>192.168.20.94</code>, or a fixed address in Cobot Expert.</li>
-  <li>Patch one of the D-Link’s <b>LAN</b> ports to the BMENOC0311’s <b>ETH1</b> service port. Leave its WAN port empty: it must not route the rig onto another network. The cobot stays cabled to the D-Link.</li>
-  <li>A laptop on the D-Link’s Wi-Fi now reaches the SIG300, the ATV930 and the cobot web pages. If its internet stops working, the D-Link has become its default route: set a fixed address in the pool with no gateway on that Wi-Fi adapter.</li>
+  <li>On the D-Link’s web page (<code>http://192.168.20.1</code>): LAN address <code>192.168.20.1</code> / 24, DHCP pool <code>192.168.20.150</code> to <code>.199</code>.</li>
+  <li>Patch one of the D-Link’s <b>LAN</b> ports to the BMENOC0311’s <b>ETH1</b> service port. Leave its WAN port empty: it must not route the rig onto another network.</li>
+  <li>A laptop on the D-Link’s Wi-Fi now reaches the SIG300 and ATV930 web pages. If its internet stops working, the D-Link has become its default route: set a fixed address in the pool with no gateway on that Wi-Fi adapter.</li>
   <li>In the SIG300’s DTM, set the input connection to <b>Point to Point</b> like the ATV930’s, so multicast I/O doesn’t flood the Wi-Fi.</li>
 </ol>
 

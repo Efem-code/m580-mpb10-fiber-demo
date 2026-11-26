@@ -43,7 +43,7 @@ function drawBands() {
 const IPS = ["laptop_ip", "plc_host", "noc_host", "cra_host", "sig300_host", "atv_host", "ap_host", "cobot_host", "netmask", "gateway"];
 const IP_DEFAULTS = { laptop_ip: "192.168.10.100", plc_host: "192.168.10.10", noc_host: "192.168.20.10",
   cra_host: "192.168.10.20", sig300_host: "192.168.20.20", atv_host: "192.168.20.30",
-  ap_host: "192.168.20.1", cobot_host: "192.168.20.94", netmask: "255.255.255.0", gateway: "", cra_drop: 3 };
+  ap_host: "192.168.20.1", cobot_host: "192.168.10.94", netmask: "255.255.255.0", gateway: "", cra_drop: 3 };
 // true when two addresses share a subnet under the rig's mask
 const ip32 = s => String(s || "").split(".").reduce((v, o) => v * 256 + (+o || 0), 0);
 const sameNet = (a, b, mask) => ((ip32(a) & ip32(mask)) >>> 0) === ((ip32(b) & ip32(mask)) >>> 0);
@@ -169,13 +169,14 @@ $("ipCopy").onclick = () => {
     "Control network",
     `  Laptop               ${cfg.laptop_ip}   (CPU service port ETH1)`,
     `  M580 CPU BMEP584040S ${cfg.plc_host}`,
-    `  RIO drop BMECRA31210 ${cfg.cra_host}   (drop ${cfg.cra_drop}, rotary switches)`, "",
+    `  RIO drop BMECRA31210 ${cfg.cra_host}   (drop ${cfg.cra_drop}, rotary switches)`,
+    `  Lexium cobot         ${cfg.cobot_host}   (switch on CPU ETH1)`, "",
     "Device network",
     `  BMENOC0311           ${cfg.noc_host}   (backplane port ${sameNet(cfg.noc_host, cfg.plc_host, cfg.netmask) ? "enabled" : "disabled"})`,
     `  SICK SIG300          ${cfg.sig300_host}   (NOC ETH3)`,
     `  Altivar ATV930       ${cfg.atv_host}   (NOC ETH2)`,
     `  D-Link Wi-Fi AP      ${cfg.ap_host}   (LAN port to NOC ETH1, DHCP pool .150-.199)`,
-    `  Lexium cobot         ${cfg.cobot_host}   (on the D-Link)`, "",
+    "",
     `Subnet mask          ${cfg.netmask}`, `Gateway              ${cfg.gateway || "none"}`, "",
     `Modbus: status %MW${cfg.base}-${cfg.base + 31}, commands %MW${cfg.cmd_base}-${cfg.cmd_base + 4}, unit ID ${cfg.unit_id}`];
   navigator.clipboard.writeText(lines.join("\n")).then(() => { $("ipSaved").textContent = "Copied"; setTimeout(() => $("ipSaved").textContent = "", 2000); });

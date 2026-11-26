@@ -140,10 +140,9 @@
 <p>The dashboard’s <b>Cobot</b> tab shows the Lexium Cobot controller page. On the IPC it runs from <code>LexiumCobot.exe</code> (from the <a href="https://github.com/Efem-code/lexium-cobot/releases/latest">lexium-cobot release</a>), no Python needed.</p>
 <ol class="steps">
   <li>Put <code>LexiumCobot.exe</code> and <code>Start Cobot.bat</code> (from <code>dashboard\ipc</code>) in <code>C:\M580Dashboard</code>.</li>
-  <li>The cobot is on the <b>device network</b> (<code>192.168.20.94</code>), not the PLC side. Give the IPC a way onto it: cable the free Ethernet port to a LAN port on the D-Link and set it to <code>192.168.20.50</code> / <code>255.255.255.0</code>, <b>no gateway</b>. (Or the D-Link’s Wi-Fi, but then the USB Wi-Fi isn’t free for email.)</li>
-  <li>Double-click <b>Start Cobot.bat</b>, open the dashboard’s <b>Cobot</b> tab, and connect to <code>192.168.20.94</code> from the controller page.</li>
+  <li>The cobot is on the control network at <code>192.168.10.94</code>, on the same switch as the IPC, so nothing else to cable or set.</li>
+  <li>Double-click <b>Start Cobot.bat</b>, open the dashboard’s <b>Cobot</b> tab, and connect to <code>192.168.10.94</code> from the controller page.</li>
 </ol>
-<div class="note">With a 192.168.20.x connection the IPC sits on both rig networks, like the laptop on the D-Link Wi-Fi. That is fine as long as it doesn’t route between them: the set-up script’s checks (routing, bridge, sharing all off) cover it. Run <b>Set up this IPC.bat</b> again after adding it.</div>
 
 <footer>Guillevin demo rig · M580 · Phoenix Contact VL3 PPC · email alerts and history</footer>
 </main>

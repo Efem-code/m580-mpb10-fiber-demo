@@ -89,14 +89,14 @@
 <tr><td>Main rack</td><td>A <b>BMEXBP0800</b> 8-slot rack. Left to right on our board: <b>BMXCPS4002S</b> power supply, <b>BMEP584040S</b> CPU, <b>BMEP58CPROS3</b> coprocessor, <b>BMENOC0311</b> (slot 4), <b>BMXNRP0200</b> (slot 5), <b>BMXSDI1602</b> (slot 6), <b>BMXSRA0405</b> (slot 7). Put them in the same slots in the project.</td><td>CPU <code>192.168.10.10</code>, NOC <code>192.168.20.10</code></td></tr>
 <tr><td>RIO main ring, over fiber</td><td>CPU <b>ETH2</b> and <b>ETH3</b> → the main rack’s BMXNRP0200 → two multimode fiber links → the drop’s BMXNRP0200 → CRA <b>ETH2</b> and <b>ETH3</b>. One ring: open it anywhere and the drop keeps running.</td><td>–</td></tr>
 <tr><td>RIO drop 3</td><td>Two power supplies (redundant pair), <b>BMECRA31210</b>, <b>BMXNRP0200</b>, <b>BMXSDI1602</b>, <b>BMXSDO0802</b>, <b>BMXSRA0405</b>, free slots. A <b>BMEXBP1002</b> rack, slots 0–4 in that order.</td><td>CRA <code>192.168.10.20</code></td></tr>
-<tr><td>BMENOC0311 front ports</td><td><b>ETH2</b> → ATV930. <b>ETH3</b> → SIG300 (copper). <b>ETH1</b> (service port) → the D-Link Wi-Fi access point and the cobot.</td><td>ATV <code>192.168.20.30</code>, SIG <code>192.168.20.20</code></td></tr>
+<tr><td>BMENOC0311 front ports</td><td><b>ETH2</b> → ATV930. <b>ETH3</b> → SIG300 (copper). <b>ETH1</b> (service port) → the D-Link Wi-Fi access point.</td><td>ATV <code>192.168.20.30</code>, SIG <code>192.168.20.20</code></td></tr>
 <tr><td>CPU service port ETH1</td><td>The dashboard laptop.</td><td>Laptop <code>192.168.10.100</code></td></tr>
 </table></div>
 <p>Two networks, both <code>255.255.255.0</code>, neither with a gateway:</p>
 <div class="wrap"><table>
 <tr><th style="width:24%">Network</th><th style="width:22%">Subnet</th><th>On it</th></tr>
-<tr><td><b>Control</b></td><td><code>192.168.10.x</code></td><td>CPU <code>.10</code> (<code>.11</code> is its IP address A in the project: keep it free), RIO drop <code>.20</code>, dashboard laptop on CPU ETH1 <code>.100</code></td></tr>
-<tr><td><b>Devices</b></td><td><code>192.168.20.x</code></td><td>BMENOC0311 <code>.10</code>, SIG300 <code>.20</code>, ATV930 <code>.30</code>; the D-Link Wi-Fi access point <code>.1</code> on the NOC’s ETH1 with the Lexium cobot <code>.94</code>; Wi-Fi clients <code>.150</code>–<code>.199</code></td></tr>
+<tr><td><b>Control</b></td><td><code>192.168.10.x</code></td><td>CPU <code>.10</code> (<code>.11</code> is its IP address A in the project: keep it free), RIO drop <code>.20</code>, IPC <code>.50</code>, Lexium cobot <code>.94</code>, dashboard laptop <code>.100</code>, TV <code>.201</code>, through a switch on CPU ETH1</td></tr>
+<tr><td><b>Devices</b></td><td><code>192.168.20.x</code></td><td>BMENOC0311 <code>.10</code>, SIG300 <code>.20</code>, ATV930 <code>.30</code>; the D-Link Wi-Fi access point <code>.1</code> on the NOC’s ETH1; Wi-Fi clients <code>.150</code>–<code>.199</code></td></tr>
 </table></div>
 <p>The PLC is the only thing joining them: the NOC hands the drive and sensor data to the CPU across the rack. Nothing routes between the networks. The dashboard’s IP addresses tab holds the same plan; change it there and here together.</p>
 <div class="warn">The rig reuses <code>192.168.10.x</code> and <code>192.168.20.x</code>, which the lab network uses too. Keep the rig on its own cables and switches and never patch it into the lab network, or addresses like <code>.10</code> will clash. The cobot’s D-Link router is the exception: it joins the device network on purpose.</div>
